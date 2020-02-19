@@ -17,8 +17,9 @@ import time
 
 from esm_calendar import Date, Calendar
 import esm_parser
-import esm_coupler
-import esm_methods
+from . import esm_coupler
+from . import esm_methods
+#import .esm_coupler
 from esm_profile import *
 
 import pprint
@@ -62,6 +63,10 @@ class SimulationSetup(object):
         esm_parser.choose_blocks(self.config, blackdict=self.config._blackdict)
         self._add_all_folders()
         self.set_prev_date()
+
+        #esm_parser.pprint_config(self.config)
+        #sys.exit(0)
+
         self.config.finalize()
         self._initialize_components()
         self.add_submission_info()
@@ -351,10 +356,12 @@ class SimulationSetup(object):
 
     @timing
     def copy_tools_to_thisrun(self):
+        import esm_tools
         gconfig = self.config["general"]
 
         fromdir = os.path.normpath(gconfig["started_from"])
         scriptsdir = os.path.normpath(gconfig["experiment_scripts_dir"])
+
         tools_dir = scriptsdir + "/esm_tools/functions"
         namelists_dir = scriptsdir + "/esm_tools/namelists"
 
@@ -367,10 +374,10 @@ class SimulationSetup(object):
             shutil.rmtree(namelists_dir, ignore_errors=True)
 
         if not os.path.isdir(tools_dir):
-            print("Copying from: ", gconfig["esm_master_dir"])
-            shutil.copytree(gconfig["esm_master_dir"] + "/functions", tools_dir) 
+            print("Copying from: ", esm_tools.FUNCTION_PATH)
+            shutil.copytree(esm_tools.FUNCTION_PATH, tools_dir) 
         if not os.path.isdir(namelists_dir):
-            shutil.copytree(gconfig["esm_master_dir"] + "/namelists", namelists_dir) 
+            shutil.copytree(esm_tools.get_rc_entry("NAMELIST_PATH"), namelists_dir) 
 
         if (fromdir == scriptsdir) and not gconfig["update"]:
             print ("Started from the experiment folder, continuing...")
@@ -390,7 +397,7 @@ class SimulationSetup(object):
                      shutil.copy2 (fromdir + "/" + tfile, scriptsdir)
 
             restart_command = ("cd " + scriptsdir + "; " + \
-                               "esm_tools/functions/general_py/esm_runscripts " + \
+                               "esm_runscripts " + \
                                gconfig["original_command"].replace("-U", ""))           
             print (restart_command)
             os.system( restart_command )
@@ -491,7 +498,7 @@ class SimulationSetup(object):
         return False
 
     def add_submission_info(self):
-        import esm_batch_system       
+        from . import esm_batch_system       
         bs = esm_batch_system.esm_batch_system(self.config, self.config["computer"]["batch_system"])
 
         submitted = bs.check_if_submitted()
@@ -612,7 +619,7 @@ class SimulationSetup(object):
         header = self.get_batch_header()
         environment = self.get_environment()
         commands = self.get_run_commands()
-        tidy_call =  "esm_tools/functions/general_py/esm_runscripts " + self.config["general"]["scriptname"] + " -e " + self.config["general"]["expid"] + " -t tidy_and_resubmit -p ${process}"
+        tidy_call =  "esm_runscripts " + self.config["general"]["scriptname"] + " -e " + self.config["general"]["expid"] + " -t tidy_and_resubmit -p ${process}"
 
         with open(sadfilename, "w") as sadfile:
             for line in header:
@@ -1180,7 +1187,7 @@ class SimulationSetup(object):
 
 
     def add_batch_hostfile(self, all_files_to_copy):
-        import esm_batch_system
+        from . import esm_batch_system
         self.batch = esm_batch_system.esm_batch_system(self.config, self.config["computer"]["batch_system"])
         self.batch.calc_requirements(self.config)
 

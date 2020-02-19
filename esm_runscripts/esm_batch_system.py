@@ -5,7 +5,7 @@ class esm_batch_system:
     def __init__(self, config, name):
         self.name = name
         if name == "slurm":
-            import slurm
+            from . import slurm
             self.bs = slurm.slurm(config)
         else:
             print ("Unknown batch system: ", name)

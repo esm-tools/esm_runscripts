@@ -10,7 +10,11 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = [ ]
+requirements = ["esm_parser @ git+https://gitlab.awi.de/esm_tools/esm_parser.git", 
+                "esm_environment @ git+https://gitlab.awi.de/esm_tools/esm_environment.git",
+                "esm_calendar @ git+https://gitlab.awi.de/esm_tools/esm_calendar.git",
+                "esm_profile @ git+https://gitlab.awi.de/esm_tools/esm_profile.git",
+               ]
 
 setup_requirements = [ ]
 
@@ -21,9 +25,9 @@ setup(
     author_email='dirk.barbi@awi.de',
     python_requires='>=3.5',
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+        'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
         'Natural Language :: English',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
@@ -38,7 +42,7 @@ setup(
         ],
     },
     install_requires=requirements,
-    license="GNU General Public License v3",
+    license="GNU General Public License v2",
     long_description=readme + '\n\n' + history,
     include_package_data=True,
     keywords='esm_runscripts',

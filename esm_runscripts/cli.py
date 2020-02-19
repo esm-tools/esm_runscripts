@@ -12,7 +12,7 @@ import sys
 # Import from 3rd Party packages
 import coloredlogs
 
-import .esm_sim_objects
+from .esm_sim_objects import *
 
 # Logger and related constants
 logger = logging.getLogger("root")
@@ -155,5 +155,5 @@ def main():
     print ("Started from: ", command_line_config["started_from"])
     print ("starting : ", jobtype)
 
-    Setup = esm_sim_objects.SimulationSetup(command_line_config)
+    Setup = SimulationSetup(command_line_config)
     Setup()
