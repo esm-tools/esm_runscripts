@@ -356,7 +356,7 @@ class SimulationSetup(object):
 
     @timing
     def copy_tools_to_thisrun(self):
-        import esm_tools
+        import esm_rcfile
         gconfig = self.config["general"]
 
         fromdir = os.path.normpath(gconfig["started_from"])
@@ -374,10 +374,10 @@ class SimulationSetup(object):
             shutil.rmtree(namelists_dir, ignore_errors=True)
 
         if not os.path.isdir(tools_dir):
-            print("Copying from: ", esm_tools.FUNCTION_PATH)
-            shutil.copytree(esm_tools.FUNCTION_PATH, tools_dir) 
+            print("Copying from: ", esm_rcfile.FUNCTION_PATH)
+            shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir) 
         if not os.path.isdir(namelists_dir):
-            shutil.copytree(esm_tools.get_rc_entry("NAMELIST_PATH"), namelists_dir) 
+            shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir) 
 
         if (fromdir == scriptsdir) and not gconfig["update"]:
             print ("Started from the experiment folder, continuing...")
