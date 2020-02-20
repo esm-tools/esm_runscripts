@@ -97,11 +97,20 @@ class SimulationSetup(object):
         # make folders
         self._create_folders(self.config["general"], self.all_filetypes)
 
-        import esm_framework
-        framework_recipe = esm_framework.read_recipe("esm_runscripts.yaml", {"job_type": "compute"})
-        framework_plugins = esm_framework.read_plugin_information("esm_plugins.yaml", framework_recipe)
-        esm_framework.check_plugin_availability(framework_plugins, framework_recipe)
+        import esm_rcfile
+        recipefile = esm_rcfile.FUNCTION_PATH + "/esm_runscripts/esm_runscripts.yaml"
+        pluginsfile = esm_rcfile.FUNCTION_PATH + "/esm_runscripts/esm_plugins.yaml"
+    
+        from . import esm_framework
+        framework_recipe = esm_framework.read_recipe(recipefile, {"job_type": "compute"})
+        framework_plugins = esm_framework.read_plugin_information(pluginsfile, framework_recipe)
+        esm_framework.check_plugin_availability(framework_plugins)
         self.config = esm_framework.work_through_recipe(framework_recipe, framework_plugins, self.config)
+
+
+        #esm_parser.pprint_config(framework_recipe)
+        #esm_parser.pprint_config(framework_plugins)
+        sys.exit(0)
 
         self._create_component_folders()
         # write config
