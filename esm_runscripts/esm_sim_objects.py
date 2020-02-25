@@ -268,16 +268,23 @@ class SimulationSetup(object):
             monitor_file.write("Copying stuff to main experiment folder \n")
             self.copy_all_results_to_exp()
 
-            monitor_file.write("Post processing for this run:\n")
-            self.command_line_config["jobtype"] = "post"
-            self.command_line_config["original_command"] = self.command_line_config[
-                "original_command"
-            ].replace("compute", "post")
-            monitor_file.write("Initializing post object with:\n")
-            monitor_file.write(str(self.command_line_config))
-            this_post = SimulationSetup(self.command_line_config)
-            monitor_file.write("Post object built; calling post job:\n")
-            this_post()
+            do_post = False
+            for model in self.config:
+                if "post_processing" in self.config[model]:
+                    if self.config[model]["post_processing"]:
+                        do_post = True
+
+            if do_post:        
+                monitor_file.write("Post processing for this run:\n")
+                self.command_line_config["jobtype"] = "post"
+                self.command_line_config["original_command"] = self.command_line_config[
+                    "original_command"
+                ].replace("compute", "post")
+                monitor_file.write("Initializing post object with:\n")
+                monitor_file.write(str(self.command_line_config))
+                this_post = SimulationSetup(self.command_line_config)
+                monitor_file.write("Post object built; calling post job:\n")
+                this_post()
 
             monitor_file.write("writing date file \n")
             self._increment_date_and_run_number()
@@ -666,7 +673,7 @@ class SimulationSetup(object):
         header = self.get_batch_header()
         environment = self.get_environment()
         commands = commands or self.get_run_commands()
-        tidy_call =  "esm_tools/functions/general_py/esm_runscripts " + self.config["general"]["scriptname"] + " -e " + self.config["general"]["expid"] + " -t tidy_and_resubmit -p ${process}"
+        tidy_call =  "esm_runscripts " + self.config["general"]["scriptname"] + " -e " + self.config["general"]["expid"] + " -t tidy_and_resubmit -p ${process}"
 
         with open(sadfilename, "w") as sadfile:
             for line in header:
@@ -692,7 +699,7 @@ class SimulationSetup(object):
         if os.path.isfile(self.batch.bs.filename):
             six.print_("\n", 40 * "+ ")
             six.print_("Contents of ",self.batch.bs.filename, ":")
-            with open(self.batch.bs.path, "r") as fin:
+            with open(self.batch.bs.filename, "r") as fin:
                 print (fin.read())
     
     def get_sad_filename(self):
@@ -1239,10 +1246,12 @@ class SimulationSetup(object):
 
 
     def initialize_batch_system(self):
-        self.batch = esm_batch_system.esm_batch_system(self.config, self.config["computer"]["batch_system"])
-    def add_batch_hostfile(self, all_files_to_copy):
         from . import esm_batch_system
         self.batch = esm_batch_system.esm_batch_system(self.config, self.config["computer"]["batch_system"])
+
+    def add_batch_hostfile(self, all_files_to_copy):
+        from . import esm_batch_system
+        #self.batch = esm_batch_system.esm_batch_system(self.config, self.config["computer"]["batch_system"])
         self.batch.calc_requirements(self.config)
 
         all_files_to_copy.append(
