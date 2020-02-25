@@ -1,6 +1,7 @@
 """
 Documentation goes here
 """
+import collections
 import logging
 import os
 import pdb
@@ -70,6 +71,8 @@ class SimulationSetup(object):
         self.config.finalize()
         self._initialize_components()
         self.add_submission_info()
+        self.initialize_batch_system()
+
         if self.config["general"]["standalone"] == False:
             self.init_coupler()
 
@@ -130,7 +133,9 @@ class SimulationSetup(object):
             "w",
             buffering=1,
         ) as post_file:
-            self._assemble_postprocess_tasks(post_file)
+            post_task_list = self._assemble_postprocess_tasks(post_file)
+            self.write_simple_runscript(post_task_list, write_tidy_call=False)
+            self.submit()
 
     def _assemble_postprocess_tasks(self, post_file):
         """
@@ -140,26 +145,68 @@ class SimulationSetup(object):
         ----------
         post_file
             File handle to which information should be written.
+        
+        Returns
+        -------
+        post_task_list : list
+            The list of post commands which will be executed. These are written
+            to the sad file.
         """
+        post_task_list = []
         for component in self.components:
             post_file.write(40*"+ "+"\n")
-            post_file.write("Starting post-processing tasks for: %s \n" % component)
-            
-            pconfig = component.config.get('postprocess', [])
-            post_file.write("Configuration for post processing: %s \n" % pconfig)
-            for outfile in pconfig:
-                post_file.write("Running task to create: \n" % outfile)
-                # Run CDO tasks (default)
-                method = outfile.get("method", "cdo")
-                flags = outfile.get("flags", [])
-                switches = outfile.get("switches", {})
-                post_file.write("PG: Debug info: \n")
-                post_file.write(str(method)+"\n")
-                post_file.write(str(flags)+"\n")
-                post_file.write(str(switches)+"\n")
-                if method == "cdo":
-                    operator = None
+            post_file.write("Generating post-processing tasks for: %s \n" % component)
 
+            post_task_list.append("\n#Postprocessing %s\n" % component)
+            post_task_list.append("cd "+component.config["experiment_outdata_dir"]+"\n")
+
+            pconfig_tasks = component.config.get('postprocess_tasks', {})
+            post_file.write("Configuration for post processing: %s \n" % pconfig_tasks)
+            for outfile in pconfig_tasks:
+                post_file.write("Generating task to create: %s \n" % outfile)
+                ofile_config = pconfig_tasks[outfile]
+                # TODO(PG): This can be cleaned up. I probably actually want a
+                # ChainMap here for more than just the bottom...
+                #
+                # Run CDO tasks (default)
+                task_definition = component.config.get("postprocess_task_definitions", {}).get(ofile_config['post_process'])
+                method_definition = component.config.get("postprocess_method_definitions", {}).get(task_definition['method'])
+
+                program = method_definition.get("program", task_definition["method"])
+
+                possible_args = method_definition.get("possible_args", [])
+                required_args = method_definition.get("required_args", [])
+
+                possible_flags = method_definition.get("possible_flags", [])
+                required_flags = method_definition.get("required_flags", [])
+
+                outfile_flags = ofile_config.get("flags")
+                outfile_args = ofile_config.get("args")
+
+                task_def_flags = task_definition.get("flags")
+                task_def_args = task_definition.get("args")
+
+                args = collections.ChainMap(outfile_args, task_def_args)
+                flags = outfile_flags + task_def_flags
+                flags = ["-"+flag for flag in flags]
+
+                # See here: https://stackoverflow.com/questions/21773866/how-to-sort-a-dictionary-based-on-a-list-in-python
+                all_call_things = {"program": program, "outfile": outfile, **args, "flags": flags}
+                print(all_call_things)
+                index_map = {v: i for i, v in enumerate(method_definition["call_order"])}
+                call_list = sorted(all_call_things.items(), key=lambda pair: index_map[pair[0]])
+                call = []
+                for call_id, call_part in call_list:
+                    if isinstance(call_part, str):
+                        call.append(call_part)
+                    elif isinstance(call_part, list):
+                        call.append(" ".join(call_part))
+                    else:
+                        raise TypeError("Something straaaange happened. Consider starting the debugger.")
+                post_file.write(" ".join(call)+"\n")
+                post_task_list.append(" ".join(call))
+            post_task_list.append("cd -\n")
+        return post_task_list
 
 
     def end_it_all(self):
@@ -614,12 +661,12 @@ class SimulationSetup(object):
 
     #########################       PREPARE EXPERIMENT / WORK    #############################
 
-    def write_simple_runscript(self):
+    def write_simple_runscript(self, commands=None, write_tidy_call=True):
         sadfilename = self.get_sad_filename()
         header = self.get_batch_header()
         environment = self.get_environment()
-        commands = self.get_run_commands()
-        tidy_call =  "esm_runscripts " + self.config["general"]["scriptname"] + " -e " + self.config["general"]["expid"] + " -t tidy_and_resubmit -p ${process}"
+        commands = commands or self.get_run_commands()
+        tidy_call =  "esm_tools/functions/general_py/esm_runscripts " + self.config["general"]["scriptname"] + " -e " + self.config["general"]["expid"] + " -t tidy_and_resubmit -p ${process}"
 
         with open(sadfilename, "w") as sadfile:
             for line in header:
@@ -633,7 +680,8 @@ class SimulationSetup(object):
                 sadfile.write(line + "\n")
             sadfile.write("process=$! \n")
             sadfile.write("cd "+ self.config["general"]["experiment_scripts_dir"] + "\n")
-            sadfile.write(tidy_call + "\n")
+            if write_tidy_call:
+                sadfile.write(tidy_call + "\n")
 
         self.submit_command = self.get_submit_command(sadfilename)
 
@@ -641,17 +689,18 @@ class SimulationSetup(object):
         six.print_("Contents of ",sadfilename, ":")
         with open(sadfilename, "r") as fin:
             print (fin.read())
-        six.print_("\n", 40 * "+ ")
-        six.print_("Contents of ",self.batch.bs.filename, ":")
-        with open(self.batch.bs.path, "r") as fin:
-            print (fin.read())
+        if os.path.isfile(self.batch.bs.filename):
+            six.print_("\n", 40 * "+ ")
+            six.print_("Contents of ",self.batch.bs.filename, ":")
+            with open(self.batch.bs.path, "r") as fin:
+                print (fin.read())
     
     def get_sad_filename(self):
         folder = self.config["general"]["thisrun_scripts_dir"]
         expid = self.config["general"]["expid"]
         startdate = self.config["general"]["current_date"]
         enddate = self.config["general"]["end_date"]
-        return folder + "/" + expid+"_"+self.run_datestamp+".sad"
+        return folder + "/" + expid+"_"+self.config["general"]["jobtype"]+"_"+self.run_datestamp+".sad"
 
     def get_batch_header(self):
         header = []
@@ -684,11 +733,14 @@ class SimulationSetup(object):
     
     def calculate_requirements(self):
         tasks = 0
-        for model in self.config["general"]["models"]:
-            if "nproc" in self.config[model]:
-                tasks += self.config[model]["nproc"]
-            elif "nproca" in self.config[model] and "nprocb" in self.config[model]:
-                tasks += self.config[model]["nproca"] * self.config[model]["nprocb"]
+        if self.config["general"]["jobtype"] == "compute":
+            for model in self.config["general"]["models"]:
+                if "nproc" in self.config[model]:
+                    tasks += self.config[model]["nproc"]
+                elif "nproca" in self.config[model] and "nprocb" in self.config[model]:
+                    tasks += self.config[model]["nproca"] * self.config[model]["nprocb"]
+        elif self.config["general"]["jobtype"] == "post":
+            tasks = 1
         return tasks
 
     def get_environment(self):
@@ -715,7 +767,7 @@ class SimulationSetup(object):
         commands = []
         batch_system = self.config["computer"]
         if "execution_command" in batch_system:
-            commands.append(batch_system["execution_command"] + " &")
+            commands.append("time " + batch_system["execution_command"] + " &")
         return commands
 
     def get_submit_command(self, sadfilename):
@@ -1186,6 +1238,8 @@ class SimulationSetup(object):
 
 
 
+    def initialize_batch_system(self):
+        self.batch = esm_batch_system.esm_batch_system(self.config, self.config["computer"]["batch_system"])
     def add_batch_hostfile(self, all_files_to_copy):
         from . import esm_batch_system
         self.batch = esm_batch_system.esm_batch_system(self.config, self.config["computer"]["batch_system"])
@@ -1243,6 +1297,9 @@ class SimulationComponent(object):
     def __init__(self, general, component_config):
         self.config = component_config
         self.general_config = general
+
+    def __repr__(self):
+        return "SimulationComponent: %s, v%s" % (self.config.get('model'), self.config.get('version'))
 
     def find_correct_source(self, file_source, year):
         if isinstance(file_source, dict):
