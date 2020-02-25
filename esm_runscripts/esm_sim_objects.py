@@ -95,7 +95,7 @@ class SimulationSetup(object):
             a ``sys.exit()`` as the very last after job submission.
         """
         # make folders
-        self._create_folders(self.config["general"], self.all_filetypes)
+        #self._create_folders(self.config["general"], self.all_filetypes)
 
         import esm_rcfile
         recipefile = esm_rcfile.FUNCTION_PATH + "/esm_runscripts/esm_runscripts.yaml"
@@ -112,14 +112,14 @@ class SimulationSetup(object):
         #esm_parser.pprint_config(framework_plugins)
         sys.exit(0)
 
-        self._create_component_folders()
+        #self._create_component_folders()
         # write config
-        self._write_finalized_config()
-        self.copy_tools_to_thisrun()
+        #self._write_finalized_config()
+        #self.copy_tools_to_thisrun()
         # copy date_file etc. into experiment
-        self._copy_preliminary_files_from_experiment_to_thisrun()
+        #self._copy_preliminary_files_from_experiment_to_thisrun()
         # little bit of output
-        self._show_simulation_info()
+        #self._show_simulation_info()
         # assemble file lists and copy everything to thisrun
         self.prepare()
         # write sad file
@@ -176,14 +176,6 @@ class SimulationSetup(object):
                 if method == "cdo":
                     operator = None
 
-
-
-    def end_it_all(self):
-        if self.config["general"]["profile"]:
-            for line in timing_info:
-                print(line)
-        print("Exiting entire Python process!")
-        sys.exit()
 
     def tidy(self):
         """
@@ -370,57 +362,6 @@ class SimulationSetup(object):
 #        for thisfile in unknown_files:
 
 
-    @timing
-    def copy_tools_to_thisrun(self):
-        import esm_rcfile
-        gconfig = self.config["general"]
-
-        fromdir = os.path.normpath(gconfig["started_from"])
-        scriptsdir = os.path.normpath(gconfig["experiment_scripts_dir"])
-
-        tools_dir = scriptsdir + "/esm_tools/functions"
-        namelists_dir = scriptsdir + "/esm_tools/namelists"
-
-        print ("Started from :", fromdir)
-        print ("Scripts Dir : ", scriptsdir)
-
-        if os.path.isdir(tools_dir) and gconfig["update"]:
-            shutil.rmtree(tools_dir, ignore_errors=True)
-        if os.path.isdir(namelists_dir) and gconfig["update"]:
-            shutil.rmtree(namelists_dir, ignore_errors=True)
-
-        if not os.path.isdir(tools_dir):
-            print("Copying from: ", esm_rcfile.FUNCTION_PATH)
-            shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir) 
-        if not os.path.isdir(namelists_dir):
-            shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir) 
-
-        if (fromdir == scriptsdir) and not gconfig["update"]:
-            print ("Started from the experiment folder, continuing...")
-        else:
-            if not fromdir == scriptsdir:
-                print ("Not started from experiment folder, restarting...")
-            else:
-                print ("Tools were updated, restarting...")
-
-            if not os.path.isfile(scriptsdir + "/" + gconfig["scriptname"]):
-                oldscript = fromdir + "/" + gconfig["scriptname"]
-                print (oldscript)
-                shutil.copy2 (oldscript, scriptsdir)
-
-            for tfile in gconfig["additional_files"]:
-                if not os.path.isfile(scriptsdir + "/" + tfile):
-                     shutil.copy2 (fromdir + "/" + tfile, scriptsdir)
-
-            restart_command = ("cd " + scriptsdir + "; " + \
-                               "esm_runscripts " + \
-                               gconfig["original_command"].replace("-U", ""))           
-            print (restart_command)
-            os.system( restart_command )
-
-            gconfig["profile"] = False
-            self.end_it_all()
-
 
 
 
@@ -559,6 +500,10 @@ class SimulationSetup(object):
             "viz",
             "ignore"
         ]
+
+        self.config["general"]["all_model_filetypes"] = self.all_model_filetypes
+        self.config["general"]["all_filetypes"] = self.all_filetypes
+
         for model in self.config["general"]["valid_model_names"]:
              for filetype in self.all_model_filetypes:
                 if "restart" in filetype:
@@ -763,6 +708,164 @@ class SimulationSetup(object):
 
 
     #########################################################################################
+    #                                   ok for plugin                                       #
+    #########################################################################################
+
+    
+    #########################################################################################
+    #                                   general stuff                                       #
+    #########################################################################################
+
+    @staticmethod
+    def end_it_all(config):
+        if config["general"]["profile"]:
+            for line in timing_info:
+                print(line)
+        print("Exiting entire Python process!")
+        sys.exit()
+
+
+
+    #########################################################################################
+    #                                   compute jobs                                        #
+    #########################################################################################
+
+    @staticmethod
+    def _create_folders(config, filetypes):
+        for filetype in filetypes:
+            if not filetype == "ignore":
+                if not os.path.exists(config["experiment_" + filetype + "_dir"]):
+                    os.makedirs(config["experiment_" + filetype + "_dir"])
+                if not os.path.exists(config["thisrun_" + filetype + "_dir"]):
+                    os.makedirs(config["thisrun_" + filetype + "_dir"])
+
+    @staticmethod
+    def _create_setup_folders(config):
+        SimulationSetup._create_folders(config["general"], config["general"]["all_filetypes"])
+        return config
+
+    @staticmethod
+    def _create_component_folders(config):
+        for component in config["general"]["models"]:
+            SimulationSetup._create_folders(config[component], config["general"]["all_model_filetypes"])
+        return config
+
+    @staticmethod
+    def _write_finalized_config(config):
+        with open(
+            config["general"]["thisrun_config_dir"]
+            + "/"
+            + config["general"]["expid"]
+            + "_finished_config.yaml",
+            "w",
+        ) as config_file:
+            yaml.dump(config, config_file)
+        return config
+
+    @staticmethod
+    @timing
+    def copy_tools_to_thisrun(config):
+        import esm_rcfile
+        gconfig = config["general"]
+
+        fromdir = os.path.normpath(gconfig["started_from"])
+        scriptsdir = os.path.normpath(gconfig["experiment_scripts_dir"])
+
+        tools_dir = scriptsdir + "/esm_tools/functions"
+        namelists_dir = scriptsdir + "/esm_tools/namelists"
+
+        print ("Started from :", fromdir)
+        print ("Scripts Dir : ", scriptsdir)
+
+        if os.path.isdir(tools_dir) and gconfig["update"]:
+            shutil.rmtree(tools_dir, ignore_errors=True)
+        if os.path.isdir(namelists_dir) and gconfig["update"]:
+            shutil.rmtree(namelists_dir, ignore_errors=True)
+
+        if not os.path.isdir(tools_dir):
+            print("Copying from: ", esm_rcfile.FUNCTION_PATH)
+            shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir) 
+        if not os.path.isdir(namelists_dir):
+            shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir) 
+
+        if (fromdir == scriptsdir) and not gconfig["update"]:
+            print ("Started from the experiment folder, continuing...")
+            return config
+        else:
+            if not fromdir == scriptsdir:
+                print ("Not started from experiment folder, restarting...")
+            else:
+                print ("Tools were updated, restarting...")
+
+            if not os.path.isfile(scriptsdir + "/" + gconfig["scriptname"]):
+                oldscript = fromdir + "/" + gconfig["scriptname"]
+                print (oldscript)
+                shutil.copy2 (oldscript, scriptsdir)
+
+            for tfile in gconfig["additional_files"]:
+                if not os.path.isfile(scriptsdir + "/" + tfile):
+                     shutil.copy2 (fromdir + "/" + tfile, scriptsdir)
+
+            restart_command = ("cd " + scriptsdir + "; " + \
+                               "esm_runscripts " + \
+                               gconfig["original_command"].replace("-U", ""))           
+            print (restart_command)
+            os.system( restart_command )
+
+            gconfig["profile"] = False
+            SimulationSetup.end_it_all(config)
+
+    @staticmethod
+    def _copy_preliminary_files_from_experiment_to_thisrun(config):
+        filelist = [
+            (
+                "scripts",
+                config["general"]["expid"]
+                + "_"
+                + config["general"]["setup_name"]
+                + ".date",
+                "copy",
+            )
+        ]
+        for filetype, filename, copy_or_link in filelist:
+            source = config["general"]["experiment_" + filetype + "_dir"]
+            dest = config["general"]["thisrun_" + filetype + "_dir"]
+            if copy_or_link == "copy":
+                method = shutil.copy2
+            elif copy_or_link == "link":
+                method = os.symlink
+            if os.path.isfile(source + "/" + filename):
+                method(source + "/" + filename, dest + "/" + filename)
+        this_script = config["general"]["scriptname"]
+        shutil.copy2("./" + this_script, config["general"]["thisrun_scripts_dir"])
+
+        for additional_file in config["general"]["additional_files"]:
+            shutil.copy2(additional_file, config["general"]["thisrun_scripts_dir"])
+        return config
+
+    @staticmethod
+    def _show_simulation_info(config):
+        six.print_(80 * "=")
+        six.print_("STARTING SIMULATION JOB!")
+        six.print_("Experiment ID = %s" % config["general"]["expid"])
+        six.print_("Setup = %s" % config["general"]["setup_name"])
+        six.print_("This setup consists of:")
+        for model in config["general"]["valid_model_names"]:
+            six.print_("- %s" % model)
+        six.print_("You are using the Python version.")
+        return config
+
+
+
+
+
+
+    #########################################################################################
+
+
+
+
+
 
     def _initialize_components(self):
         components = []
@@ -777,13 +880,6 @@ class SimulationSetup(object):
             with open(".top_of_exp_tree") as f:
                 f.write("Top of experiment: "+self.config['general']['expid'])
 
-    def _create_folders(self, config, filetypes):
-        for filetype in filetypes:
-            if not filetype == "ignore":
-                if not os.path.exists(config["experiment_" + filetype + "_dir"]):
-                    os.makedirs(config["experiment_" + filetype + "_dir"])
-                if not os.path.exists(config["thisrun_" + filetype + "_dir"]):
-                    os.makedirs(config["thisrun_" + filetype + "_dir"])
 
     def _dump_final_yaml(self):
         with open(
@@ -794,60 +890,6 @@ class SimulationSetup(object):
             "w",
         ) as config_file:
             yaml.dump(self.config, config_file)
-
-    def _show_simulation_info(self):
-        six.print_(80 * "=")
-        six.print_("STARTING SIMULATION JOB!")
-        six.print_("Experiment ID = %s" % self.config["general"]["expid"])
-        six.print_("Setup = %s" % self.config["general"]["setup_name"])
-        six.print_("This setup consists of:")
-        for model in self.config["general"]["valid_model_names"]:
-            six.print_("- %s" % model)
-        six.print_("You are using the Python version.")
-
-
-    def _write_finalized_config(self):
-        #pp.pprint(self.config)
-        with open(
-            self.config["general"]["thisrun_config_dir"]
-            + "/"
-            + self.config["general"]["expid"]
-            + "_finished_config.yaml",
-            "w",
-        ) as config_file:
-            yaml.dump(self.config, config_file)
-
-    def _create_component_folders(self):
-        for component in self.components:
-            #component.general_config = self.config["general"]
-            self._create_folders(component.config, self.all_model_filetypes)
-
-    def _copy_preliminary_files_from_experiment_to_thisrun(self):
-        filelist = [
-            (
-                "scripts",
-                self.config["general"]["expid"]
-                + "_"
-                + self.config["general"]["setup_name"]
-                + ".date",
-                "copy",
-            )
-        ]
-        for filetype, filename, copy_or_link in filelist:
-            source = self.config["general"]["experiment_" + filetype + "_dir"]
-            dest = self.config["general"]["thisrun_" + filetype + "_dir"]
-            if copy_or_link == "copy":
-                method = shutil.copy2
-            elif copy_or_link == "link":
-                method = os.symlink
-            if os.path.isfile(source + "/" + filename):
-                method(source + "/" + filename, dest + "/" + filename)
-        this_script = self.config["general"]["scriptname"]
-        shutil.copy2("./" + this_script, self.config["general"]["thisrun_scripts_dir"])
-
-        for additional_file in self.config["general"]["additional_files"]:
-            shutil.copy2(additional_file, self.config["general"]["thisrun_scripts_dir"])
-
 
     def _initialize_calendar(self, config):
         nyear, nmonth, nday, nhour, nminute, nsecond = 0, 0, 0, 0, 0, 0
