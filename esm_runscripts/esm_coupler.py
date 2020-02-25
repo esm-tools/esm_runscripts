@@ -16,7 +16,7 @@ class esm_coupler:
             for restart_file in list(full_config[self.name]["coupling_target_fields"]):
                 self.nb_of_couplings += len(list(full_config[self.name]["coupling_target_fields"][restart_file]))
         if name == "oasis3mct":
-            import oasis
+            from . import oasis
             self.coupler = oasis.oasis(self.nb_of_couplings,  self.coupled_execs, self.runtime)
         else:
             print ("Unknown coupler :", name)
