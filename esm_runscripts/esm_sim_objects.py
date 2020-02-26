@@ -755,9 +755,9 @@ class SimulationSetup(object):
         import esm_environment
         env = esm_environment.environment_infos()
         for model in self.config["general"]["models"]:
-            env.apply_model_changes(model)
+            env.apply_model_changes(model, self.config[model])
             esm_parser.basic_choose_blocks(env.config, env.config)
-        env.apply_model_changes("general")
+        env.apply_model_changes("general", self.config["general"])
         esm_parser.basic_choose_blocks(env.config, env.config)
         if "module_actions" in env.config:
             for action in env.config["module_actions"]:
@@ -765,9 +765,16 @@ class SimulationSetup(object):
         environment.append("")
         if "export_vars" in env.config:
             for var in env.config["export_vars"]:
-                environment.append(
-                    "export " + var 
-                )
+                if type(var) == dict:
+                    key = list(var.keys())[0]
+                    value = var[key]
+                    environment.append(
+                        "export " + key + "='" + str(value)+"'" 
+                    )
+                else:
+                    environment.append(
+                        "export " + str(var) 
+                    )
         return environment
 
     def get_run_commands(self):
