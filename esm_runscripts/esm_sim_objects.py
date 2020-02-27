@@ -755,9 +755,9 @@ class SimulationSetup(object):
         import esm_environment
         env = esm_environment.environment_infos()
         for model in self.config["general"]["models"]:
-            env.apply_model_changes(model, self.config[model])
+            env.apply_model_changes(model, "runtime", self.config[model])
             esm_parser.basic_choose_blocks(env.config, env.config)
-        env.apply_model_changes("general", self.config["general"])
+        env.apply_model_changes("general", "runtime", self.config["general"])
         esm_parser.basic_choose_blocks(env.config, env.config)
         if "module_actions" in env.config:
             for action in env.config["module_actions"]:
