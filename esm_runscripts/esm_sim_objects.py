@@ -37,44 +37,17 @@ yaml.add_representer(Date, date_representer)
 
 class SimulationSetup(object):
     @timing
-    def __init__(self, command_line_config):
+    def __init__(self, command_line_config = None, user_config = None):
 
-        self.command_line_config = command_line_config
+        if not command_line_config and not user_config:
+            print ("SimulationSetup needs to be initialized with either command_line_config or user_config.")
+            sys.exit(-1)
+        if command_line_config:
+            self.command_line_config = command_line_config
+        if not user_config:
+            user_config = self.get_user_config_from_command_line(command_line_config)
+        self.config = self.get_total_config_from_user_config(user_config)
 
-
-        try:
-            user_config = esm_parser.initialize_from_yaml(command_line_config["scriptname"])
-            if not "additional_files" in user_config["general"]:
-                user_config["general"]["additional_files"] = []
-        except:
-            user_config = esm_parser.initialize_from_shell_script(command_line_config["scriptname"])
-
-        user_config["general"].update(command_line_config)
-
-        self.config = esm_parser.ConfigSetup(user_config["general"]["setup_name"].replace("_standalone",""), user_config)
-
-        del user_config
-
-        self.config["computer"]["jobtype"] = self.config["general"]["jobtype"]
-
-        self.config["general"]["experiment_dir"] = self.config["general"]["base_dir"] + "/" + self.config["general"]["expid"]
-        self._read_date_file(self.config)
-        esm_parser.choose_blocks(self.config, blackdict=self.config._blackdict)
-        self._initialize_calendar(self.config)
-        esm_parser.choose_blocks(self.config, blackdict=self.config._blackdict)
-        self._add_all_folders()
-        self.set_prev_date()
-
-        #esm_parser.pprint_config(self.config)
-        #sys.exit(0)
-
-        self.config.finalize()
-        self._initialize_components()
-        self.add_submission_info()
-        self.initialize_batch_system()
-
-        if self.config["general"]["standalone"] == False:
-            self.init_coupler()
 
     def __call__(self, *args, **kwargs):
         if self.config["general"]["jobtype"] == "compute":
@@ -86,6 +59,7 @@ class SimulationSetup(object):
         else:
             print("Unknown jobtype specified! Goodbye...")
             self.end_it_all()
+
 
     def compute(self, kill_after_submit=True):
         """
@@ -324,6 +298,44 @@ class SimulationSetup(object):
 
 
     ##########################    ASSEMBLE ALL THE INFORMATION  ##############################
+
+
+    def get_user_config_from_command_line(self, command_line_config):
+        try:
+            user_config = esm_parser.initialize_from_yaml(command_line_config["scriptname"])
+            if not "additional_files" in user_config["general"]:
+                user_config["general"]["additional_files"] = []
+        except:
+            user_config = esm_parser.initialize_from_shell_script(command_line_config["scriptname"])
+
+        user_config["general"].update(command_line_config)
+        return user_config
+
+
+
+    def get_total_config_from_user_config(self, user_config):
+        self.config = esm_parser.ConfigSetup(user_config["general"]["setup_name"].replace("_standalone",""), 
+                                             user_config)
+        self.config["computer"]["jobtype"] = self.config["general"]["jobtype"]
+        self.config["general"]["experiment_dir"] = self.config["general"]["base_dir"] 
+                                                    + "/" + self.config["general"]["expid"]
+
+        self._read_date_file(self.config)
+        esm_parser.choose_blocks(self.config, blackdict=self.config._blackdict)
+        self._initialize_calendar(self.config)
+        esm_parser.choose_blocks(self.config, blackdict=self.config._blackdict)
+        self._add_all_folders()
+        self.set_prev_date()
+
+        self.config.finalize()
+        self._initialize_components()
+        self.add_submission_info()
+        self.initialize_batch_system()
+
+        if self.config["general"]["standalone"] == False:
+            self.init_coupler()
+
+        return config
 
 
     def copy_all_results_to_exp(self):
