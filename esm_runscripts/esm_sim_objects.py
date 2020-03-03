@@ -36,7 +36,6 @@ yaml.add_representer(Date, date_representer)
 
 
 class SimulationSetup(object):
-    @timing
     def __init__(self, command_line_config = None, user_config = None):
 
         if not command_line_config and not user_config:
@@ -46,8 +45,7 @@ class SimulationSetup(object):
             self.command_line_config = command_line_config
         if not user_config:
             user_config = self.get_user_config_from_command_line(command_line_config)
-        self.config = self.get_total_config_from_user_config(user_config)
-
+        self.get_total_config_from_user_config(user_config)
 
     def __call__(self, *args, **kwargs):
         if self.config["general"]["jobtype"] == "compute":
@@ -314,16 +312,30 @@ class SimulationSetup(object):
 
 
     def get_total_config_from_user_config(self, user_config):
+
+        if "version" in user_config["general"]:
+            version = str(user_config["general"]["version"])
+        else:
+            setup_name = user_config["general"]["setup_name"]
+            if "version" in user_config[setup_name.replace("_standalone","")]:
+                version = str(user_config[setup_name.replace("_standalone","")]["version"])
+            else:
+                version = "DEFAULT"
+
         self.config = esm_parser.ConfigSetup(user_config["general"]["setup_name"].replace("_standalone",""), 
+                                             version, 
                                              user_config)
+
+
         self.config["computer"]["jobtype"] = self.config["general"]["jobtype"]
-        self.config["general"]["experiment_dir"] = self.config["general"]["base_dir"] 
-                                                    + "/" + self.config["general"]["expid"]
+        self.config["general"]["experiment_dir"] = self.config["general"]["base_dir"] + "/" + self.config["general"]["expid"]
 
         self._read_date_file(self.config)
         esm_parser.choose_blocks(self.config, blackdict=self.config._blackdict)
+
         self._initialize_calendar(self.config)
         esm_parser.choose_blocks(self.config, blackdict=self.config._blackdict)
+
         self._add_all_folders()
         self.set_prev_date()
 
@@ -334,8 +346,6 @@ class SimulationSetup(object):
 
         if self.config["general"]["standalone"] == False:
             self.init_coupler()
-
-        return config
 
 
     def copy_all_results_to_exp(self):
@@ -765,29 +775,8 @@ class SimulationSetup(object):
     def get_environment(self):
         environment = []
         import esm_environment
-        env = esm_environment.environment_infos()
-        for model in self.config["general"]["models"]:
-            env.apply_model_changes(model, "runtime", self.config[model])
-            esm_parser.basic_choose_blocks(env.config, env.config)
-        env.apply_model_changes("general", "runtime", self.config["general"])
-        esm_parser.basic_choose_blocks(env.config, env.config)
-        if "module_actions" in env.config:
-            for action in env.config["module_actions"]:
-                environment.append("module " + action)
-        environment.append("")
-        if "export_vars" in env.config:
-            for var in env.config["export_vars"]:
-                if type(var) == dict:
-                    key = list(var.keys())[0]
-                    value = var[key]
-                    environment.append(
-                        "export " + key + "='" + str(value)+"'" 
-                    )
-                else:
-                    environment.append(
-                        "export " + str(var) 
-                    )
-        return environment
+        env = esm_environment.environment_infos("runtime", self.config)
+        return env.commands
 
     def get_run_commands(self):
         commands = []
@@ -1032,7 +1021,7 @@ class SimulationSetup(object):
                 self.config[model]["parent_restart_dir"] = self.config[model][
                     "experiment_restart_in_dir"
                 ]
-            print (model + "   " + str(self.config[model]["parent_date"]))
+            #print (model + "   " + str(self.config[model]["parent_date"]))
 
 
     def _increment_date_and_run_number(self):
