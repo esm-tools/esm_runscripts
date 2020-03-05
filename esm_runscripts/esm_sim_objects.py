@@ -438,8 +438,8 @@ class SimulationSetup(object):
         import esm_rcfile
         gconfig = self.config["general"]
 
-        fromdir = os.path.normpath(gconfig["started_from"])
-        scriptsdir = os.path.normpath(gconfig["experiment_scripts_dir"])
+        fromdir = os.path.realpath(gconfig["started_from"])
+        scriptsdir = os.path.realpath(gconfig["experiment_scripts_dir"])
 
         tools_dir = scriptsdir + "/esm_tools/functions"
         namelists_dir = scriptsdir + "/esm_tools/namelists"
