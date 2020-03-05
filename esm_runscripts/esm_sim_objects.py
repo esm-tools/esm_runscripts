@@ -326,6 +326,9 @@ class SimulationSetup(object):
                                              version, 
                                              user_config)
 
+        #esm_parser.pprint_config(self.config)
+        #sys.exit(0)
+
 
         self.config["computer"]["jobtype"] = self.config["general"]["jobtype"]
         self.config["general"]["experiment_dir"] = self.config["general"]["base_dir"] + "/" + self.config["general"]["expid"]
