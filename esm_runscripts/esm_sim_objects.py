@@ -711,8 +711,10 @@ class SimulationSetup(object):
 
     def write_to_log(self, message):
         with open(config["general"]["experiment_log_file"], "w") as logfile:
-            datestamp = ...
-            line = datestamp + " : " + message
+            from datetime import datetime
+            dateTimeObj = datetime.now()
+            timestampStr = dateTimeObj.strftime("%a %b %d %H:%M:%S %Z %Y")
+            line = timestampStr + " : " + message
             logfile.write(line + "\n")
 
 
