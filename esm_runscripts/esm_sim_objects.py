@@ -72,7 +72,7 @@ class SimulationSetup(object):
         # make folders
         self._create_folders(self.config["general"], self.all_filetypes)
         self._create_component_folders()
-        self.initialize_experiment_log()
+        self.initialize_experiment_logfile(self.config)
         # write config
         self._write_finalized_config()
         self.copy_tools_to_thisrun()
@@ -241,7 +241,7 @@ class SimulationSetup(object):
             monitor_file.write("Copying stuff to main experiment folder \n")
             self.copy_all_results_to_exp()
 
-            self.write_to_log(config["general"]["run_number"] + " " + config["general"]["current_date"] + " " + config["general"]["jobid"] + " - done")
+            self.write_to_log(str(config["general"]["run_number"]) + " " + str(config["general"]["current_date"]) + " " + str(config["general"]["jobid"]) + " - done")
 
             do_post = False
             for model in self.config:
@@ -698,19 +698,25 @@ class SimulationSetup(object):
     #########################       PREPARE EXPERIMENT / WORK    #############################
 
     def initialize_experiment_logfile(self, config):
-        config["general"]["experiment_log_file"] = config["general"]["experiment_log_dir"] + "/" + 
-                                                  config["general"]["expid"] + "_" + 
-                                                  config["general"]["model"] + "_" + 
-                                                  config["general"]["jobtype"] + ".log"
+        #esm_parser.pprint_config(config["general"])
+
+        config["general"]["experiment_log_file"] = (
+                config["general"]["experiment_log_dir"] + "/"
+                + config["general"]["expid"] + "_"
+                + config["general"]["setup_name"] + "_"
+                + config["general"]["jobtype"] + ".log"
+                )
                            
         if config["general"]["run_number"] == 1:
+            if os.path.isfile(config["general"]["experiment_log_file"]):
+                os.remove(config["general"]["experiment_log_file"])
             self.write_to_log("Beginning of Experiment " + config["general"]["expid"])
 
-        self.write_to_log(config["general"]["run_number"] + " " + config["general"]["current_date"] + " " + config["general"]["jobid"] + " - start")
+        self.write_to_log(str(config["general"]["run_number"]) + " " + str(config["general"]["current_date"]) + " " + str(config["general"]["jobid"]) + " - start")
 
 
     def write_to_log(self, message):
-        with open(config["general"]["experiment_log_file"], "w") as logfile:
+        with open(self.config["general"]["experiment_log_file"], "a+") as logfile:
             from datetime import datetime
             dateTimeObj = datetime.now()
             timestampStr = dateTimeObj.strftime("%a %b %d %H:%M:%S %Z %Y")
