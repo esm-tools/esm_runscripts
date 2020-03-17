@@ -1,13 +1,14 @@
 """
 Documentation goes here
 """
+from datetime import datetime
+from io import StringIO
 import collections
 import logging
 import os
 import pdb
 import shutil
 import sys
-from io import StringIO
 
 import f90nml
 import six
@@ -780,7 +781,6 @@ class SimulationSetup(object):
            the user choice.
         """
         with open(self.config["general"]["experiment_log_file"], "a+") as logfile:
-            from datetime import datetime
             dateTimeObj = datetime.now()
             strftime_str = self.config["general"].get("experiment_log_file_dateformat", "%c")
             if message_sep is None:
