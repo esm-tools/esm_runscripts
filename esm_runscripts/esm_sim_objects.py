@@ -217,6 +217,9 @@ class SimulationSetup(object):
             This method is also responsible for calling the next compute job as
             well as the post processing job!
         """
+
+        called_from = self.config["general"]["last_jobtype"]
+
         with open(
             self.config["general"]["thisrun_scripts_dir"] + "/monitoring_file.out",
             "w",
@@ -224,6 +227,7 @@ class SimulationSetup(object):
         ) as monitor_file:
             monitor_file.write("tidy job initialized \n")
             monitor_file.write("attaching to process " + str(self.config["general"]["launcher_pid"]) + " \n")
+            monitor_file.write("Called from a " + called_from + "job \n")
             #monitoring_events=self.assemble_monitoring_events()
 
             filetypes=["log", "mon", "outdata", "restart_out"]
@@ -233,6 +237,21 @@ class SimulationSetup(object):
             if self.config["general"]["standalone"] == False:
                 self.coupler.tidy(self.config)
             monitor_file.write("job ended, starting to tidy up now \n")
+            # Log job completion
+            if called_from != "command_line":
+                self.write_to_log([
+                    called_from,
+                    str(self.config["general"]["run_number"]),
+                    str(self.config["general"]["current_date"]),
+                    str(self.config["general"]["jobid"]),
+                    "- done"])
+            # Tell the world you're cleaning up:
+            self.write_to_log([
+                str(self.config["general"]["jobtype"]),
+                str(self.config["general"]["run_number"]),
+                str(self.config["general"]["current_date"]),
+                str(self.config["general"]["jobid"]),
+                "- start"])
             self.copy_files_from_work_to_thisrun(all_files_to_copy)
             all_listed_filetypes=["log", "mon", "outdata", "restart_out","bin", "config", "forcing", "input", "restart_in", "ignore"]
             all_files_to_check = self.assemble_file_lists(all_listed_filetypes)
@@ -241,12 +260,6 @@ class SimulationSetup(object):
             monitor_file.write("Copying stuff to main experiment folder \n")
             self.copy_all_results_to_exp()
 
-            self.write_to_log([
-                str(self.config["general"]["jobtype"]),
-                str(self.config["general"]["run_number"]),
-                str(self.config["general"]["current_date"]),
-                str(self.config["general"]["jobid"]),
-                "- done"])
 
             do_post = False
             for model in self.config:
@@ -272,6 +285,13 @@ class SimulationSetup(object):
 #            monitor_file.write("resubmitting \n")
             self.command_line_config["jobtype"] = "compute"
             self.command_line_config["original_command"] = self.command_line_config["original_command"].replace("tidy_and_resubmit", "compute")
+
+            self.write_to_log([
+                str(self.config["general"]["jobtype"]),
+                str(self.config["general"]["run_number"]),
+                str(self.config["general"]["current_date"]),
+                str(self.config["general"]["jobid"]),
+                "- done"])
 
             if self.config["general"]["end_date"] >= self.config["general"]["final_date"]:
                 monitor_file.write("Reached the end of the simulation, quitting...\n")
@@ -758,6 +778,8 @@ class SimulationSetup(object):
         return config
 
 
+    # FIXME(PG): I hate the name of this method. I grep incorrectly every
+    # time....
     def write_to_log(self, message, message_sep=None):
         """
         Puts a message into the experiment log file
@@ -805,7 +827,7 @@ class SimulationSetup(object):
         header = self.get_batch_header()
         environment = self.get_environment()
         commands = commands or self.get_run_commands()
-        tidy_call =  "esm_runscripts " + self.config["general"]["scriptname"] + " -e " + self.config["general"]["expid"] + " -t tidy_and_resubmit -p ${process}"
+        tidy_call =  "esm_runscripts " + self.config["general"]["scriptname"] + " -e " + self.config["general"]["expid"] + " -t tidy_and_resubmit -p ${process} -j "+self.config["general"]["jobtype"]
 
         with open(sadfilename, "w") as sadfile:
             for line in header:
