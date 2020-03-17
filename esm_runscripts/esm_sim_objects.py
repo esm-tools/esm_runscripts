@@ -241,7 +241,12 @@ class SimulationSetup(object):
             monitor_file.write("Copying stuff to main experiment folder \n")
             self.copy_all_results_to_exp()
 
-            self.write_to_log(str(config["general"]["run_number"]) + " " + str(config["general"]["current_date"]) + " " + str(config["general"]["jobid"]) + " - done")
+            self.write_to_log([
+                str(config["general"]["jobtype"]),
+                str(config["general"]["run_number"]),
+                str(config["general"]["current_date"]),
+                str(config["general"]["jobid"]),
+                "- done"])
 
             do_post = False
             for model in self.config:
@@ -270,7 +275,7 @@ class SimulationSetup(object):
 
             if self.config["general"]["end_date"] >= self.config["general"]["final_date"]:
                 monitor_file.write("Reached the end of the simulation, quitting...\n")
-                self.write_to_log("Experiment over")
+                self.write_to_log(["# Experiment over"], message_sep="")
             else:
                 monitor_file.write("Init for next run:\n")
                 next_compute = SimulationSetup(self.command_line_config)
@@ -698,29 +703,91 @@ class SimulationSetup(object):
     #########################       PREPARE EXPERIMENT / WORK    #############################
 
     def initialize_experiment_logfile(self, config):
+        """
+        Initializes the log file for the entire experiment.
+
+        Creates a file ``${BASE_DIR}/${EXPID}/log/${EXPID}_${setup_name}.log``
+        to keep track of start/stop times, job id numbers, and so on. Use the
+        function ``write_to_log`` to put information in this file afterwards.
+
+        The user can specify ``experiment_log_file`` under the ``general``
+        section of the configuration to override the default name. Timestamps
+        for each message are given by the section
+        ``experiment_log_file_dateformat``, or defaults to ``Tue Mar 17
+        09:36:38 2020``, i.e. ``"%c"``. Please use ``stftime`` compatable
+        formats, as described here: https://strftime.org
+
+        Parameters
+        ----------
+        config : dict
+            The experiment configuration
+
+        Attention
+        ---------
+            Calling this has some filesystem side effects. If the run number in
+            the general configuration is set to 1, and a file exists for
+            ``general.exp_log_file``; this file is removed; and re-initialized.
+        """
         #esm_parser.pprint_config(config["general"])
 
-        config["general"]["experiment_log_file"] = (
+        config["general"]["experiment_log_file"] = config["general"].get("experiment_log_file", 
                 config["general"]["experiment_log_dir"] + "/"
                 + config["general"]["expid"] + "_"
-                + config["general"]["setup_name"] + "_"
-                + config["general"]["jobtype"] + ".log"
+                + config["general"]["setup_name"]
+                + ".log"
                 )
-                           
+
         if config["general"]["run_number"] == 1:
             if os.path.isfile(config["general"]["experiment_log_file"]):
                 os.remove(config["general"]["experiment_log_file"])
-            self.write_to_log("Beginning of Experiment " + config["general"]["expid"])
+            self.write_to_log(["# Beginning of Experiment " + config["general"]["expid"]], message_sep="")
 
-        self.write_to_log(str(config["general"]["run_number"]) + " " + str(config["general"]["current_date"]) + " " + str(config["general"]["jobid"]) + " - start")
+        self.write_to_log(
+                [
+                    str(config["general"]["jobtype"]),
+                    str(config["general"]["run_number"]),
+                    str(config["general"]["current_date"]),
+                    str(config["general"]["jobid"]),
+                    "- start",
+                ]
+            )
 
 
-    def write_to_log(self, message):
+    def write_to_log(self, message, message_sep=None):
+        """
+        Puts a message into the experiment log file
+
+        Parameters
+        ----------
+        message : list
+            A list of the message elements; which is joined by either (highest
+            to lowest): 1) the message_sep argument passed to the method, 2)
+            The user's chosen seperator, as written in
+            ``self.config["general"]["experiment_log_file_message_sep"]``, 3)
+            An empty space ``" "``.
+        message_sep : None
+            The hard-coded message seperator to use; which ignores user choices. 
+
+        Note
+        ----
+        The user can control two things regarding the logfile format:
+
+        1) The datestamp formatting, whjich is taken from the config
+           section ``general.experiment_log_file_dateformat``.
+        2) The message seperators; taken from
+           ``general.experiment_log_file_message_sep``. Note that if the
+           programmer passes a ``message_sep`` argument; this one wins over
+           the user choice.
+        """
         with open(self.config["general"]["experiment_log_file"], "a+") as logfile:
             from datetime import datetime
             dateTimeObj = datetime.now()
-            timestampStr = dateTimeObj.strftime("%a %b %d %H:%M:%S %Z %Y")
-            line = timestampStr + " : " + message
+            strftime_str = self.config["general"].get("experiment_log_file_dateformat", "%c")
+            if message_sep is None:
+                message_sep = self.config["general"].get("experiment_log_file_message_sep", " ")
+            timestampStr = dateTimeObj.strftime(strftime_str)
+            # TODO: Do we want to be able to specify a timestamp seperator as well?
+            line = timestampStr + " : " + message_sep.join(message)
             logfile.write(line + "\n")
 
 
