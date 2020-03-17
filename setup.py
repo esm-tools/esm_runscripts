@@ -15,6 +15,7 @@ requirements = ["esm_parser @ git+https://gitlab.awi.de/esm_tools/esm_parser.git
                 "esm_calendar @ git+https://gitlab.awi.de/esm_tools/esm_calendar.git",
                 "esm_rcfile @ git+https://gitlab.awi.de/esm_tools/esm_rcfile.git",
                 "esm_profile @ git+https://gitlab.awi.de/esm_tools/esm_profile.git",
+                "psutil",
                 "f90nml",
                 "coloredlogs",
                 "tqdm"
