@@ -72,6 +72,7 @@ class SimulationSetup(object):
         # make folders
         self._create_folders(self.config["general"], self.all_filetypes)
         self._create_component_folders()
+        self.initialize_experiment_log()
         # write config
         self._write_finalized_config()
         self.copy_tools_to_thisrun()
@@ -240,6 +241,8 @@ class SimulationSetup(object):
             monitor_file.write("Copying stuff to main experiment folder \n")
             self.copy_all_results_to_exp()
 
+            self.write_to_log(config["general"]["run_number"] + " " + config["general"]["current_date"] + " " + config["general"]["jobid"] + " - done")
+
             do_post = False
             for model in self.config:
                 if "post_processing" in self.config[model]:
@@ -267,6 +270,7 @@ class SimulationSetup(object):
 
             if self.config["general"]["end_date"] >= self.config["general"]["final_date"]:
                 monitor_file.write("Reached the end of the simulation, quitting...\n")
+                self.write_to_log("Experiment over")
             else:
                 monitor_file.write("Init for next run:\n")
                 next_compute = SimulationSetup(self.command_line_config)
@@ -692,6 +696,25 @@ class SimulationSetup(object):
         logging.info("run_number = %s", self.run_number)
 
     #########################       PREPARE EXPERIMENT / WORK    #############################
+
+    def initialize_experiment_logfile(self, config):
+        config["general"]["experiment_log_file"] = config["general"]["experiment_log_dir"] + "/" + 
+                                                  config["general"]["expid"] + "_" + 
+                                                  config["general"]["model"] + "_" + 
+                                                  config["general"]["jobtype"] + ".log"
+                           
+        if config["general"]["run_number"] == 1:
+            self.write_to_log("Beginning of Experiment " + config["general"]["expid"])
+
+        self.write_to_log(config["general"]["run_number"] + " " + config["general"]["current_date"] + " " + config["general"]["jobid"] + " - start")
+
+
+    def write_to_log(self, message):
+        with open(config["general"]["experiment_log_file"], "w") as logfile:
+            datestamp = ...
+            line = datestamp + " : " + message
+            logfile.write(line + "\n")
+
 
     def write_simple_runscript(self, commands=None, write_tidy_call=True):
         sadfilename = self.get_sad_filename()
