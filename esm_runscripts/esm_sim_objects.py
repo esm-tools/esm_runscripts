@@ -326,9 +326,6 @@ class SimulationSetup(object):
                                              version, 
                                              user_config)
 
-        #esm_parser.pprint_config(self.config)
-        #sys.exit(0)
-
 
         self.config["computer"]["jobtype"] = self.config["general"]["jobtype"]
         self.config["general"]["experiment_dir"] = self.config["general"]["base_dir"] + "/" + self.config["general"]["expid"]
@@ -346,6 +343,9 @@ class SimulationSetup(object):
         self._initialize_components()
         self.add_submission_info()
         self.initialize_batch_system()
+
+        #esm_parser.pprint_config(self.config)
+        #sys.exit(0)
 
         if self.config["general"]["standalone"] == False:
             self.init_coupler()
@@ -1000,8 +1000,10 @@ class SimulationSetup(object):
 
     def set_prev_date(self):
         for model in self.config["general"]["models"]:
-            if self.config[model]["time_step"] and not (type(self.config[model]["time_step"]) == str and "${" in self.config[model]["time_step"]):
+            if "time_step" in self.config[model] and not (type(self.config[model]["time_step"]) == str and "${" in self.config[model]["time_step"]):
                 self.config[model]["prev_date"] = self.current_date - (0, 0, 0, 0, 0, int(self.config[model]["time_step"]))
+            else:
+                self.config[model]["prev_date"] = self.current_date
             if self.config[model]["lresume"] == True and self.config["general"]["run_number"] == "1":
                 self.config[model]["parent_expid"] = self.config[model][
                     "ini_parent_exp_id"
