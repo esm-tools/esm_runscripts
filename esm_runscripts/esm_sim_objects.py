@@ -1,13 +1,14 @@
 """
 Documentation goes here
 """
+from datetime import datetime
+from io import StringIO
 import collections
 import logging
 import os
 import pdb
 import shutil
 import sys
-from io import StringIO
 
 import f90nml
 import six
@@ -39,8 +40,7 @@ class SimulationSetup(object):
     def __init__(self, command_line_config = None, user_config = None):
 
         if not command_line_config and not user_config:
-            print ("SimulationSetup needs to be initialized with either command_line_config or user_config.")
-            sys.exit(-1)
+            raise ValueError("SimulationSetup needs to be initialized with either command_line_config or user_config.")
         if command_line_config:
             self.command_line_config = command_line_config
         if not user_config:
@@ -72,6 +72,7 @@ class SimulationSetup(object):
         # make folders
         self._create_folders(self.config["general"], self.all_filetypes)
         self._create_component_folders()
+        self.initialize_experiment_logfile(self.config)
         # write config
         self._write_finalized_config()
         self.copy_tools_to_thisrun()
@@ -117,7 +118,7 @@ class SimulationSetup(object):
         ----------
         post_file
             File handle to which information should be written.
-        
+
         Returns
         -------
         post_task_list : list
@@ -216,6 +217,9 @@ class SimulationSetup(object):
             This method is also responsible for calling the next compute job as
             well as the post processing job!
         """
+
+        called_from = self.config["general"]["last_jobtype"]
+
         with open(
             self.config["general"]["thisrun_scripts_dir"] + "/monitoring_file.out",
             "w",
@@ -223,6 +227,7 @@ class SimulationSetup(object):
         ) as monitor_file:
             monitor_file.write("tidy job initialized \n")
             monitor_file.write("attaching to process " + str(self.config["general"]["launcher_pid"]) + " \n")
+            monitor_file.write("Called from a " + called_from + "job \n")
             #monitoring_events=self.assemble_monitoring_events()
 
             filetypes=["log", "mon", "outdata", "restart_out"]
@@ -232,6 +237,21 @@ class SimulationSetup(object):
             if self.config["general"]["standalone"] == False:
                 self.coupler.tidy(self.config)
             monitor_file.write("job ended, starting to tidy up now \n")
+            # Log job completion
+            if called_from != "command_line":
+                self.write_to_log([
+                    called_from,
+                    str(self.config["general"]["run_number"]),
+                    str(self.config["general"]["current_date"]),
+                    str(self.config["general"]["jobid"]),
+                    "- done"])
+            # Tell the world you're cleaning up:
+            self.write_to_log([
+                str(self.config["general"]["jobtype"]),
+                str(self.config["general"]["run_number"]),
+                str(self.config["general"]["current_date"]),
+                str(self.config["general"]["jobid"]),
+                "- start"])
             self.copy_files_from_work_to_thisrun(all_files_to_copy)
             all_listed_filetypes=["log", "mon", "outdata", "restart_out","bin", "config", "forcing", "input", "restart_in", "ignore"]
             all_files_to_check = self.assemble_file_lists(all_listed_filetypes)
@@ -240,13 +260,14 @@ class SimulationSetup(object):
             monitor_file.write("Copying stuff to main experiment folder \n")
             self.copy_all_results_to_exp()
 
+
             do_post = False
             for model in self.config:
                 if "post_processing" in self.config[model]:
                     if self.config[model]["post_processing"]:
                         do_post = True
 
-            if do_post:        
+            if do_post:
                 monitor_file.write("Post processing for this run:\n")
                 self.command_line_config["jobtype"] = "post"
                 self.command_line_config["original_command"] = self.command_line_config[
@@ -265,15 +286,23 @@ class SimulationSetup(object):
             self.command_line_config["jobtype"] = "compute"
             self.command_line_config["original_command"] = self.command_line_config["original_command"].replace("tidy_and_resubmit", "compute")
 
+            self.write_to_log([
+                str(self.config["general"]["jobtype"]),
+                str(self.config["general"]["run_number"]),
+                str(self.config["general"]["current_date"]),
+                str(self.config["general"]["jobid"]),
+                "- done"])
+
             if self.config["general"]["end_date"] >= self.config["general"]["final_date"]:
                 monitor_file.write("Reached the end of the simulation, quitting...\n")
+                self.write_to_log(["# Experiment over"], message_sep="")
             else:
                 monitor_file.write("Init for next run:\n")
                 next_compute = SimulationSetup(self.command_line_config)
                 next_compute(kill_after_submit=False)
             self.end_it_all()
 
-            
+
 
     def prepare(self):
         filetypes=["bin", "config", "forcing", "input", "restart_in"]
@@ -322,13 +351,12 @@ class SimulationSetup(object):
             else:
                 version = "DEFAULT"
 
-        self.config = esm_parser.ConfigSetup(user_config["general"]["setup_name"].replace("_standalone",""), 
-                                             version, 
+        self.config = esm_parser.ConfigSetup(user_config["general"]["setup_name"].replace("_standalone",""),
+                                             version,
                                              user_config)
 
         #esm_parser.pprint_config(self.config)
         #sys.exit(0)
-
 
         self.config["computer"]["jobtype"] = self.config["general"]["jobtype"]
         self.config["general"]["experiment_dir"] = self.config["general"]["base_dir"] + "/" + self.config["general"]["expid"]
@@ -349,6 +377,14 @@ class SimulationSetup(object):
 
         if self.config["general"]["standalone"] == False:
             self.init_coupler()
+
+        # Write where the experiment log file should be in the config
+        self.config["general"]["experiment_log_file"] = self.config["general"].get("experiment_log_file",
+                self.config["general"]["experiment_log_dir"] + "/"
+                + self.config["general"]["expid"] + "_"
+                + self.config["general"]["setup_name"]
+                + ".log"
+                )
 
 
     def copy_all_results_to_exp(self):
@@ -381,12 +417,12 @@ class SimulationSetup(object):
                                 else:
                                     os.rename(destination, destination + "_" + self.last_run_datestamp)
                                 newdestination = destination + "_" + self.run_datestamp
-                                print ("Moving file " + source + " to " + newdestination)            
+                                print ("Moving file " + source + " to " + newdestination)
                                 os.rename(source, newdestination)
                                 os.symlink(newdestination, destination)
                                 continue
                     try:
-                        print ("Moving file " + source + " to " + destination)            
+                        print ("Moving file " + source + " to " + destination)
                         os.rename(source, destination)
                     except:
                         print(">>>>>>>>>  Something went wrong moving " + source + " to " + destination)
@@ -454,9 +490,9 @@ class SimulationSetup(object):
 
         if not os.path.isdir(tools_dir):
             print("Copying from: ", esm_rcfile.FUNCTION_PATH)
-            shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir) 
+            shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir)
         if not os.path.isdir(namelists_dir):
-            shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir) 
+            shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir)
 
         if (fromdir == scriptsdir) and not gconfig["update"]:
             print ("Started from the experiment folder, continuing...")
@@ -477,7 +513,7 @@ class SimulationSetup(object):
 
             restart_command = ("cd " + scriptsdir + "; " + \
                                "esm_runscripts " + \
-                               gconfig["original_command"].replace("-U", ""))           
+                               gconfig["original_command"].replace("-U", ""))
             print (restart_command)
             os.system( restart_command )
 
@@ -536,7 +572,7 @@ class SimulationSetup(object):
                     else:
                         continue
                     error_list.append((trigger, search_file, method, frequency, frequency, message))
-                    
+
         return error_list
 
 
@@ -546,11 +582,11 @@ class SimulationSetup(object):
         for (trigger, search_file, method, next_check, frequency, message) in error_check_list:
             warned = 0
             if next_check <= time:
-                if os.path.isfile(search_file): 
+                if os.path.isfile(search_file):
                     with open(search_file) as origin_file:
                         for line in origin_file:
                             if trigger.upper() in line.upper():
-                                if method == "warn": 
+                                if method == "warn":
                                     warned = 1
                                     monitor_file.write("WARNING: " + message + "\n")
                                     break
@@ -577,7 +613,7 @@ class SimulationSetup(object):
         return False
 
     def add_submission_info(self):
-        from . import esm_batch_system       
+        from . import esm_batch_system
         bs = esm_batch_system.esm_batch_system(self.config, self.config["computer"]["batch_system"])
 
         submitted = bs.check_if_submitted()
@@ -593,7 +629,7 @@ class SimulationSetup(object):
     def _add_all_folders(self):
         self.all_filetypes = ["analysis", "config", "log", "mon", "scripts", "ignore",  "unknown"]
         self.all_filetypes.append("work")
-        self.config["general"]["thisrun_dir"] = self.config["general"]["experiment_dir"] + "/run_" + self.run_datestamp 
+        self.config["general"]["thisrun_dir"] = self.config["general"]["experiment_dir"] + "/run_" + self.run_datestamp
 
         for filetype in self.all_filetypes:
             self.config["general"][
@@ -605,7 +641,7 @@ class SimulationSetup(object):
                 "thisrun_" + filetype + "_dir"
             ] = self.config["general"]["thisrun_dir"] + "/" + filetype + "/"
 
-        self.config["general"]["work_dir"] =  self.config["general"]["thisrun_work_dir"] 
+        self.config["general"]["work_dir"] =  self.config["general"]["thisrun_work_dir"]
 
         self.all_model_filetypes = [
             "analysis",
@@ -630,9 +666,9 @@ class SimulationSetup(object):
                     filedir = filetype
                 self.config[model][
                     "experiment_" + filetype + "_dir"
-                ] = self.config["general"]["experiment_dir"] + "/" + filedir + "/" + model + "/" 
+                ] = self.config["general"]["experiment_dir"] + "/" + filedir + "/" + model + "/"
                 self.config[model][ "thisrun_" + filetype + "_dir"
-                ] = self.config["general"]["thisrun_dir"] + "/" + filedir  + "/" + model + "/" 
+                ] = self.config["general"]["thisrun_dir"] + "/" + filedir  + "/" + model + "/"
                 self.config[model]["all_filetypes"] = self.all_model_filetypes
 
     @timing
@@ -660,7 +696,7 @@ class SimulationSetup(object):
             write_file = True
         config["general"]["run_number"] = self.run_number
 
-        self.current_date = date 
+        self.current_date = date
 
         if config["general"]["run_number"] != 1:
             for model in config["general"]["valid_model_names"]:
@@ -693,12 +729,105 @@ class SimulationSetup(object):
 
     #########################       PREPARE EXPERIMENT / WORK    #############################
 
+    def initialize_experiment_logfile(self, config):
+        """
+        Initializes the log file for the entire experiment.
+
+        Creates a file ``${BASE_DIR}/${EXPID}/log/${EXPID}_${setup_name}.log``
+        to keep track of start/stop times, job id numbers, and so on. Use the
+        function ``write_to_log`` to put information in this file afterwards.
+
+        The user can specify ``experiment_log_file`` under the ``general``
+        section of the configuration to override the default name. Timestamps
+        for each message are given by the section
+        ``experiment_log_file_dateformat``, or defaults to ``Tue Mar 17
+        09:36:38 2020``, i.e. ``"%c"``. Please use ``stftime`` compatable
+        formats, as described here: https://strftime.org
+
+        Parameters
+        ----------
+        dict :
+            The experiment configuration
+
+        Return
+        ------
+        dict :
+            As per convention for the plug-in system; this gives back the
+            entire config.
+
+        Attention
+        ---------
+            Calling this has some filesystem side effects. If the run number in
+            the general configuration is set to 1, and a file exists for
+            ``general.exp_log_file``; this file is removed; and re-initialized.
+        """
+        if config["general"]["run_number"] == 1:
+            if os.path.isfile(config["general"]["experiment_log_file"]):
+                os.remove(config["general"]["experiment_log_file"])
+            self.write_to_log(["# Beginning of Experiment " + config["general"]["expid"]], message_sep="")
+
+        self.write_to_log(
+                [
+                    str(config["general"]["jobtype"]),
+                    str(config["general"]["run_number"]),
+                    str(config["general"]["current_date"]),
+                    str(config["general"]["jobid"]),
+                    "- start",
+                ]
+            )
+        return config
+
+
+    # FIXME(PG): I hate the name of this method. I grep incorrectly every
+    # time....
+    def write_to_log(self, message, message_sep=None):
+        """
+        Puts a message into the experiment log file
+
+        Parameters
+        ----------
+        message : list
+            A list of the message elements; which is joined by either (highest
+            to lowest): 1) the message_sep argument passed to the method, 2)
+            The user's chosen seperator, as written in
+            ``self.config["general"]["experiment_log_file_message_sep"]``, 3)
+            An empty space ``" "``.
+        message_sep : None
+            The hard-coded message seperator to use; which ignores user choices.
+
+        Note
+        ----
+        The user can control two things regarding the logfile format:
+
+        1) The datestamp formatting, whjich is taken from the config
+           section ``general.experiment_log_file_dateformat``.
+        2) The message seperators; taken from
+           ``general.experiment_log_file_message_sep``. Note that if the
+           programmer passes a ``message_sep`` argument; this one wins over
+           the user choice.
+        """
+        try:
+            with open(self.config["general"]["experiment_log_file"], "a+") as logfile:
+                dateTimeObj = datetime.now()
+                strftime_str = self.config["general"].get("experiment_log_file_dateformat", "%c")
+                if message_sep is None:
+                    message_sep = self.config["general"].get("experiment_log_file_message_sep", " ")
+                timestampStr = dateTimeObj.strftime(strftime_str)
+                # TODO: Do we want to be able to specify a timestamp seperator as well?
+                line = timestampStr + " : " + message_sep.join(message)
+                logfile.write(line + "\n")
+        except KeyError:
+            print("Sorry; couldn't find 'experiment_log_file' in config['general']...")
+            esm_parser.pprint_config(self.config["general"])
+            raise
+
+
     def write_simple_runscript(self, commands=None, write_tidy_call=True):
         sadfilename = self.get_sad_filename()
         header = self.get_batch_header()
         environment = self.get_environment()
         commands = commands or self.get_run_commands()
-        tidy_call =  "esm_runscripts " + self.config["general"]["scriptname"] + " -e " + self.config["general"]["expid"] + " -t tidy_and_resubmit -p ${process}"
+        tidy_call =  "esm_runscripts " + self.config["general"]["scriptname"] + " -e " + self.config["general"]["expid"] + " -t tidy_and_resubmit -p ${process} -j "+self.config["general"]["jobtype"]
 
         with open(sadfilename, "w") as sadfile:
             for line in header:
@@ -708,7 +837,7 @@ class SimulationSetup(object):
                 sadfile.write(line + "\n")
             sadfile.write("\n")
             sadfile.write("cd "+ self.config["general"]["thisrun_work_dir"] + "\n")
-            for line in commands: 
+            for line in commands:
                 sadfile.write(line + "\n")
             sadfile.write("process=$! \n")
             sadfile.write("cd "+ self.config["general"]["experiment_scripts_dir"] + "\n")
@@ -726,7 +855,7 @@ class SimulationSetup(object):
             six.print_("Contents of ",self.batch.bs.filename, ":")
             with open(self.batch.bs.filename, "r") as fin:
                 print (fin.read())
-    
+
     def get_sad_filename(self):
         folder = self.config["general"]["thisrun_scripts_dir"]
         expid = self.config["general"]["expid"]
@@ -762,7 +891,7 @@ class SimulationSetup(object):
                 batch_system[flag] = batch_system[flag].replace(tag, str(repl))
             header.append(batch_system["header_start"] + " " + batch_system[flag])
         return header
-    
+
     def calculate_requirements(self):
         tasks = 0
         if self.config["general"]["jobtype"] == "compute":
@@ -938,7 +1067,7 @@ class SimulationSetup(object):
                             if not self.config[other_model]["leapyear"] == self.config[model]["leapyear"]:
                                 print ("Models " + model + " and " + other_model + " do not agree on leapyear. Stopping.")
                                 sys.exit(43)
-                        else:    
+                        else:
                             self.config[other_model]["leapyear"] = self.config[model]["leapyear"]
                     self.config["general"]["leapyear"] = self.config[model]["leapyear"]
                     break
@@ -970,7 +1099,7 @@ class SimulationSetup(object):
         config["general"]["last_start_date"] = self.current_date - self.delta_date
         #config["general"]["end_date"] = config["general"]["next_date"].sub(
         config["general"]["end_date"] = config["general"]["next_date"] - (0, 0, 1, 0, 0, 0)
-    
+
         config["general"]["runtime"] = (
             config["general"]["next_date"] - config["general"]["current_date"]
         )
@@ -1109,8 +1238,8 @@ class SimulationSetup(object):
             file_intermediate = filedir_intermediate + "/" + subfolder + filename_intermediate
             file_target = filedir_intermediate + "/" + subfolder + filename_target
             try:
-                if not os.path.isdir(filedir_intermediate + "/" + subfolder): 
-                    os.mkdir(filedir_intermediate + "/" + subfolder) 
+                if not os.path.isdir(filedir_intermediate + "/" + subfolder):
+                    os.mkdir(filedir_intermediate + "/" + subfolder)
                 shutil.copy2(file_source, file_intermediate)
                 if os.path.islink(file_target):
                     os.remove(file_target)
@@ -1193,7 +1322,7 @@ class SimulationSetup(object):
 
     def modify_files(self):
         for model in self.config['general']['valid_model_names']:
-            for filetype in self.all_model_filetypes: 
+            for filetype in self.all_model_filetypes:
                 #print(self.config[model].get(filetype+"_modifications"))
                 if filetype == "restart":
                     nothing = "nothing"
@@ -1238,15 +1367,15 @@ class SimulationSetup(object):
                 )
                 self.coupler = esm_coupler.esm_coupler(self.config, model)
                 break
-        self.coupler.add_files(self.config)   
+        self.coupler.add_files(self.config)
 
     def prepare_coupler_files(self, all_files_to_copy):
         self.coupler.prepare(self.config, self.coupler_config_dir)
         coupler_filename="namcouple"  # needs to be set by function above
         all_files_to_copy.append(
             (
-                "", 
-                self.coupler_config_dir,  
+                "",
+                self.coupler_config_dir,
                 coupler_filename,
                 coupler_filename,
                 ""
@@ -1267,7 +1396,7 @@ class SimulationSetup(object):
 
         all_files_to_copy.append(
             (
-                "", self.config["general"]["thisrun_scripts_dir"], 
+                "", self.config["general"]["thisrun_scripts_dir"],
                 self.batch.bs.path.rsplit("/", 1)[-1],
                 self.batch.bs.path.rsplit("/", 1)[-1],
                 ""
@@ -1365,7 +1494,7 @@ class SimulationComponent(object):
         #for filetype in self.config["all_filetypes"]:
             filetype_files = []
             six.print_("- %s" % filetype)
-            
+
             if filetype == "restart_in" and not self.config["lresume"]:
                 six.print_("- restart files do not make sense for a cold start, skipping...")
                 continue
@@ -1397,7 +1526,7 @@ class SimulationComponent(object):
                             if not subfolder.endswith("/"):
                                 subfolder = subfolder + "/"
                     all_file_sources = glob.glob(file_source)
-                    
+
                     running_index = 0
                     for new_source in all_file_sources:
                         running_index += 1
@@ -1484,7 +1613,7 @@ class SimulationComponent(object):
                     )
 
                     if "/" in this_target_name:
-                        subfolder = this_target_name.rsplit("/", 1)[0] + "/" 
+                        subfolder = this_target_name.rsplit("/", 1)[0] + "/"
                     else:
                         subfolder = ""
 
