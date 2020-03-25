@@ -10,11 +10,15 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = ["esm_parser @ git+https://gitlab.awi.de/esm_tools/esm_parser.git", 
+requirements = ["esm_parser @ git+https://gitlab.awi.de/esm_tools/esm_parser.git",
                 "esm_environment @ git+https://gitlab.awi.de/esm_tools/esm_environment.git",
                 "esm_calendar @ git+https://gitlab.awi.de/esm_tools/esm_calendar.git",
                 "esm_rcfile @ git+https://gitlab.awi.de/esm_tools/esm_rcfile.git",
                 "esm_profile @ git+https://gitlab.awi.de/esm_tools/esm_profile.git",
+                "psutil",
+                "f90nml",
+                "coloredlogs",
+                "tqdm"
                ]
 
 setup_requirements = [ ]
@@ -53,6 +57,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/dbarbi/esm_runscripts',
-    version='0.1.0',
+    version='3.1.2',
     zip_safe=False,
 )
