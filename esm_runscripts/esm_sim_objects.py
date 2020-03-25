@@ -83,6 +83,8 @@ class SimulationSetup(object):
         self.config = esm_framework.work_through_recipe(framework_recipe, framework_plugins, self.config)
 
 
+        esm_parser.pprint_config(self.config)
+
         #esm_parser.pprint_config(framework_recipe)
         #esm_parser.pprint_config(framework_plugins)
         sys.exit(0)
@@ -247,14 +249,14 @@ class SimulationSetup(object):
             monitor_file.write("job ended, starting to tidy up now \n")
             # Log job completion
             if called_from != "command_line":
-                self.write_to_log(self.config, [
+                SimulationSetup.write_to_log(self.config, [
                     called_from,
                     str(self.config["general"]["run_number"]),
                     str(self.config["general"]["current_date"]),
                     str(self.config["general"]["jobid"]),
                     "- done"])
             # Tell the world you're cleaning up:
-            self.write_to_log(self.config, [
+            SimulationSetup.write_to_log(self.config, [
                 str(self.config["general"]["jobtype"]),
                 str(self.config["general"]["run_number"]),
                 str(self.config["general"]["current_date"]),
@@ -294,7 +296,7 @@ class SimulationSetup(object):
             self.command_line_config["jobtype"] = "compute"
             self.command_line_config["original_command"] = self.command_line_config["original_command"].replace("tidy_and_resubmit", "compute")
 
-            self.write_to_log(self.config, [
+            SimulationSetup.write_to_log(self.config, [
                 str(self.config["general"]["jobtype"]),
                 str(self.config["general"]["run_number"]),
                 str(self.config["general"]["current_date"]),
@@ -303,7 +305,7 @@ class SimulationSetup(object):
 
             if self.config["general"]["end_date"] >= self.config["general"]["final_date"]:
                 monitor_file.write("Reached the end of the simulation, quitting...\n")
-                self.write_to_log(self.config, ["# Experiment over"], message_sep="")
+                SimulationSetup.write_to_log(self.config, ["# Experiment over"], message_sep="")
             else:
                 monitor_file.write("Init for next run:\n")
                 next_compute = SimulationSetup(self.command_line_config)
@@ -938,9 +940,9 @@ class SimulationSetup(object):
         if config["general"]["run_number"] == 1:
             if os.path.isfile(config["general"]["experiment_log_file"]):
                 os.remove(config["general"]["experiment_log_file"])
-            write_to_log(config, ["# Beginning of Experiment " + config["general"]["expid"]], message_sep="")
+            SimulationSetup.write_to_log(config, ["# Beginning of Experiment " + config["general"]["expid"]], message_sep="")
 
-        write_to_log( config, 
+        SimulationSetup.write_to_log( config, 
                 [
                     str(config["general"]["jobtype"]),
                     str(config["general"]["run_number"]),
