@@ -48,7 +48,13 @@ class oasis:
         if lgrid and rgrid:
             self.namcouple += [str(rgrid["nx"]) + " " + str(rgrid["ny"]) + " " + str(lgrid["nx"]) + " " + str(lgrid["ny"]) + " " + rgrid["name"] + " " + lgrid["name"] + " LAG=" + str(lag)]
         
-        self.namcouple += ["P  0  P  0"]
+        p_rgrid = p_lgrid = "0"
+        if "number_of_overlapping_points" in rgrid:
+            p_rgrid = str(rgrid["number_of_overlapping_points"])
+        if "number_of_overlapping_points" in lgrid:
+            p_lgrid = str(lgrid["number_of_overlapping_points"])
+
+        self.namcouple += ["P " + p_rgrid +" P " +  p_lgrid]
 
         trafo_line = ""
         trafo_details = []
