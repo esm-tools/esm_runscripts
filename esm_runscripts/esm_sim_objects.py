@@ -825,13 +825,13 @@ class SimulationSetup(object):
 
     def report_missing_files(self):
         if "files_missing_when_preparing_run" in self.config["general"]:
-            if not self.config["general"]["files_missing_when_preparing_run"] == []:
+            if not self.config["general"]["files_missing_when_preparing_run"] == {}:
                 print ()
                 print ("========================================================")
                 print ("MISSING FILES:")
             for missing_file in self.config["general"]["files_missing_when_preparing_run"]:
-                print ("--  " + missing_file)
-            if not self.config["general"]["files_missing_when_preparing_run"] == []:
+                print ("--  " + missing_file +": " + self.config["general"]["files_missing_when_preparing_run"][missing_file] )
+            if not self.config["general"]["files_missing_when_preparing_run"] == {}:
                 print ("========================================================")
 
 
@@ -1241,7 +1241,7 @@ class SimulationSetup(object):
         six.print_("- Note that you can see your file lists in the config folder")
         six.print_("- You will be informed about missing files")
         successful_files = []
-        missing_files = []
+        missing_files = {}
         # TODO: Check if we are on login node or elsewhere for the progress
         # bar, it doesn't make sense on the compute nodes:
         flist = all_files_to_copy
@@ -1263,14 +1263,14 @@ class SimulationSetup(object):
                     os.symlink(file_intermediate, file_target)
                 successful_files.append(file_target)
             except IOError:
-                missing_files.append(filename_target+ ": " + file_source)
+                missing_files.update({filename_target : file_source})
         if missing_files:
             if not "files_missing_when_preparing_run" in self.config["general"]:
-                self.config["general"]["files_missing_when_preparing_run"] = []
+                self.config["general"]["files_missing_when_preparing_run"] = {}
             six.print_("--- WARNING: These files were missing:")
             for missing_file in missing_files:
-                six.print_("- %s" % missing_file)
-                self.config["general"]["files_missing_when_preparing_run"] += [missing_file]
+                print( "  - " +   missing_file + ":  " + missing_files[missing_file])
+            self.config["general"]["files_missing_when_preparing_run"].update(missing_files)
 
 
     def copy_files_from_work_to_thisrun(self, all_files_to_copy):
