@@ -1643,7 +1643,7 @@ class SimulationComponent(object):
                 )
             else:
                 self.config["namelists"][nml] = f90nml.namelist.Namelist()
-            if self.config["general"].get("namelist_case") == "uppercase":
+            if self.config.get("namelist_case") == "uppercase":
                 self.config["namelists"][nml].uppercase = True
 
     def nmls_remove(self):
