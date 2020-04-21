@@ -45,9 +45,8 @@ class oasis:
         # if a transformation method for CONSERV (e.g. GLOBAL) is set below, 
         # increase seq (=number of lines describing the transformation) by 1
         seq = int(direction.get("seq", "2"))
-        if transformation.get("postprocessing",None):
-           if transformation["postprocessing"].get("conserv",None):
-              if transformation["postprocessing"]["conserv"].get("method", None): seq += 1
+        if transformation.get("postprocessing", {}).get("conserv", {}).get("method"):
+            seq += 1
 
         self.namcouple += [right + " " + left + " " + str(nb) + " " + str(time_step) + " " + str(seq) + " " + str(restart_file) + " " + export_mode]
         if lgrid and rgrid:
