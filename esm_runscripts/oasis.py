@@ -37,12 +37,17 @@ class oasis:
 
         if lresume == False:
             lag = str(0)
-            seq = str(2)
             export_mode = "EXPOUT"
         else:
             lag = direction.get("lag", "0")
-            seq = direction.get("seq", "2")
             export_mode = "EXPORTED"
+         
+        # if a transformation method for CONSERV (e.g. GLOBAL) is set below, 
+        # increase seq (=number of lines describing the transformation) by 1
+        seq = int(direction.get("seq", "2"))
+        if transformation.get("postprocessing",None):
+           if transformation["postprocessing"].get("conserv",None):
+              if transformation["postprocessing"]["conserv"].get("method", None): seq += 1
 
         self.namcouple += [right + " " + left + " " + str(nb) + " " + str(time_step) + " " + str(seq) + " " + str(restart_file) + " " + export_mode]
         if lgrid and rgrid:
