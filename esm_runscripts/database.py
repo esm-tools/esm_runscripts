@@ -5,13 +5,14 @@ from sqlalchemy.orm import sessionmaker
 import os
 database_file = os.path.dirname(os.path.abspath(__file__)) + "/../database/esm_runscripts.db"
 
-#class database:
-#    def __init__(self):
+from esm_database import location_database
+
 engine = create_engine('sqlite:///' + database_file, echo = False)
 base = declarative_base()
 
+
 class experiment(base):
-    __tablename__ = 'experiments'
+    __tablename__ = 'experiment'
 
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     expid = Column(String)
@@ -25,10 +26,11 @@ class experiment(base):
     exp_folder = Column(String, default = "none yet") 
     archive_folder = Column(String, default = "none yet") 
 
+    location_database.register('experiment', database_file, "esm_runscripts")
+
     @staticmethod
     def topline():
         print()
-        print("Working on: " + database_file)
         print("EXPERIMENTS:")
         print('{0: >4}'.format('ID')                     + "   " + 
                 '{0: >17}'.format('timestamp')           + "   " +
