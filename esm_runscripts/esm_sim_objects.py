@@ -84,12 +84,29 @@ class SimulationSetup(object):
         self.prepare()
         # write sad file
         self.write_simple_runscript()
+        self.database_entry()
         if self.config["general"]["check"]:
             self.end_it_all()
         self.submit()
         if kill_after_submit:
             self.end_it_all()
 
+
+    def database_entry(self):
+        from . import database
+        now = datetime.now()
+
+        thisrun = database.experiment(
+                expid = self.config["general"]["expid"],
+                setup_name = self.config["general"]["setup_name"],
+                run_timestamp = self.run_datestamp,
+                timestamp = now,
+                outcome = "check",
+                exp_folder = self.config["general"]["base_dir"] + "/" + self.config["general"]["expid"] + "/"
+                )
+        database.session.add(thisrun)
+        database.session.commit()
+    
     def postprocess(self):
         """
         Calls post processing routines for this run.
