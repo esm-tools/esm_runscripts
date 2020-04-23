@@ -15,10 +15,12 @@ requirements = ["esm_parser @ git+https://github.com/esm-tools/esm_parser.git",
                 "esm_calendar @ git+https://github.com/esm-tools/esm_calendar.git",
                 "esm_rcfile @ git+https://github.com/esm-tools/esm_rcfile.git",
                 "esm_profile @ git+https://github.com/esm-tools/esm_profile.git",
+                "esm_database @ git+https://github.com/esm-tools/esm_database.git",
                 "psutil",
                 "f90nml",
                 "coloredlogs",
-                "tqdm"
+                "tqdm",
+                "sqlalchemy"
                ]
 
 setup_requirements = [ ]
@@ -57,6 +59,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/dbarbi/esm_runscripts',
-    version='3.1.4',
+    version='3.2.4',
     zip_safe=False,
 )

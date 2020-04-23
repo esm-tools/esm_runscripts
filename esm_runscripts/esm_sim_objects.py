@@ -86,10 +86,15 @@ class SimulationSetup(object):
         self.write_simple_runscript()
         self.report_missing_files()
         if self.config["general"]["check"]:
+            from . import database_actions
+            database_actions.database_entry_check(self.config)
             self.end_it_all()
         self.submit()
+        from . import database_actions
+        database_actions.database_entry_start(self.config)
         if kill_after_submit:
             self.end_it_all()
+
 
     def postprocess(self):
         """
@@ -293,6 +298,9 @@ class SimulationSetup(object):
                 str(self.config["general"]["current_date"]),
                 str(self.config["general"]["jobid"]),
                 "- done"])
+
+            from . import database_actions
+            database_actions.database_entry_success(self.config)
 
             if self.config["general"]["end_date"] >= self.config["general"]["final_date"]:
                 monitor_file.write("Reached the end of the simulation, quitting...\n")
@@ -598,6 +606,8 @@ class SimulationSetup(object):
                                     monitor_file.flush()
                                     print("ERROR: " + message)
                                     print("Will kill the run now...", flush=True)
+                                    from . import database_actions
+                                    database_actions.database_entry_crashed(self.config)
                                     os.system(harakiri)
                                     sys.exit(42)
                 next_check += frequency
@@ -1130,6 +1140,9 @@ class SimulationSetup(object):
                 form=9, givenph=False, givenpm=False, givenps=False
             )
         )
+
+        config["general"]["run_datestamp"] = self.run_datestamp
+
         self.last_run_datestamp = (
             config["general"]["last_start_date"].format(
                 form=9, givenph=False, givenpm=False, givenps=False
@@ -1139,6 +1152,7 @@ class SimulationSetup(object):
                 form=9, givenph=False, givenpm=False, givenps=False
             )
         )
+        config["general"]["last_run_datestamp"] = self.last_run_datestamp
 
     def set_prev_date(self):
         for model in self.config["general"]["models"]:
@@ -1661,6 +1675,8 @@ class SimulationComponent(object):
                 )
             else:
                 self.config["namelists"][nml] = f90nml.namelist.Namelist()
+            if self.config.get("namelist_case") == "uppercase":
+                self.config["namelists"][nml].uppercase = True
 
     def nmls_remove(self):
         namelist_changes = self.config.get("namelist_changes", {})
