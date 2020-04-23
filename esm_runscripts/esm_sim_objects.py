@@ -84,6 +84,7 @@ class SimulationSetup(object):
         self.prepare()
         # write sad file
         self.write_simple_runscript()
+        self.report_missing_files()
         if self.config["general"]["check"]:
             from . import database_actions
             database_actions.database_entry_check(self.config)
@@ -832,6 +833,18 @@ class SimulationSetup(object):
             raise
 
 
+    def report_missing_files(self):
+        if "files_missing_when_preparing_run" in self.config["general"]:
+            if not self.config["general"]["files_missing_when_preparing_run"] == {}:
+                print ()
+                print ("========================================================")
+                print ("MISSING FILES:")
+            for missing_file in self.config["general"]["files_missing_when_preparing_run"]:
+                print ("--  " + missing_file +": " + self.config["general"]["files_missing_when_preparing_run"][missing_file] )
+            if not self.config["general"]["files_missing_when_preparing_run"] == {}:
+                print ("========================================================")
+
+
     def write_simple_runscript(self, commands=None, write_tidy_call=True):
         sadfilename = self.get_sad_filename()
         header = self.get_batch_header()
@@ -1226,9 +1239,10 @@ class SimulationSetup(object):
                         flist.write("\nExp Tree: " + exp_tree + subfolder + exp_name)
                         flist.write("\nWork Dir: " + subfolder + work_dir_name)
                         flist.write("\n")
+                        print ("-  " + subfolder + work_dir_name +": " + source) 
                     flist.write("\n")
                     flist.write(80 * "-")
-            esm_parser.pprint_config(filetype_specific_dict)
+            #esm_parser.pprint_config(filetype_specific_dict)
             all_files_to_copy += all_component_files
         return all_files_to_copy
 
@@ -1241,7 +1255,7 @@ class SimulationSetup(object):
         six.print_("- Note that you can see your file lists in the config folder")
         six.print_("- You will be informed about missing files")
         successful_files = []
-        missing_files = []
+        missing_files = {}
         # TODO: Check if we are on login node or elsewhere for the progress
         # bar, it doesn't make sense on the compute nodes:
         flist = all_files_to_copy
@@ -1263,11 +1277,14 @@ class SimulationSetup(object):
                     os.symlink(file_intermediate, file_target)
                 successful_files.append(file_target)
             except IOError:
-                missing_files.append(file_target)
+                missing_files.update({filename_target : file_source})
         if missing_files:
+            if not "files_missing_when_preparing_run" in self.config["general"]:
+                self.config["general"]["files_missing_when_preparing_run"] = {}
             six.print_("--- WARNING: These files were missing:")
             for missing_file in missing_files:
-                six.print_("- %s" % missing_file)
+                print( "  - " +   missing_file + ":  " + missing_files[missing_file])
+            self.config["general"]["files_missing_when_preparing_run"].update(missing_files)
 
 
     def copy_files_from_work_to_thisrun(self, all_files_to_copy):
@@ -1315,6 +1332,7 @@ class SimulationSetup(object):
             six.print_("--- WARNING: These files were missing:")
             for missing_file in missing_files:
                 six.print_("- %s" % missing_file)
+
 
     def modify_namelists(self):
         # Load and modify namelists:
@@ -1509,7 +1527,7 @@ class SimulationComponent(object):
         for filetype in filetypes:
         #for filetype in self.config["all_filetypes"]:
             filetype_files = []
-            six.print_("- %s" % filetype)
+            #six.print_("- %s" % filetype)
 
             if filetype == "restart_in" and not self.config["lresume"]:
                 six.print_("- restart files do not make sense for a cold start, skipping...")
