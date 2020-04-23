@@ -3,7 +3,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 import os
-database_file = os.path.dirname(os.path.abspath(__file__)) + "/../database/esm_runscripts.db"
+#database_file = os.path.dirname(os.path.abspath(__file__)) + "/../database/esm_runscripts.db"
+database_file = os.path.expanduser("~") + "/.esm_tools/esm_runscripts.db"
+if not os.path.isdir(os.path.expanduser("~") + "/.esmtools"):
+    os.mkdir(os.path.expanduser("~") + "/.esm_tools")
 
 from esm_database import location_database
 
