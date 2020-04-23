@@ -21,7 +21,6 @@ from esm_calendar import Date, Calendar
 import esm_parser
 from . import esm_coupler
 from . import esm_methods
-from . import database_actions
 #import .esm_coupler
 from esm_profile import *
 
@@ -86,9 +85,11 @@ class SimulationSetup(object):
         # write sad file
         self.write_simple_runscript()
         if self.config["general"]["check"]:
+            from . import database_actions
             database_actions.database_entry_check(self.config)
             self.end_it_all()
         self.submit()
+        from . import database_actions
         database_actions.database_entry_start(self.config)
         if kill_after_submit:
             self.end_it_all()
@@ -297,6 +298,7 @@ class SimulationSetup(object):
                 str(self.config["general"]["jobid"]),
                 "- done"])
 
+            from . import database_actions
             database_actions.database_entry_success(self.config)
 
             if self.config["general"]["end_date"] >= self.config["general"]["final_date"]:
@@ -603,6 +605,7 @@ class SimulationSetup(object):
                                     monitor_file.flush()
                                     print("ERROR: " + message)
                                     print("Will kill the run now...", flush=True)
+                                    from . import database_actions
                                     database_actions.database_entry_crashed(self.config)
                                     os.system(harakiri)
                                     sys.exit(42)
