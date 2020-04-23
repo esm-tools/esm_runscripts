@@ -1160,7 +1160,7 @@ class SimulationSetup(object):
                 self.config[model]["prev_date"] = self.current_date - (0, 0, 0, 0, 0, int(self.config[model]["time_step"]))
             else:
                 self.config[model]["prev_date"] = self.current_date
-            if self.config[model]["lresume"] == True and self.config["general"]["run_number"] == "1":
+            if self.config[model]["lresume"] == True and self.config["general"]["run_number"] == 1:
                 self.config[model]["parent_expid"] = self.config[model][
                     "ini_parent_exp_id"
                 ]
@@ -1587,7 +1587,7 @@ class SimulationComponent(object):
                 self.config[filetype + "_sources"]
             ):
                 if filetype == "restart_in":
-                    file_source = self.config["experiment_restart_in_dir"] + "/" + os.path.basename(file_source)
+                    file_source = self.config["parent_restart_dir"] + "/" + os.path.basename(file_source)
                 logging.debug(
                     "file_descriptor=%s, file_source=%s", file_descriptor, file_source
                 )
