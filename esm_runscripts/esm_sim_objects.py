@@ -455,12 +455,12 @@ class SimulationSetup(object):
 
         # make sure all models agree on leapyear
         if "leapyear" in self.config["general"]:
-            for model in self.config["general"]["models"]:
+            for model in self.config["general"]["valid_model_names"]:
                 self.config[model]["leapyear"] = self.config["general"]["leapyear"]
         else:
-            for model in self.config["general"]["models"]:
+            for model in self.config["general"]["valid_model_names"]:
                 if "leapyear" in self.config[model]:
-                    for other_model in self.config["general"]["models"]:
+                    for other_model in self.config["general"]["valid_model_names"]:
                         if "leapyear" in self.config[other_model]:
                             if not self.config[other_model]["leapyear"] == self.config[model]["leapyear"]:
                                 print ("Models " + model + " and " + other_model + " do not agree on leapyear. Stopping.")
@@ -471,7 +471,7 @@ class SimulationSetup(object):
                     break
 
         if not "leapyear" in self.config["general"]:
-            for model in self.config["general"]["models"]:
+            for model in self.config["general"]["valid_model_names"]:
                 self.config[model]["leapyear"] = True
             self.config["general"]["leapyear"] = True
 
@@ -530,7 +530,7 @@ class SimulationSetup(object):
         config["general"]["last_run_datestamp"] = self.last_run_datestamp
 
     def set_prev_date(self):
-        for model in self.config["general"]["models"]:
+        for model in self.config["general"]["valid_model_names"]:
             if "time_step" in self.config[model] and not (type(self.config[model]["time_step"]) == str and "${" in self.config[model]["time_step"]):
                 self.config[model]["prev_date"] = self.current_date - (0, 0, 0, 0, 0, int(self.config[model]["time_step"]))
             else:

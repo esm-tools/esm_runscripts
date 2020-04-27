@@ -98,7 +98,7 @@ class compute(jobclass.jobclass):
         import six
         # Load and modify namelists:
         six.print_("\n" "- Setting up namelists for this run...")
-        for model in config["general"]["models"]:
+        for model in config["general"]["valid_model_names"]:
             six.print_("-" * 80)
             six.print_("* %s" % config[model]["model"], "\n")
             config[model] = namelist.nmls_load(config[model])
@@ -155,7 +155,7 @@ class compute(jobclass.jobclass):
 
     @staticmethod
     def _create_component_folders(config):
-        for component in config["general"]["models"]:
+        for component in config["general"]["valid_model_names"]:
             compute._create_folders(config[component], config["general"]["all_model_filetypes"])
         return config
 

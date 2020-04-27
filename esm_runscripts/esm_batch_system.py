@@ -78,7 +78,7 @@ class esm_batch_system:
     def calculate_requirements(config):
         tasks = 0
         if config["general"]["jobtype"] == "compute":
-            for model in config["general"]["models"]:
+            for model in config["general"]["valid_model_names"]:
                 if "nproc" in config[model]:
                     tasks += config[model]["nproc"]
                 elif "nproca" in config[model] and "nprocb" in config[model]:

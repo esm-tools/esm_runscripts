@@ -32,7 +32,7 @@ class jobclass:
     def assemble_file_lists(self, config, filetypes):
         all_files_to_copy = []
         six.print_("\n" "- Generating file lists for this run...")
-        for model in config["general"]["models"]:
+        for model in config["general"]["valid_model_names"]:
             six.print_("-" * 80)
             six.print_("* %s" % config[model]["model"], "\n")
             all_component_files, filetype_specific_dict = (

@@ -26,7 +26,7 @@ class slurm:
         start_proc = 0
         end_proc = 0
         with open(self.path, "w") as hostfile:
-            for model in config["general"]["models"]:
+            for model in config["general"]["valid_model_names"]:
                 if "nproc" in config[model]:
                     end_proc = start_proc + int(config[model]["nproc"]) - 1
                 elif "nproca" in config[model] and "nprocb" in config[model]:    
