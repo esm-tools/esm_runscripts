@@ -59,7 +59,14 @@ class SimulationSetup(object):
             self.end_it_all()
 
 
-    def compute(self, kill_after_submit=True):
+
+
+
+###################################     COMPUTE      #############################################################
+
+
+
+    def compute(self, kill_after_submit=True):  # supposed to be reduced to a stump
         """
         All steps needed for a model computation.
 
@@ -69,44 +76,38 @@ class SimulationSetup(object):
             Default ``True``. If set, the entire Python instance is killed with
             a ``sys.exit()`` as the very last after job submission.
         """
-        # make folders
-        #self._create_folders(self.config["general"], self.all_filetypes)
 
-        import esm_rcfile
-        recipefile = esm_rcfile.FUNCTION_PATH + "/esm_runscripts/esm_runscripts.yaml"
-        pluginsfile = esm_rcfile.FUNCTION_PATH + "/esm_runscripts/esm_plugins.yaml"
-    
-        from . import esm_framework
-        framework_recipe = esm_framework.read_recipe(recipefile, {"job_type": "compute"})
-        framework_plugins = esm_framework.read_plugin_information(pluginsfile, framework_recipe)
-        esm_framework.check_plugin_availability(framework_plugins)
-        self.config = esm_framework.work_through_recipe(framework_recipe, framework_plugins, self.config)
+        from . import compute
+        Compute = compute(self.config)
+        self.config = Compute.evaluate(self.config)
 
-
-        esm_parser.pprint_config(self.config)
-
-        #esm_parser.pprint_config(framework_recipe)
-        #esm_parser.pprint_config(framework_plugins)
-        sys.exit(0)
-
-        #self._create_component_folders()
-        #self.initialize_experiment_logfile(self.config)
-        # write config
-        #self._write_finalized_config()
-        #self.copy_tools_to_thisrun()
-        # copy date_file etc. into experiment
-        #self._copy_preliminary_files_from_experiment_to_thisrun()
-        # little bit of output
-        #self._show_simulation_info()
-        # assemble file lists and copy everything to thisrun
-        self.prepare()
-        # write sad file
-        self.write_simple_runscript()
-        if self.config["general"]["check"]:
-            self.end_it_all()
-        self.submit()
         if kill_after_submit:
             self.end_it_all()
+
+
+
+
+    def end_it_all(self):
+        import sys
+        if self.config["general"]["profile"]:
+            for line in timing_info:
+                print(line)
+        print("Exiting entire Python process!")
+        sys.exit()
+
+
+
+
+
+
+
+
+###############################################       POSTPROCESS ######################################
+
+
+
+
+
 
     def postprocess(self):
         """
@@ -125,7 +126,8 @@ class SimulationSetup(object):
             buffering=1,
         ) as post_file:
             post_task_list = self._assemble_postprocess_tasks(post_file)
-            self.write_simple_runscript(post_task_list, write_tidy_call=False)
+            self.config["general"]["post_task_list"] = post_task_list
+            esm_batch_system.write_simple_runscript(self.config)
             self.submit()
 
     def _assemble_postprocess_tasks(self, post_file):
@@ -199,139 +201,16 @@ class SimulationSetup(object):
             post_task_list.append("cd -\n")
         return post_task_list
 
-    def tidy(self):
-        """
-        Performs steps for tidying up a simulation after a job has finished and
-        submission of following jobs.
-
-        This method uses two lists, ``all_files_to_copy`` and
-        ``all_listed_filetypes`` to sort finished data from the **current run
-        folder** back to the **main experiment folder** and submit new
-        **compute** and **post-process** jobs. Files for ``log``, ``mon``,
-        ``outdata``, and ``restart_out`` are gathered. The program waits until
-        the job completes or an error is found (See ~self.wait_and_observe).
-        Then, if necessary, the coupler cleans up it's files (unless it's a
-        standalone run), and the files in the lists are copied from the **work
-        folder** to the **current run folder**. A check for unknown files is
-        performed (see ~self.check_for_unknown_files), files are
-        moved from the  the **current run folder** to the **main experiment
-        folder**, and new compute and post process jobs are started.
-
-        Warning
-        -------
-            The date is changed during this routine! Be careful where you put
-            any calls that may depend on date information!
-
-        Note
-        ----
-            This method is also responsible for calling the next compute job as
-            well as the post processing job!
-        """
-
-        called_from = self.config["general"]["last_jobtype"]
-
-        with open(
-            self.config["general"]["thisrun_scripts_dir"] + "/monitoring_file.out",
-            "w",
-            buffering=1,
-        ) as monitor_file:
-            monitor_file.write("tidy job initialized \n")
-            monitor_file.write("attaching to process " + str(self.config["general"]["launcher_pid"]) + " \n")
-            monitor_file.write("Called from a " + called_from + "job \n")
-            #monitoring_events=self.assemble_monitoring_events()
-
-            filetypes=["log", "mon", "outdata", "restart_out"]
-            all_files_to_copy=self.assemble_file_lists(filetypes)
-            if self.config["general"]["submitted"]:
-                self.wait_and_observe(monitor_file)
-            if self.config["general"]["standalone"] == False:
-                self.coupler.tidy(self.config)
-            monitor_file.write("job ended, starting to tidy up now \n")
-            # Log job completion
-            if called_from != "command_line":
-                SimulationSetup.write_to_log(self.config, [
-                    called_from,
-                    str(self.config["general"]["run_number"]),
-                    str(self.config["general"]["current_date"]),
-                    str(self.config["general"]["jobid"]),
-                    "- done"])
-            # Tell the world you're cleaning up:
-            SimulationSetup.write_to_log(self.config, [
-                str(self.config["general"]["jobtype"]),
-                str(self.config["general"]["run_number"]),
-                str(self.config["general"]["current_date"]),
-                str(self.config["general"]["jobid"]),
-                "- start"])
-            self.copy_files_from_work_to_thisrun(all_files_to_copy)
-            all_listed_filetypes=["log", "mon", "outdata", "restart_out","bin", "config", "forcing", "input", "restart_in", "ignore"]
-            all_files_to_check = self.assemble_file_lists(all_listed_filetypes)
-            self.check_for_unknown_files(all_files_to_check)
-
-            monitor_file.write("Copying stuff to main experiment folder \n")
-            self.copy_all_results_to_exp()
-
-
-            do_post = False
-            for model in self.config:
-                if "post_processing" in self.config[model]:
-                    if self.config[model]["post_processing"]:
-                        do_post = True
-
-            if do_post:
-                monitor_file.write("Post processing for this run:\n")
-                self.command_line_config["jobtype"] = "post"
-                self.command_line_config["original_command"] = self.command_line_config[
-                    "original_command"
-                ].replace("compute", "post")
-                monitor_file.write("Initializing post object with:\n")
-                monitor_file.write(str(self.command_line_config))
-                this_post = SimulationSetup(self.command_line_config)
-                monitor_file.write("Post object built; calling post job:\n")
-                this_post()
-
-            monitor_file.write("writing date file \n")
-            self._increment_date_and_run_number()
-            self._write_date_file()
-#            monitor_file.write("resubmitting \n")
-            self.command_line_config["jobtype"] = "compute"
-            self.command_line_config["original_command"] = self.command_line_config["original_command"].replace("tidy_and_resubmit", "compute")
-
-            SimulationSetup.write_to_log(self.config, [
-                str(self.config["general"]["jobtype"]),
-                str(self.config["general"]["run_number"]),
-                str(self.config["general"]["current_date"]),
-                str(self.config["general"]["jobid"]),
-                "- done"])
-
-            if self.config["general"]["end_date"] >= self.config["general"]["final_date"]:
-                monitor_file.write("Reached the end of the simulation, quitting...\n")
-                SimulationSetup.write_to_log(self.config, ["# Experiment over"], message_sep="")
-            else:
-                monitor_file.write("Init for next run:\n")
-                next_compute = SimulationSetup(self.command_line_config)
-                next_compute(kill_after_submit=False)
-            self.end_it_all()
-
-
-
-    def prepare(self):
-        filetypes=["bin", "config", "forcing", "input", "restart_in"]
-        all_files_to_copy = self.assemble_file_lists(filetypes)
-        self.copy_files_to_thisrun(all_files_to_copy)
-        self.modify_namelists()
-        self.modify_files()  # ??? Doing nothing yet
-        self.create_new_files(all_files_to_copy)
-
-        if self.config["general"]["standalone"] == False:
-            self.prepare_coupler_files(all_files_to_copy)
-        self.add_batch_hostfile(all_files_to_copy)
-        self.copy_files_to_work(all_files_to_copy)
 
 
 
 
 
-    #####################################    JOB PHASES   ####################################
+
+
+
+
+
 
 
     ##########################    ASSEMBLE ALL THE INFORMATION  ##############################
@@ -395,6 +274,491 @@ class SimulationSetup(object):
                 + self.config["general"]["setup_name"]
                 + ".log"
                 )
+
+
+    def _add_all_folders(self):
+        self.all_filetypes = ["analysis", "config", "log", "mon", "scripts", "ignore",  "unknown"]
+        self.all_filetypes.append("work")
+        self.config["general"]["thisrun_dir"] = self.config["general"]["experiment_dir"] + "/run_" + self.run_datestamp
+
+        for filetype in self.all_filetypes:
+            self.config["general"][
+                "experiment_" + filetype + "_dir"
+            ] = self.config["general"]["experiment_dir"] + "/" + filetype + "/"
+
+        for filetype in self.all_filetypes:
+            self.config["general"][
+                "thisrun_" + filetype + "_dir"
+            ] = self.config["general"]["thisrun_dir"] + "/" + filetype + "/"
+
+        self.config["general"]["work_dir"] =  self.config["general"]["thisrun_work_dir"]
+
+        self.all_model_filetypes = [
+            "analysis",
+            "bin",
+            "config",
+            "couple",
+            "forcing",
+            "input",
+            "log",
+            "mon",
+            "outdata",
+            "restart_in",
+            "restart_out",
+            "viz",
+            "ignore"
+        ]
+
+        self.config["general"]["all_model_filetypes"] = self.all_model_filetypes
+        self.config["general"]["all_filetypes"] = self.all_filetypes
+
+        for model in self.config["general"]["valid_model_names"]:
+             for filetype in self.all_model_filetypes:
+                if "restart" in filetype:
+                    filedir = "restart"
+                else:
+                    filedir = filetype
+                self.config[model][
+                    "experiment_" + filetype + "_dir"
+                ] = self.config["general"]["experiment_dir"] + "/" + filedir + "/" + model + "/"
+                self.config[model][ "thisrun_" + filetype + "_dir"
+                ] = self.config["general"]["thisrun_dir"] + "/" + filedir  + "/" + model + "/"
+                self.config[model]["all_filetypes"] = self.all_model_filetypes
+
+    @timing
+    def _read_date_file(self, config, date_file=None):
+        if not date_file:
+            date_file = (
+                config["general"]["experiment_dir"]
+                + "/scripts/"
+                + config["general"]["expid"]
+                + "_"
+                + config["general"]["setup_name"]
+                + ".date"
+            )
+        if os.path.isfile(date_file):
+            logging.info("Date file read from %s", date_file)
+            with open(date_file) as date_file:
+                date, self.run_number = date_file.readline().strip().split()
+                self.run_number = int(self.run_number)
+            write_file = False
+        else:
+            logging.info("No date file found %s", date_file)
+            logging.info("Initializing run_number=1 and date=18500101")
+            date = config["general"].get("initial_date", "18500101")
+            self.run_number = 1
+            write_file = True
+        config["general"]["run_number"] = self.run_number
+
+        self.current_date = date
+
+        if config["general"]["run_number"] != 1:
+            for model in config["general"]["valid_model_names"]:
+                config[model]["lresume"] = True
+        else:
+            # Did the user give a value? If yes, keep it, if not, first run:
+            for model in config["general"]["valid_model_names"]:
+                if "lresume" in config[model]:
+                    user_lresume = config[model]["lresume"]
+                else:
+                    user_lresume = False
+                if type(user_lresume) == str:
+                    if user_lresume == "0" or user_lresume.upper() == "FALSE":
+                        user_lresume = False
+                    elif user_lresume == "1" or user_lresume.upper() == "TRUE":
+                        user_lresume = True
+                elif type(user_lresume) == int:
+                    if user_lresume == 0:
+                        user_lresume = False
+                    elif user_lresume == 1:
+                        user_lresume = True
+                config[model]["lresume"] = user_lresume
+
+        # needs to happen AFTER a run!
+        # if write_file:
+        #    self._write_date_file()
+
+        logging.info("current_date = %s", self.current_date)
+        logging.info("run_number = %s", self.run_number)
+
+
+
+
+    #########################       PREPARE EXPERIMENT / WORK    #############################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def _initialize_components(self):    # do i need that?
+        components = []
+        for component in self.config["general"]["valid_model_names"]:
+            components.append(
+                SimulationComponent(self.config["general"], self.config[component])
+            )
+        self.components = components
+
+    def _create_toplevel_marker_file(self):
+        if not os.path.isfile(self.config['thisrun_']):
+            with open(".top_of_exp_tree") as f:
+                f.write("Top of experiment: "+self.config['general']['expid'])
+
+
+    def _dump_final_yaml(self):
+        with open(
+            self.experiment_config_dir
+            + "/"
+            + self.config["general"]["expid"]
+            + "_preconfig.yaml",
+            "w",
+        ) as config_file:
+            yaml.dump(self.config, config_file)
+
+    def _initialize_calendar(self, config):
+        nyear, nmonth, nday, nhour, nminute, nsecond = 0, 0, 0, 0, 0, 0
+        nyear = int(config["general"].get("nyear", nyear))
+        if not nyear:
+            nmonth = int(config["general"].get("nmonth", nmonth))
+        if not nyear and not nmonth:
+            nday = int(config["general"].get("nday", nday))
+        if not nyear and not nmonth and not nday:
+            nhour = int(config["general"].get("nhour", nhour))
+        if not nyear and not nmonth and not nday and not nhour:
+            nminute = int(config["general"].get("nminute", nminute))
+        if not nyear and not nmonth and not nday and not nhour and not nminute:
+            nsecond = int(config["general"].get("nsecond", nsecond))
+        if (
+            not nyear
+            and not nmonth
+            and not nday
+            and not nhour
+            and not nminute
+            and not nsecond
+        ):
+            nyear = 1
+
+        # make sure all models agree on leapyear
+        if "leapyear" in self.config["general"]:
+            for model in self.config["general"]["models"]:
+                self.config[model]["leapyear"] = self.config["general"]["leapyear"]
+        else:
+            for model in self.config["general"]["models"]:
+                if "leapyear" in self.config[model]:
+                    for other_model in self.config["general"]["models"]:
+                        if "leapyear" in self.config[other_model]:
+                            if not self.config[other_model]["leapyear"] == self.config[model]["leapyear"]:
+                                print ("Models " + model + " and " + other_model + " do not agree on leapyear. Stopping.")
+                                sys.exit(43)
+                        else:
+                            self.config[other_model]["leapyear"] = self.config[model]["leapyear"]
+                    self.config["general"]["leapyear"] = self.config[model]["leapyear"]
+                    break
+
+        if not "leapyear" in self.config["general"]:
+            for model in self.config["general"]["models"]:
+                self.config[model]["leapyear"] = True
+            self.config["general"]["leapyear"] = True
+
+
+        # set the overall calendar
+        if self.config["general"]["leapyear"]:
+            self.calendar = Calendar(1)
+            self.config["general"]["calendar"] = Calendar(1)
+        else:
+            self.calendar = Calendar(0)
+            self.config["general"]["calendar"] = Calendar(0)
+
+        self.current_date = Date(self.current_date, self.calendar)
+        self.delta_date = (nyear, nmonth, nday, nhour, nminute, nsecond)
+        config["general"]["current_date"] = self.current_date
+        config["general"]["start_date"] = self.current_date
+        config["general"]["initial_date"] = Date(config["general"]["initial_date"], self.calendar)
+        config["general"]["final_date"] = Date(config["general"]["final_date"], self.calendar)
+        #config["general"]["prev_date"] = self.current_date.sub((0, 0, 1, 0, 0, 0))
+        config["general"]["prev_date"] = self.current_date - (0, 0, 1, 0, 0, 0)
+
+        config["general"]["next_date"] = self.current_date.add(self.delta_date)
+        config["general"]["last_start_date"] = self.current_date - self.delta_date
+        #config["general"]["end_date"] = config["general"]["next_date"].sub(
+        config["general"]["end_date"] = config["general"]["next_date"] - (0, 0, 1, 0, 0, 0)
+
+        config["general"]["runtime"] = (
+            config["general"]["next_date"] - config["general"]["current_date"]
+        )
+
+        config["general"]["total_runtime"] = (
+            config["general"]["next_date"] - config["general"]["initial_date"]
+        )
+
+        self.run_datestamp = (
+            config["general"]["current_date"].format(
+                form=9, givenph=False, givenpm=False, givenps=False
+            )
+            + "-"
+            + config["general"]["end_date"].format(
+                form=9, givenph=False, givenpm=False, givenps=False
+            )
+        )
+
+        config["general"]["run_datestamp"] = self.run_datestamp
+
+        self.last_run_datestamp = (
+            config["general"]["last_start_date"].format(
+                form=9, givenph=False, givenpm=False, givenps=False
+            )
+            + "-"
+            + config["general"]["prev_date"].format(
+                form=9, givenph=False, givenpm=False, givenps=False
+            )
+        )
+        config["general"]["last_run_datestamp"] = self.last_run_datestamp
+
+    def set_prev_date(self):
+        for model in self.config["general"]["models"]:
+            if "time_step" in self.config[model] and not (type(self.config[model]["time_step"]) == str and "${" in self.config[model]["time_step"]):
+                self.config[model]["prev_date"] = self.current_date - (0, 0, 0, 0, 0, int(self.config[model]["time_step"]))
+            else:
+                self.config[model]["prev_date"] = self.current_date
+            if self.config[model]["lresume"] == True and self.config["general"]["run_number"] == 1:
+                self.config[model]["parent_expid"] = self.config[model][
+                    "ini_parent_exp_id"
+                ]
+                if "parent_date" not in self.config[model]:
+                    self.config[model]["parent_date"] = self.config[model][
+                        "ini_parent_date"
+                    ]
+                self.config[model]["parent_restart_dir"] = self.config[model][
+                    "ini_restart_dir"
+                ]
+            else:
+                self.config[model]["parent_expid"] = self.config["general"][
+                    "expid"
+                ]
+                if "parent_date" not in self.config[model]:
+                    self.config[model]["parent_date"] = self.config[model][
+                        "prev_date"
+                    ]
+                self.config[model]["parent_restart_dir"] = self.config[model][
+                    "experiment_restart_in_dir"
+                ]
+            #print (model + "   " + str(self.config[model]["parent_date"]))
+
+
+    def assemble_file_lists(self, filetypes): # not needed for compute anymore, moved to jobclass...
+        all_files_to_copy = []
+        six.print_("\n" "- Generating file lists for this run...")
+        for component in self.components:
+            six.print_("-" * 80)
+            six.print_("* %s" % component.config["model"], "\n")
+            all_component_files, filetype_specific_dict = (
+                component.filesystem_to_experiment(filetypes)
+            )
+            with open(
+                component.config["thisrun_config_dir"]
+                + "/"
+                + self.config["general"]["expid"]
+                + "_filelist_"
+                + self.run_datestamp,
+                "w",
+            ) as flist:
+                flist.write(
+                    "These files are used for \nexperiment %s\ncomponent %s\ndate %s"
+                    % (
+                        self.config["general"]["expid"],
+                        component.config["model"],
+                        self.run_datestamp,
+                    )
+                )
+                flist.write("\n")
+                flist.write(80 * "-")
+                for filetype in filetype_specific_dict:
+                    flist.write("\n" + filetype.upper() + ":\n")
+                    for source, exp_tree, exp_name, work_dir_name, subfolder  in filetype_specific_dict[
+                        filetype
+                    ]:
+                        flist.write("\nSource: " + source)
+                        flist.write("\nExp Tree: " + exp_tree + subfolder + exp_name)
+                        flist.write("\nWork Dir: " + subfolder + work_dir_name)
+                        flist.write("\n")
+                        print ("-  " + subfolder + work_dir_name +": " + source) 
+                    flist.write("\n")
+                    flist.write(80 * "-")
+            #esm_parser.pprint_config(filetype_specific_dict)
+            all_files_to_copy += all_component_files
+        return all_files_to_copy
+
+
+
+    def init_coupler(self):
+        for model in list(self.config):
+            if model in esm_coupler.known_couplers:
+                self.coupler_config_dir = (
+                    self.config["general"]["base_dir"]
+                    + "/"
+                    + self.config["general"]["expid"]
+                    + "/run_"
+                    + self.run_datestamp
+                    + "/config/"
+                    + model
+                    + "/"
+                )
+                self.config["general"][coupler_config_dir]
+
+                self.coupler = esm_coupler.esm_coupler(self.config, model)
+                self.config["general"]["coupler"] = self.coupler
+                break
+        self.coupler.add_files(self.config)
+
+
+    def initialize_batch_system(self):
+        from . import esm_batch_system
+        self.batch = esm_batch_system(self.config, self.config["computer"]["batch_system"])
+        self.config["general"]["batch"] = self.batch
+
+
+
+
+
+
+
+
+
+
+    ################################# TIDY STUFF ###########################################
+
+    def tidy(self):
+        from . import jobclass
+        """
+        Performs steps for tidying up a simulation after a job has finished and
+        submission of following jobs.
+
+        This method uses two lists, ``all_files_to_copy`` and
+        ``all_listed_filetypes`` to sort finished data from the **current run
+        folder** back to the **main experiment folder** and submit new
+        **compute** and **post-process** jobs. Files for ``log``, ``mon``,
+        ``outdata``, and ``restart_out`` are gathered. The program waits until
+        the job completes or an error is found (See ~self.wait_and_observe).
+        Then, if necessary, the coupler cleans up it's files (unless it's a
+        standalone run), and the files in the lists are copied from the **work
+        folder** to the **current run folder**. A check for unknown files is
+        performed (see ~self.check_for_unknown_files), files are
+        moved from the  the **current run folder** to the **main experiment
+        folder**, and new compute and post process jobs are started.
+
+        Warning
+        -------
+            The date is changed during this routine! Be careful where you put
+            any calls that may depend on date information!
+
+        Note
+        ----
+            This method is also responsible for calling the next compute job as
+            well as the post processing job!
+        """
+
+        called_from = self.config["general"]["last_jobtype"]
+
+        with open(
+            self.config["general"]["thisrun_scripts_dir"] + "/monitoring_file.out",
+            "w",
+            buffering=1,
+        ) as monitor_file:
+            monitor_file.write("tidy job initialized \n")
+            monitor_file.write("attaching to process " + str(self.config["general"]["launcher_pid"]) + " \n")
+            monitor_file.write("Called from a " + called_from + "job \n")
+            #monitoring_events=self.assemble_monitoring_events()
+
+            filetypes=["log", "mon", "outdata", "restart_out"]
+            all_files_to_copy=self.assemble_file_lists(filetypes)
+            if self.config["general"]["submitted"]:
+                self.wait_and_observe(monitor_file)
+            if self.config["general"]["standalone"] == False:
+                self.coupler.tidy(self.config)
+            monitor_file.write("job ended, starting to tidy up now \n")
+            # Log job completion
+            if called_from != "command_line":
+                jobclass.jobclass.write_to_log(self.config, [
+                    called_from,
+                    str(self.config["general"]["run_number"]),
+                    str(self.config["general"]["current_date"]),
+                    str(self.config["general"]["jobid"]),
+                    "- done"])
+            # Tell the world you're cleaning up:
+            jobclass.jobclass.write_to_log(self.config, [
+                str(self.config["general"]["jobtype"]),
+                str(self.config["general"]["run_number"]),
+                str(self.config["general"]["current_date"]),
+                str(self.config["general"]["jobid"]),
+                "- start"])
+            self.copy_files_from_work_to_thisrun(all_files_to_copy)
+            all_listed_filetypes=["log", "mon", "outdata", "restart_out","bin", "config", "forcing", "input", "restart_in", "ignore"]
+            all_files_to_check = self.assemble_file_lists(all_listed_filetypes)
+            self.check_for_unknown_files(all_files_to_check)
+
+            monitor_file.write("Copying stuff to main experiment folder \n")
+            self.copy_all_results_to_exp()
+
+
+            do_post = False
+            for model in self.config:
+                if "post_processing" in self.config[model]:
+                    if self.config[model]["post_processing"]:
+                        do_post = True
+
+            if do_post:
+                monitor_file.write("Post processing for this run:\n")
+                self.command_line_config["jobtype"] = "post"
+                self.command_line_config["original_command"] = self.command_line_config[
+                    "original_command"
+                ].replace("compute", "post")
+                monitor_file.write("Initializing post object with:\n")
+                monitor_file.write(str(self.command_line_config))
+                this_post = SimulationSetup(self.command_line_config)
+                monitor_file.write("Post object built; calling post job:\n")
+                this_post()
+
+            monitor_file.write("writing date file \n")
+            self._increment_date_and_run_number()
+            self._write_date_file()
+#            monitor_file.write("resubmitting \n")
+            self.command_line_config["jobtype"] = "compute"
+            self.command_line_config["original_command"] = self.command_line_config["original_command"].replace("tidy_and_resubmit", "compute")
+
+            jobclass.jobclass.write_to_log(self.config, [
+                str(self.config["general"]["jobtype"]),
+                str(self.config["general"]["run_number"]),
+                str(self.config["general"]["current_date"]),
+                str(self.config["general"]["jobid"]),
+                "- done"])
+
+            from . import database_actions
+            database_actions.database_entry_success(self.config)
+
+            if self.config["general"]["end_date"] >= self.config["general"]["final_date"]:
+                monitor_file.write("Reached the end of the simulation, quitting...\n")
+                jobclass.jobclass.write_to_log(self.config, ["# Experiment over"], message_sep="")
+            else:
+                monitor_file.write("Init for next run:\n")
+                next_compute = SimulationSetup(self.command_line_config)
+                next_compute(kill_after_submit=False)
+            self.end_it_all()
+
 
 
     def copy_all_results_to_exp(self):
@@ -554,6 +918,8 @@ class SimulationSetup(object):
                                     monitor_file.flush()
                                     print("ERROR: " + message)
                                     print("Will kill the run now...", flush=True)
+                                    from . import database_actions
+                                    database_actions.database_entry_crashed(self.config)
                                     os.system(harakiri)
                                     sys.exit(42)
                 next_check += frequency
@@ -571,7 +937,7 @@ class SimulationSetup(object):
 
     def add_submission_info(self):
         from . import esm_batch_system
-        bs = esm_batch_system.esm_batch_system(self.config, self.config["computer"]["batch_system"])
+        bs = esm_batch_system(self.config, self.config["computer"]["batch_system"])
 
         submitted = bs.check_if_submitted()
         if submitted:
@@ -582,743 +948,6 @@ class SimulationSetup(object):
         self.config["general"]["submitted"] = submitted
         self.config["general"]["jobid"] = jobid
 
-
-    def _add_all_folders(self):
-        self.all_filetypes = ["analysis", "config", "log", "mon", "scripts", "ignore",  "unknown"]
-        self.all_filetypes.append("work")
-        self.config["general"]["thisrun_dir"] = self.config["general"]["experiment_dir"] + "/run_" + self.run_datestamp
-
-        for filetype in self.all_filetypes:
-            self.config["general"][
-                "experiment_" + filetype + "_dir"
-            ] = self.config["general"]["experiment_dir"] + "/" + filetype + "/"
-
-        for filetype in self.all_filetypes:
-            self.config["general"][
-                "thisrun_" + filetype + "_dir"
-            ] = self.config["general"]["thisrun_dir"] + "/" + filetype + "/"
-
-        self.config["general"]["work_dir"] =  self.config["general"]["thisrun_work_dir"]
-
-        self.all_model_filetypes = [
-            "analysis",
-            "bin",
-            "config",
-            "couple",
-            "forcing",
-            "input",
-            "log",
-            "mon",
-            "outdata",
-            "restart_in",
-            "restart_out",
-            "viz",
-            "ignore"
-        ]
-
-        self.config["general"]["all_model_filetypes"] = self.all_model_filetypes
-        self.config["general"]["all_filetypes"] = self.all_filetypes
-
-        for model in self.config["general"]["valid_model_names"]:
-             for filetype in self.all_model_filetypes:
-                if "restart" in filetype:
-                    filedir = "restart"
-                else:
-                    filedir = filetype
-                self.config[model][
-                    "experiment_" + filetype + "_dir"
-                ] = self.config["general"]["experiment_dir"] + "/" + filedir + "/" + model + "/"
-                self.config[model][ "thisrun_" + filetype + "_dir"
-                ] = self.config["general"]["thisrun_dir"] + "/" + filedir  + "/" + model + "/"
-                self.config[model]["all_filetypes"] = self.all_model_filetypes
-
-    @timing
-    def _read_date_file(self, config, date_file=None):
-        if not date_file:
-            date_file = (
-                config["general"]["experiment_dir"]
-                + "/scripts/"
-                + config["general"]["expid"]
-                + "_"
-                + config["general"]["setup_name"]
-                + ".date"
-            )
-        if os.path.isfile(date_file):
-            logging.info("Date file read from %s", date_file)
-            with open(date_file) as date_file:
-                date, self.run_number = date_file.readline().strip().split()
-                self.run_number = int(self.run_number)
-            write_file = False
-        else:
-            logging.info("No date file found %s", date_file)
-            logging.info("Initializing run_number=1 and date=18500101")
-            date = config["general"].get("initial_date", "18500101")
-            self.run_number = 1
-            write_file = True
-        config["general"]["run_number"] = self.run_number
-
-        self.current_date = date
-
-        if config["general"]["run_number"] != 1:
-            for model in config["general"]["valid_model_names"]:
-                config[model]["lresume"] = True
-        else:
-            # Did the user give a value? If yes, keep it, if not, first run:
-            for model in config["general"]["valid_model_names"]:
-                if "lresume" in config[model]:
-                    user_lresume = config[model]["lresume"]
-                else:
-                    user_lresume = False
-                if type(user_lresume) == str:
-                    if user_lresume == "0" or user_lresume.upper() == "FALSE":
-                        user_lresume = False
-                    elif user_lresume == "1" or user_lresume.upper() == "TRUE":
-                        user_lresume = True
-                elif type(user_lresume) == int:
-                    if user_lresume == 0:
-                        user_lresume = False
-                    elif user_lresume == 1:
-                        user_lresume = True
-                config[model]["lresume"] = user_lresume
-
-        # needs to happen AFTER a run!
-        # if write_file:
-        #    self._write_date_file()
-
-        logging.info("current_date = %s", self.current_date)
-        logging.info("run_number = %s", self.run_number)
-
-    #########################       PREPARE EXPERIMENT / WORK    #############################
-
-
-
-
-
-    def write_simple_runscript(self, commands=None, write_tidy_call=True):
-        sadfilename = self.get_sad_filename()
-        header = self.get_batch_header()
-        environment = self.get_environment()
-        commands = commands or self.get_run_commands()
-        tidy_call =  "esm_runscripts " + self.config["general"]["scriptname"] + " -e " + self.config["general"]["expid"] + " -t tidy_and_resubmit -p ${process} -j "+self.config["general"]["jobtype"]
-
-        with open(sadfilename, "w") as sadfile:
-            for line in header:
-                sadfile.write(line + "\n")
-            sadfile.write("\n")
-            for line in environment:
-                sadfile.write(line + "\n")
-            sadfile.write("\n")
-            sadfile.write("cd "+ self.config["general"]["thisrun_work_dir"] + "\n")
-            for line in commands:
-                sadfile.write(line + "\n")
-            sadfile.write("process=$! \n")
-            sadfile.write("cd "+ self.config["general"]["experiment_scripts_dir"] + "\n")
-            if write_tidy_call:
-                sadfile.write(tidy_call + "\n")
-
-        self.submit_command = self.get_submit_command(sadfilename)
-
-        six.print_("\n", 40 * "+ ")
-        six.print_("Contents of ",sadfilename, ":")
-        with open(sadfilename, "r") as fin:
-            print (fin.read())
-        if os.path.isfile(self.batch.bs.filename):
-            six.print_("\n", 40 * "+ ")
-            six.print_("Contents of ",self.batch.bs.filename, ":")
-            with open(self.batch.bs.filename, "r") as fin:
-                print (fin.read())
-
-    def get_sad_filename(self):
-        folder = self.config["general"]["thisrun_scripts_dir"]
-        expid = self.config["general"]["expid"]
-        startdate = self.config["general"]["current_date"]
-        enddate = self.config["general"]["end_date"]
-        return folder + "/" + expid+"_"+self.config["general"]["jobtype"]+"_"+self.run_datestamp+".sad"
-
-    def get_batch_header(self):
-        header = []
-        batch_system = self.config["computer"]
-        if "sh_interpreter" in batch_system:
-            header.append("#!"+batch_system["sh_interpreter"])
-        tasks = self.calculate_requirements()
-        replacement_tags = [("@tasks@", tasks)]
-        all_flags = ["partition_flag",
-                     "time_flag",
-                     "tasks_flag",
-                     "output_flags",
-                     "name_flag",
-                    ]
-        conditional_flags = ["accounting_flag",
-                             "notification_flag",
-                             "hyperthreading_flag",
-                             "additional_flags"
-                            ]
-        if self.config["general"]["jobtype"] in ["compute", "tidy_and_resume"]:
-            conditional_flags.append("exclusive_flag")
-        for flag in conditional_flags:
-            if flag in batch_system and not batch_system[flag].strip() == "":
-                all_flags.append(flag)
-        for flag in all_flags:
-            for (tag, repl) in replacement_tags:
-                batch_system[flag] = batch_system[flag].replace(tag, str(repl))
-            header.append(batch_system["header_start"] + " " + batch_system[flag])
-        return header
-
-    def calculate_requirements(self):
-        tasks = 0
-        if self.config["general"]["jobtype"] == "compute":
-            for model in self.config["general"]["models"]:
-                if "nproc" in self.config[model]:
-                    tasks += self.config[model]["nproc"]
-                elif "nproca" in self.config[model] and "nprocb" in self.config[model]:
-                    tasks += self.config[model]["nproca"] * self.config[model]["nprocb"]
-        elif self.config["general"]["jobtype"] == "post":
-            tasks = 1
-        return tasks
-
-    def get_environment(self):
-        environment = []
-        import esm_environment
-        env = esm_environment.environment_infos("runtime", self.config)
-        return env.commands
-
-    def get_run_commands(self):
-        commands = []
-        batch_system = self.config["computer"]
-        if "execution_command" in batch_system:
-            commands.append("time " + batch_system["execution_command"] + " &")
-        return commands
-
-    def get_submit_command(self, sadfilename):
-        commands = []
-        batch_system = self.config["computer"]
-        if "submit" in batch_system:
-            commands.append("cd " + self.config["general"]["thisrun_scripts_dir"] + "; " + batch_system["submit"] + " " +sadfilename)
-        return commands
-
-
-
-
-
-
-
-
-    def submit(self):
-        six.print_("\n", 40 * "+ ")
-        print ("Submitting sad jobscript to batch system...")
-        for command in self.submit_command:
-            print (command)
-        six.print_("\n", 40 * "+ ")
-        for command in self.submit_command:
-            os.system(command)
-        # PG: Why is there an exit here when there is also a end_it_all after the submit?
-        #sys.exit()
-
-
-
-
-    #########################################################################################
-    #                                   ok for plugin                                       #
-    #########################################################################################
-
-    
-    #########################################################################################
-    #                                   general stuff                                       #
-    #########################################################################################
-
-    @staticmethod
-    def end_it_all(config):
-        if config["general"]["profile"]:
-            for line in timing_info:
-                print(line)
-        print("Exiting entire Python process!")
-        sys.exit()
-
-
-
-    @staticmethod
-    def write_to_log(config, message, message_sep=None):
-        """
-        Puts a message into the experiment log file
-
-        Parameters
-        ----------
-        message : list
-            A list of the message elements; which is joined by either (highest
-            to lowest): 1) the message_sep argument passed to the method, 2)
-            The user's chosen seperator, as written in
-            ``self.config["general"]["experiment_log_file_message_sep"]``, 3)
-            An empty space ``" "``.
-        message_sep : None
-            The hard-coded message seperator to use; which ignores user choices.
-
-        Note
-        ----
-        The user can control two things regarding the logfile format:
-
-        1) The datestamp formatting, whjich is taken from the config
-           section ``general.experiment_log_file_dateformat``.
-        2) The message seperators; taken from
-           ``general.experiment_log_file_message_sep``. Note that if the
-           programmer passes a ``message_sep`` argument; this one wins over
-           the user choice.
-        """
-        try:
-            with open(config["general"]["experiment_log_file"], "a+") as logfile:
-                dateTimeObj = datetime.now()
-                strftime_str = config["general"].get("experiment_log_file_dateformat", "%c")
-                if message_sep is None:
-                    message_sep = config["general"].get("experiment_log_file_message_sep", " ")
-                timestampStr = dateTimeObj.strftime(strftime_str)
-                # TODO: Do we want to be able to specify a timestamp seperator as well?
-                line = timestampStr + " : " + message_sep.join(message)
-                logfile.write(line + "\n")
-        except KeyError:
-            print("Sorry; couldn't find 'experiment_log_file' in config['general']...")
-            esm_parser.pprint_config(self.config["general"])
-            raise
-
-
-
-    #########################################################################################
-    #                                   compute jobs                                        #
-    #########################################################################################
-
-    @staticmethod
-    def _create_folders(config, filetypes):
-        for filetype in filetypes:
-            if not filetype == "ignore":
-                if not os.path.exists(config["experiment_" + filetype + "_dir"]):
-                    os.makedirs(config["experiment_" + filetype + "_dir"])
-                if not os.path.exists(config["thisrun_" + filetype + "_dir"]):
-                    os.makedirs(config["thisrun_" + filetype + "_dir"])
-
-    @staticmethod
-    def _create_setup_folders(config):
-        SimulationSetup._create_folders(config["general"], config["general"]["all_filetypes"])
-        return config
-
-    @staticmethod
-    def _create_component_folders(config):
-        for component in config["general"]["models"]:
-            SimulationSetup._create_folders(config[component], config["general"]["all_model_filetypes"])
-        return config
-
-    @staticmethod
-    def initialize_experiment_logfile(config):
-        """
-        Initializes the log file for the entire experiment.
-
-        Creates a file ``${BASE_DIR}/${EXPID}/log/${EXPID}_${setup_name}.log``
-        to keep track of start/stop times, job id numbers, and so on. Use the
-        function ``write_to_log`` to put information in this file afterwards.
-
-        The user can specify ``experiment_log_file`` under the ``general``
-        section of the configuration to override the default name. Timestamps
-        for each message are given by the section
-        ``experiment_log_file_dateformat``, or defaults to ``Tue Mar 17
-        09:36:38 2020``, i.e. ``"%c"``. Please use ``stftime`` compatable
-        formats, as described here: https://strftime.org
-
-        Parameters
-        ----------
-        dict :
-            The experiment configuration
-
-        Return
-        ------
-        dict :
-            As per convention for the plug-in system; this gives back the
-            entire config.
-
-        Attention
-        ---------
-            Calling this has some filesystem side effects. If the run number in
-            the general configuration is set to 1, and a file exists for
-            ``general.exp_log_file``; this file is removed; and re-initialized.
-        """
-        if config["general"]["run_number"] == 1:
-            if os.path.isfile(config["general"]["experiment_log_file"]):
-                os.remove(config["general"]["experiment_log_file"])
-            SimulationSetup.write_to_log(config, ["# Beginning of Experiment " + config["general"]["expid"]], message_sep="")
-
-        SimulationSetup.write_to_log( config, 
-                [
-                    str(config["general"]["jobtype"]),
-                    str(config["general"]["run_number"]),
-                    str(config["general"]["current_date"]),
-                    str(config["general"]["jobid"]),
-                    "- start",
-                ]
-            )
-        return config
-
-
-
-    @staticmethod
-    def _write_finalized_config(config):
-        with open(
-            config["general"]["thisrun_config_dir"]
-            + "/"
-            + config["general"]["expid"]
-            + "_finished_config.yaml",
-            "w",
-        ) as config_file:
-            yaml.dump(config, config_file)
-        return config
-
-    @staticmethod
-    @timing
-    def copy_tools_to_thisrun(config):
-        import esm_rcfile
-        gconfig = config["general"]
-
-        fromdir = os.path.realpath(gconfig["started_from"])
-        scriptsdir = os.path.realpath(gconfig["experiment_scripts_dir"])
-
-        tools_dir = scriptsdir + "/esm_tools/functions"
-        namelists_dir = scriptsdir + "/esm_tools/namelists"
-
-        print ("Started from :", fromdir)
-        print ("Scripts Dir : ", scriptsdir)
-
-        if os.path.isdir(tools_dir) and gconfig["update"]:
-            shutil.rmtree(tools_dir, ignore_errors=True)
-        if os.path.isdir(namelists_dir) and gconfig["update"]:
-            shutil.rmtree(namelists_dir, ignore_errors=True)
-
-        if not os.path.isdir(tools_dir):
-            print("Copying from: ", esm_rcfile.FUNCTION_PATH)
-            shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir) 
-        if not os.path.isdir(namelists_dir):
-            shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir) 
-
-        if (fromdir == scriptsdir) and not gconfig["update"]:
-            print ("Started from the experiment folder, continuing...")
-            return config
-        else:
-            if not fromdir == scriptsdir:
-                print ("Not started from experiment folder, restarting...")
-            else:
-                print ("Tools were updated, restarting...")
-
-            if not os.path.isfile(scriptsdir + "/" + gconfig["scriptname"]):
-                oldscript = fromdir + "/" + gconfig["scriptname"]
-                print (oldscript)
-                shutil.copy2 (oldscript, scriptsdir)
-
-            for tfile in gconfig["additional_files"]:
-                if not os.path.isfile(scriptsdir + "/" + tfile):
-                     shutil.copy2 (fromdir + "/" + tfile, scriptsdir)
-
-            restart_command = ("cd " + scriptsdir + "; " + \
-                               "esm_runscripts " + \
-                               gconfig["original_command"].replace("-U", ""))           
-            print (restart_command)
-            os.system( restart_command )
-
-            gconfig["profile"] = False
-            SimulationSetup.end_it_all(config)
-
-
-    @staticmethod
-    def _copy_preliminary_files_from_experiment_to_thisrun(config):
-        filelist = [
-            (
-                "scripts",
-                config["general"]["expid"]
-                + "_"
-                + config["general"]["setup_name"]
-                + ".date",
-                "copy",
-            )
-        ]
-        for filetype, filename, copy_or_link in filelist:
-            source = config["general"]["experiment_" + filetype + "_dir"]
-            dest = config["general"]["thisrun_" + filetype + "_dir"]
-            if copy_or_link == "copy":
-                method = shutil.copy2
-            elif copy_or_link == "link":
-                method = os.symlink
-            if os.path.isfile(source + "/" + filename):
-                method(source + "/" + filename, dest + "/" + filename)
-        this_script = config["general"]["scriptname"]
-        shutil.copy2("./" + this_script, config["general"]["thisrun_scripts_dir"])
-
-        for additional_file in config["general"]["additional_files"]:
-            shutil.copy2(additional_file, config["general"]["thisrun_scripts_dir"])
-        return config
-
-    @staticmethod
-    def _show_simulation_info(config):
-        six.print_(80 * "=")
-        six.print_("STARTING SIMULATION JOB!")
-        six.print_("Experiment ID = %s" % config["general"]["expid"])
-        six.print_("Setup = %s" % config["general"]["setup_name"])
-        six.print_("This setup consists of:")
-        for model in config["general"]["valid_model_names"]:
-            six.print_("- %s" % model)
-        six.print_("You are using the Python version.")
-        return config
-
-
-
-
-
-
-    #########################################################################################
-
-
-
-
-
-
-    def _initialize_components(self):
-        components = []
-        for component in self.config["general"]["valid_model_names"]:
-            components.append(
-                SimulationComponent(self.config["general"], self.config[component])
-            )
-        self.components = components
-
-    def _create_toplevel_marker_file(self):
-        if not os.path.isfile(self.config['thisrun_']):
-            with open(".top_of_exp_tree") as f:
-                f.write("Top of experiment: "+self.config['general']['expid'])
-
-
-    def _dump_final_yaml(self):
-        with open(
-            self.experiment_config_dir
-            + "/"
-            + self.config["general"]["expid"]
-            + "_preconfig.yaml",
-            "w",
-        ) as config_file:
-            yaml.dump(self.config, config_file)
-
-    def _initialize_calendar(self, config):
-        nyear, nmonth, nday, nhour, nminute, nsecond = 0, 0, 0, 0, 0, 0
-        nyear = int(config["general"].get("nyear", nyear))
-        if not nyear:
-            nmonth = int(config["general"].get("nmonth", nmonth))
-        if not nyear and not nmonth:
-            nday = int(config["general"].get("nday", nday))
-        if not nyear and not nmonth and not nday:
-            nhour = int(config["general"].get("nhour", nhour))
-        if not nyear and not nmonth and not nday and not nhour:
-            nminute = int(config["general"].get("nminute", nminute))
-        if not nyear and not nmonth and not nday and not nhour and not nminute:
-            nsecond = int(config["general"].get("nsecond", nsecond))
-        if (
-            not nyear
-            and not nmonth
-            and not nday
-            and not nhour
-            and not nminute
-            and not nsecond
-        ):
-            nyear = 1
-
-        # make sure all models agree on leapyear
-        if "leapyear" in self.config["general"]:
-            for model in self.config["general"]["models"]:
-                self.config[model]["leapyear"] = self.config["general"]["leapyear"]
-        else:
-            for model in self.config["general"]["models"]:
-                if "leapyear" in self.config[model]:
-                    for other_model in self.config["general"]["models"]:
-                        if "leapyear" in self.config[other_model]:
-                            if not self.config[other_model]["leapyear"] == self.config[model]["leapyear"]:
-                                print ("Models " + model + " and " + other_model + " do not agree on leapyear. Stopping.")
-                                sys.exit(43)
-                        else:
-                            self.config[other_model]["leapyear"] = self.config[model]["leapyear"]
-                    self.config["general"]["leapyear"] = self.config[model]["leapyear"]
-                    break
-
-        if not "leapyear" in self.config["general"]:
-            for model in self.config["general"]["models"]:
-                self.config[model]["leapyear"] = True
-            self.config["general"]["leapyear"] = True
-
-
-        # set the overall calendar
-        if self.config["general"]["leapyear"]:
-            self.calendar = Calendar(1)
-            self.config["general"]["calendar"] = Calendar(1)
-        else:
-            self.calendar = Calendar(0)
-            self.config["general"]["calendar"] = Calendar(0)
-
-        self.current_date = Date(self.current_date, self.calendar)
-        self.delta_date = (nyear, nmonth, nday, nhour, nminute, nsecond)
-        config["general"]["current_date"] = self.current_date
-        config["general"]["start_date"] = self.current_date
-        config["general"]["initial_date"] = Date(config["general"]["initial_date"], self.calendar)
-        config["general"]["final_date"] = Date(config["general"]["final_date"], self.calendar)
-        #config["general"]["prev_date"] = self.current_date.sub((0, 0, 1, 0, 0, 0))
-        config["general"]["prev_date"] = self.current_date - (0, 0, 1, 0, 0, 0)
-
-        config["general"]["next_date"] = self.current_date.add(self.delta_date)
-        config["general"]["last_start_date"] = self.current_date - self.delta_date
-        #config["general"]["end_date"] = config["general"]["next_date"].sub(
-        config["general"]["end_date"] = config["general"]["next_date"] - (0, 0, 1, 0, 0, 0)
-
-        config["general"]["runtime"] = (
-            config["general"]["next_date"] - config["general"]["current_date"]
-        )
-
-        config["general"]["total_runtime"] = (
-            config["general"]["next_date"] - config["general"]["initial_date"]
-        )
-
-        self.run_datestamp = (
-            config["general"]["current_date"].format(
-                form=9, givenph=False, givenpm=False, givenps=False
-            )
-            + "-"
-            + config["general"]["end_date"].format(
-                form=9, givenph=False, givenpm=False, givenps=False
-            )
-        )
-        self.last_run_datestamp = (
-            config["general"]["last_start_date"].format(
-                form=9, givenph=False, givenpm=False, givenps=False
-            )
-            + "-"
-            + config["general"]["prev_date"].format(
-                form=9, givenph=False, givenpm=False, givenps=False
-            )
-        )
-
-    def set_prev_date(self):
-        for model in self.config["general"]["models"]:
-            if "time_step" in self.config[model] and not (type(self.config[model]["time_step"]) == str and "${" in self.config[model]["time_step"]):
-                self.config[model]["prev_date"] = self.current_date - (0, 0, 0, 0, 0, int(self.config[model]["time_step"]))
-            else:
-                self.config[model]["prev_date"] = self.current_date
-            if self.config[model]["lresume"] == True and self.config["general"]["run_number"] == "1":
-                self.config[model]["parent_expid"] = self.config[model][
-                    "ini_parent_exp_id"
-                ]
-                if "parent_date" not in self.config[model]:
-                    self.config[model]["parent_date"] = self.config[model][
-                        "ini_parent_date"
-                    ]
-                self.config[model]["parent_restart_dir"] = self.config[model][
-                    "ini_restart_dir"
-                ]
-            else:
-                self.config[model]["parent_expid"] = self.config["general"][
-                    "expid"
-                ]
-                if "parent_date" not in self.config[model]:
-                    self.config[model]["parent_date"] = self.config[model][
-                        "prev_date"
-                    ]
-                self.config[model]["parent_restart_dir"] = self.config[model][
-                    "experiment_restart_in_dir"
-                ]
-            #print (model + "   " + str(self.config[model]["parent_date"]))
-
-
-    def _increment_date_and_run_number(self):
-        self.run_number += 1
-        self.current_date += self.delta_date
-
-    def _write_date_file(self, date_file=None):
-        if not date_file:
-            date_file = (
-                self.config["general"]["experiment_scripts_dir"]
-                + "/"
-                + self.config["general"]["expid"]
-                + "_"
-                + self.config["general"]["setup_name"]
-                + ".date"
-            )
-        with open(date_file, "w") as date_file:
-            date_file.write(self.current_date.output() + " " + str(self.run_number))
-
-
-    def assemble_file_lists(self, filetypes):
-        all_files_to_copy = []
-        six.print_("\n" "- Generating file lists for this run...")
-        for component in self.components:
-            six.print_("-" * 80)
-            six.print_("* %s" % component.config["model"], "\n")
-            all_component_files, filetype_specific_dict = (
-                component.filesystem_to_experiment(filetypes)
-            )
-            with open(
-                component.config["thisrun_config_dir"]
-                + "/"
-                + self.config["general"]["expid"]
-                + "_filelist_"
-                + self.run_datestamp,
-                "w",
-            ) as flist:
-                flist.write(
-                    "These files are used for \nexperiment %s\ncomponent %s\ndate %s"
-                    % (
-                        self.config["general"]["expid"],
-                        component.config["model"],
-                        self.run_datestamp,
-                    )
-                )
-                flist.write("\n")
-                flist.write(80 * "-")
-                for filetype in filetype_specific_dict:
-                    flist.write("\n" + filetype.upper() + ":\n")
-                    for source, exp_tree, exp_name, work_dir_name, subfolder  in filetype_specific_dict[
-                        filetype
-                    ]:
-                        flist.write("\nSource: " + source)
-                        flist.write("\nExp Tree: " + exp_tree + subfolder + exp_name)
-                        flist.write("\nWork Dir: " + subfolder + work_dir_name)
-                        flist.write("\n")
-                    flist.write("\n")
-                    flist.write(80 * "-")
-            esm_parser.pprint_config(filetype_specific_dict)
-            all_files_to_copy += all_component_files
-        return all_files_to_copy
-
-
-    def copy_files_to_thisrun(self, all_files_to_copy):
-        six.print_("=" * 80, "\n")
-        six.print_("PREPARING EXPERIMENT")
-        # Copy files:
-        six.print_("\n" "- File lists populated, proceeding with copy...")
-        six.print_("- Note that you can see your file lists in the config folder")
-        six.print_("- You will be informed about missing files")
-        successful_files = []
-        missing_files = []
-        # TODO: Check if we are on login node or elsewhere for the progress
-        # bar, it doesn't make sense on the compute nodes:
-        flist = all_files_to_copy
-        for ftuple in tqdm.tqdm(
-            flist,
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
-        ):
-            logging.debug(ftuple)
-            (file_source, filedir_intermediate, filename_intermediate, filename_target, subfolder) = ftuple
-            file_intermediate = filedir_intermediate + "/" + subfolder + filename_intermediate
-            file_target = filedir_intermediate + "/" + subfolder + filename_target
-            try:
-                if not os.path.isdir(filedir_intermediate + "/" + subfolder):
-                    os.mkdir(filedir_intermediate + "/" + subfolder)
-                shutil.copy2(file_source, file_intermediate)
-                if os.path.islink(file_target):
-                    os.remove(file_target)
-                if not os.path.isfile(file_target):
-                    os.symlink(file_intermediate, file_target)
-                successful_files.append(file_target)
-            except IOError:
-                missing_files.append(file_target)
-        if missing_files:
-            six.print_("--- WARNING: These files were missing:")
-            for missing_file in missing_files:
-                six.print_("- %s" % missing_file)
 
 
     def copy_files_from_work_to_thisrun(self, all_files_to_copy):
@@ -1367,136 +996,31 @@ class SimulationSetup(object):
             for missing_file in missing_files:
                 six.print_("- %s" % missing_file)
 
-    def modify_namelists(self):
-        # Load and modify namelists:
-        six.print_("\n" "- Setting up namelists for this run...")
-        all_namelists = {}
-        for component in self.components:
-            six.print_("-" * 80)
-            six.print_("* %s" % component.config["model"], "\n")
-            component.nmls_load()
-            component.nmls_remove()
-            component.nmls_modify()
-            component.nmls_finalize(all_namelists)
-        six.print_(
-            "\n" "- Namelists modified according to experiment specifications..."
-        )
-        for nml_name, nml in all_namelists.items():
-            six.print_("Contents of ", nml_name, ":")
-            nml.write(sys.stdout)
-            six.print_("\n", 40 * "+ ")
 
 
-    def modify_files(self):
-        for model in self.config['general']['valid_model_names']:
-            for filetype in self.all_model_filetypes:
-                #print(self.config[model].get(filetype+"_modifications"))
-                if filetype == "restart":
-                    nothing = "nothing"
-                    #print(self.config[model].get(filetype+"_in_modifications"))
 
+    def _increment_date_and_run_number(self):
+        self.run_number += 1
+        self.current_date += self.delta_date
 
-    def create_new_files(self, all_files_to_copy):
-        for model in list(self.config):
-            for filetype in self.all_filetypes:
-                if "create_"+filetype in self.config[model]:
-                    filenames = self.config[model]["create_"+filetype].keys()
-                    for filename in filenames:
-                        with open(self.config[model]["thisrun_" + filetype + "_dir"] + "/" +filename, "w") as createfile:
-                            actionlist = self.config[model]["create_"+filetype][filename]
-                            for action in actionlist:
-                                if "<--append--" in action:
-                                    appendtext = action.replace("<--append--", "")
-                                    createfile.write(appendtext.strip() + "\n")
-                        all_files_to_copy.append(
-                            (
-                                "",
-                                self.config[model]["thisrun_" + filetype + "_dir"],
-                                filename,
-                                filename,
-                                ""
-                            )
-                        )
-
-
-    def init_coupler(self):
-        for model in list(self.config):
-            if model in esm_coupler.known_couplers:
-                self.coupler_config_dir = (
-                    self.config["general"]["base_dir"]
-                    + "/"
-                    + self.config["general"]["expid"]
-                    + "/run_"
-                    + self.run_datestamp
-                    + "/config/"
-                    + model
-                    + "/"
-                )
-                self.coupler = esm_coupler.esm_coupler(self.config, model)
-                break
-        self.coupler.add_files(self.config)
-
-    def prepare_coupler_files(self, all_files_to_copy):
-        self.coupler.prepare(self.config, self.coupler_config_dir)
-        coupler_filename="namcouple"  # needs to be set by function above
-        all_files_to_copy.append(
-            (
-                "",
-                self.coupler_config_dir,
-                coupler_filename,
-                coupler_filename,
-                ""
+    def _write_date_file(self, date_file=None):
+        if not date_file:
+            date_file = (
+                self.config["general"]["experiment_scripts_dir"]
+                + "/"
+                + self.config["general"]["expid"]
+                + "_"
+                + self.config["general"]["setup_name"]
+                + ".date"
             )
-        )
-        #print (coupler_config_dir + "/" + coupler_filename)
+        with open(date_file, "w") as date_file:
+            date_file.write(self.current_date.output() + " " + str(self.run_number))
 
 
 
-    def initialize_batch_system(self):
-        from . import esm_batch_system
-        self.batch = esm_batch_system.esm_batch_system(self.config, self.config["computer"]["batch_system"])
-
-    def add_batch_hostfile(self, all_files_to_copy):
-        from . import esm_batch_system
-        #self.batch = esm_batch_system.esm_batch_system(self.config, self.config["computer"]["batch_system"])
-        self.batch.calc_requirements(self.config)
-
-        all_files_to_copy.append(
-            (
-                "", self.config["general"]["thisrun_scripts_dir"],
-                self.batch.bs.path.rsplit("/", 1)[-1],
-                self.batch.bs.path.rsplit("/", 1)[-1],
-                ""
-            )
-        )
 
 
 
-    def copy_files_to_work(self, flist):
-        successful_files = []
-        missing_files = []
-        # TODO: Check if we are on login node or elsewhere for the progress
-        # bar, it doesn't make sense on the compute nodes:
-        for ftuple in tqdm.tqdm(
-            flist,
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
-        ):
-            logging.debug(ftuple)
-            (file_source, filedir_intermediate, filename_intermediate, filename_target, subfolder) = ftuple
-            file_target = filedir_intermediate + "/" + subfolder + filename_target
-            file_in_work = self.config["general"]["thisrun_work_dir"] + "/" + subfolder + filename_target
-            try:
-                if not os.path.isdir(self.config["general"]["thisrun_work_dir"] + "/" + subfolder):
-                    os.mkdir(self.config["general"]["thisrun_work_dir"] + "/" + subfolder)
-                shutil.copy2(file_target, file_in_work)
-                successful_files.append(file_target)
-            except IOError:
-                missing_files.append(file_target)
-        if missing_files:
-            six.print_("--- WARNING: These files were missing:")
-            for missing_file in missing_files:
-                six.print_("- %s" % missing_file)
-        #sys.exit()
 
 
 
@@ -1509,7 +1033,7 @@ class SimulationSetup(object):
 
 
 
-class SimulationComponent(object):
+class SimulationComponent(object):    # Not needed for compute jobs at all
     def __init__(self, general, component_config):
         self.config = component_config
         self.general_config = general
@@ -1517,7 +1041,7 @@ class SimulationComponent(object):
     def __repr__(self):
         return "SimulationComponent: %s, v%s" % (self.config.get('model'), self.config.get('version'))
 
-    def find_correct_source(self, file_source, year):
+    def find_correct_source(self, file_source, year): # not needed in compute anymore, moved to jobclass
         if isinstance(file_source, dict):
             logging.debug(
                 "Checking which file to use for this year: %s",
@@ -1552,7 +1076,7 @@ class SimulationComponent(object):
 
 
 
-    def filesystem_to_experiment(self, filetypes):
+    def filesystem_to_experiment(self, filetypes):  # not needed for compute anymore, moved to jobclass
         import glob
         import copy
         all_files_to_process = []
@@ -1560,7 +1084,7 @@ class SimulationComponent(object):
         for filetype in filetypes:
         #for filetype in self.config["all_filetypes"]:
             filetype_files = []
-            six.print_("- %s" % filetype)
+            #six.print_("- %s" % filetype)
 
             if filetype == "restart_in" and not self.config["lresume"]:
                 six.print_("- restart files do not make sense for a cold start, skipping...")
@@ -1620,7 +1144,7 @@ class SimulationComponent(object):
                 self.config[filetype + "_sources"]
             ):
                 if filetype == "restart_in":
-                    file_source = self.config["experiment_restart_in_dir"] + "/" + os.path.basename(file_source)
+                    file_source = self.config["parent_restart_dir"] + "/" + os.path.basename(file_source)
                 logging.debug(
                     "file_descriptor=%s, file_source=%s", file_descriptor, file_source
                 )
@@ -1696,55 +1220,4 @@ class SimulationComponent(object):
             filetype_files_for_list[filetype] = filetype_files
             all_files_to_process += filetype_files
         return all_files_to_process, filetype_files_for_list
-
-    def nmls_load(self):
-        nmls = self.config.get("namelists", [])
-        self.config["namelists"] = dict.fromkeys(nmls)
-        for nml in nmls:
-            if os.path.isfile( os.path.join(self.config["thisrun_config_dir"], nml)):
-                logging.debug("Loading %s", nml)
-                self.config["namelists"][nml] = f90nml.read(
-                    os.path.join(self.config["thisrun_config_dir"], nml)
-                )
-            else:
-                self.config["namelists"][nml] = f90nml.namelist.Namelist()
-
-    def nmls_remove(self):
-        namelist_changes = self.config.get("namelist_changes", {})
-        namelist_removes = []
-        esm_parser.pprint_config(namelist_changes)
-        print(list(namelist_changes))
-        for namelist in list(namelist_changes):
-            changes = namelist_changes[namelist]
-            esm_parser.pprint_config(changes)
-            logging.debug("Determining remove entires for %s", namelist)
-            logging.debug("All changes: %s", changes)
-            for change_chapter in list(changes):
-                change_entries = changes[change_chapter]
-                for key in list(change_entries):
-                    value = change_entries[key]
-                    if value == "remove_from_namelist":
-                        namelist_removes.append((namelist, change_chapter, key))
-                        del namelist_changes[namelist][change_chapter][key]
-        for remove in namelist_removes:
-            namelist, change_chapter, key = remove
-            logging.debug("Removing from %s: %s, %s", namelist, change_chapter, key)
-            if key in self.config["namelists"][namelist][change_chapter]:
-                del self.config["namelists"][namelist][change_chapter][key]
-
-    def nmls_modify(self):
-        namelist_changes = self.config.get("namelist_changes", {})
-        for namelist, changes in six.iteritems(namelist_changes):
-            self.config["namelists"][namelist].patch(changes)
-
-    def nmls_finalize(self, all_nmls):
-        for nml_name, nml_obj in six.iteritems(self.config.get("namelists", {})):
-            with open(os.path.join(self.config["thisrun_config_dir"], nml_name), "w") as nml_file:
-                nml_obj.write(nml_file)
-            #if nml_name == "namelist.echam":
-            #    pp.pprint(nml_obj)
-            #    print(80*"*")
-            #    pp.pprint(str(nml_obj))
-            #    sys.exit(1)
-            all_nmls[nml_name] = nml_obj  # PG or a string representation?
 

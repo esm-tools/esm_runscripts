@@ -37,18 +37,28 @@ class oasis:
 
         if lresume == False:
             lag = str(0)
-            seq = str(2)
             export_mode = "EXPOUT"
         else:
             lag = direction.get("lag", "0")
-            seq = direction.get("seq", "2")
             export_mode = "EXPORTED"
+         
+        # if a transformation method for CONSERV (e.g. GLOBAL) is set below, 
+        # increase seq (=number of lines describing the transformation) by 1
+        seq = int(direction.get("seq", "2"))
+        if transformation.get("postprocessing", {}).get("conserv", {}).get("method"):
+            seq += 1
 
         self.namcouple += [right + " " + left + " " + str(nb) + " " + str(time_step) + " " + str(seq) + " " + str(restart_file) + " " + export_mode]
         if lgrid and rgrid:
             self.namcouple += [str(rgrid["nx"]) + " " + str(rgrid["ny"]) + " " + str(lgrid["nx"]) + " " + str(lgrid["ny"]) + " " + rgrid["name"] + " " + lgrid["name"] + " LAG=" + str(lag)]
         
-        self.namcouple += ["P  0  P  0"]
+        p_rgrid = p_lgrid = "0"
+        if "number_of_overlapping_points" in rgrid:
+            p_rgrid = str(rgrid["number_of_overlapping_points"])
+        if "number_of_overlapping_points" in lgrid:
+            p_lgrid = str(lgrid["number_of_overlapping_points"])
+
+        self.namcouple += ["P " + p_rgrid +" P " +  p_lgrid]
 
         trafo_line = ""
         trafo_details = []

@@ -26,6 +26,7 @@ class esm_coupler:
         self.add_couplings(full_config)
         self.finalize(destination_dir)
         self.print_config_files()
+        return "namcouple"
 
 
     def print_config_files(self):
