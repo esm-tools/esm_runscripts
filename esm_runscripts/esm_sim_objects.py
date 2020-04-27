@@ -618,7 +618,7 @@ class SimulationSetup(object):
                     + model
                     + "/"
                 )
-                self.config["general"][coupler_config_dir]
+                self.config["general"]["coupler_config_dir"] = self.coupler_config_dir
 
                 self.coupler = esm_coupler.esm_coupler(self.config, model)
                 self.config["general"]["coupler"] = self.coupler
