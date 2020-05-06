@@ -278,6 +278,7 @@ class SimulationSetup(object):
 
     def _add_all_folders(self):
         self.all_filetypes = ["analysis", "config", "log", "mon", "scripts", "ignore",  "unknown"]
+        self.config["general"]["out_filetypes"] = ["analysis", "log", "mon", "scripts", "ignore",  "unknown", "outdata", "restart_out"]
         self.all_filetypes.append("work")
         self.config["general"]["thisrun_dir"] = self.config["general"]["experiment_dir"] + "/run_" + self.run_datestamp
 
@@ -395,6 +396,21 @@ class SimulationSetup(object):
 
 
 
+
+    @staticmethod
+    def rename_sources_to_targets(config):
+        for filetype in config["general"]["out_filetypes"]:
+            for model in config["general"]["valid_model_names"]:
+                if filetype + "_sources" in config[model]:
+                    if filetype + "_targets" in config[model]:
+                        print ("Both sources and targets defined for filetype " + filetype " in model " + model)
+                        print ("(That is not supposed to happen...)")
+                        import time
+                        time.sleep(3)
+                    else:
+                        config[model][filetype + "_targets"] = config[model][filetype + "_sources"]
+                        del config[model][filetype + "_sources"]
+        return config
 
 
 
@@ -1089,55 +1105,74 @@ class SimulationComponent(object):    # Not needed for compute jobs at all
             if filetype == "restart_in" and not self.config["lresume"]:
                 six.print_("- restart files do not make sense for a cold start, skipping...")
                 continue
-            if filetype + "_sources" not in self.config:
-                continue
 
-            ####### start globbing here
+            # either the config contains ONLY sources: sources -> work without changes
+            # OR the config contains sources and work: sources -> work, maybe subfolder
+            # OR the config contains ONLY in_work:     work -> exp, without changes
+            # OR the config contains in_work and targets: work -> exp, maybe subfolder
+
+            # write a function to rename sources -> targets for outgoing streams?
+            # so that means no yaml files need to be changed...
+            # too nice probably
+
+            self.config = SimulationSetup.rename_sources_to_targets(self.config)
+
+            target_dict = None
+            if filetype + "_sources" not in self.config:
+                sources_dict = copy.deepcopy(self.config[filetype + "_in_work"])
+                if filetype + "_targets" in self.config:
+                    target_dict = self.config[filetype + "_targets"]
+            else:
+                sources_dict = copy.deepcopy(self.config[filetype + "_sources"])
+                if filetype + "_in_work" in self.config:
+                    target_dict = self.config[filetype + "_in_work"]
 
             inverted_dict = {}
             if filetype + "_files" in self.config:
                 for k, v in six.iteritems(self.config[filetype + "_files"]):
                     inverted_dict[v] = k
 
-            sources_dict = copy.deepcopy(self.config[filetype + "_sources"])
-
             for file_descriptor, file_source in six.iteritems(
                 sources_dict
             ):
+
+                ####### start globbing here
                 if "*" in file_source:
-                    esm_parser.pprint_config(self.config)
+                    all_file_sources = glob.glob(file_source)
+
+                    #esm_parser.pprint_config(self.config)
                     file_category = None
-                    subfolder = None
+                    subfolder = None  # subfolders are only an issue on the target side...
                     if filetype + "_files" in self.config:
                         if file_descriptor in self.config[filetype + "_files"]:
                             file_category = inverted_dict[file_descriptor]
-                    if filetype + "_in_work" in self.config:
-                        if file_descriptor in self.config[filetype + "_in_work"]:
-                            subfolder = self.config[filetype + "_in_work"][file_descriptor].replace("*", "")
+
+                    if target_dict:
+                        if file_descriptor in target_dict:
+                            subfolder = target_dict[file_descriptor].replace("*", "")
                             if not subfolder.endswith("/"):
                                 subfolder = subfolder + "/"
-                    all_file_sources = glob.glob(file_source)
 
                     running_index = 0
                     for new_source in all_file_sources:
                         running_index += 1
                         new_descriptor = file_descriptor + "_" + str(running_index)
-                        self.config[filetype + "_sources"][new_descriptor] = new_source
+                        source_dict[new_descriptor] = new_source
                         if file_category:
                             new_category = file_category + "_" + str(running_index)
                             self.config[filetype + "_files"][new_category] = new_descriptor
-                        if subfolder:
-                            new_in_work = subfolder + new_source.rsplit("/", 1)[-1]
-                            self.config[filetype + "_in_work"][new_descriptor] = new_in_work
+                        if subfolder:   # implies target_dict
+                            new_in_target = subfolder + new_source.rsplit("/", 1)[-1]
+                            target_dict[new_descriptor] = new_in_target
 
-                    del self.config[filetype + "_sources"][file_descriptor]
+                    del source_dict[file_descriptor]
                     if file_category:
                         del self.config[filetype + "_files"][file_category]
-                    if subfolder:
-                        del self.config[filetype + "_in_work"][file_descriptor]
+                    if subfolder:   # implies target_dict
+                        del target_dict[file_descriptor]
 
 
-           ######## end globbing stuff
+                ######## end globbing stuff
 
             filedir_intermediate = self.config["thisrun_" + filetype + "_dir"]
             for file_descriptor, file_source in six.iteritems(
