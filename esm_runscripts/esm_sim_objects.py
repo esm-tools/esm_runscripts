@@ -337,14 +337,14 @@ class SimulationSetup(object):
                 + ".date"
             )
         if os.path.isfile(date_file):
-            logging.info("Date file read from %s", date_file)
+            six.print_("Date file read from %s", date_file)
             with open(date_file) as date_file:
                 date, self.run_number = date_file.readline().strip().split()
                 self.run_number = int(self.run_number)
             write_file = False
         else:
-            logging.info("No date file found %s", date_file)
-            logging.info("Initializing run_number=1 and date=18500101")
+            six.print_("No date file found %s", date_file)
+            six.print_("Initializing run_number=1 and date=18500101")
             date = config["general"].get("initial_date", "18500101")
             self.run_number = 1
             write_file = True
@@ -378,8 +378,8 @@ class SimulationSetup(object):
         # if write_file:
         #    self._write_date_file()
 
-        logging.info("current_date = %s", self.current_date)
-        logging.info("run_number = %s", self.run_number)
+        six.print_("current_date = %s", self.current_date)
+        six.print_("run_number = %s", self.run_number)
 
 
 
@@ -452,7 +452,7 @@ class SimulationSetup(object):
             and not nsecond
         ):
             nyear = 1
-
+        
         # make sure all models agree on leapyear
         if "leapyear" in self.config["general"]:
             for model in self.config["general"]["valid_model_names"]:
@@ -529,6 +529,7 @@ class SimulationSetup(object):
         )
         config["general"]["last_run_datestamp"] = self.last_run_datestamp
 
+
     def set_prev_date(self):
         for model in self.config["general"]["valid_model_names"]:
             if "time_step" in self.config[model] and not (type(self.config[model]["time_step"]) == str and "${" in self.config[model]["time_step"]):
@@ -566,6 +567,9 @@ class SimulationSetup(object):
         for component in self.components:
             six.print_("-" * 80)
             six.print_("* %s" % component.config["model"], "\n")
+            # for globbing to work, the component's config needs to know about the
+            # work dir for this run
+            component.config["thisrun_work_dir"] = self.config["general"]["thisrun_work_dir"]
             all_component_files, filetype_specific_dict = (
                 component.filesystem_to_experiment(filetypes)
             )
@@ -684,13 +688,13 @@ class SimulationSetup(object):
             monitor_file.write("Called from a " + called_from + "job \n")
             #monitoring_events=self.assemble_monitoring_events()
 
-            filetypes=["log", "mon", "outdata", "restart_out"]
-            all_files_to_copy=self.assemble_file_lists(filetypes)
             if self.config["general"]["submitted"]:
                 self.wait_and_observe(monitor_file)
             if self.config["general"]["standalone"] == False:
                 self.coupler.tidy(self.config)
             monitor_file.write("job ended, starting to tidy up now \n")
+            filetypes=["log", "mon", "outdata", "restart_out"]
+            all_files_to_copy=self.assemble_file_lists(filetypes)
             # Log job completion
             if called_from != "command_line":
                 jobclass.jobclass.write_to_log(self.config, [
@@ -1105,37 +1109,51 @@ class SimulationComponent(object):    # Not needed for compute jobs at all
                 sources_dict
             ):
                 if "*" in file_source:
-                    esm_parser.pprint_config(self.config)
-                    file_category = None
-                    subfolder = None
-                    if filetype + "_files" in self.config:
-                        if file_descriptor in self.config[filetype + "_files"]:
-                            file_category = inverted_dict[file_descriptor]
-                    if filetype + "_in_work" in self.config:
-                        if file_descriptor in self.config[filetype + "_in_work"]:
-                            subfolder = self.config[filetype + "_in_work"][file_descriptor].replace("*", "")
-                            if not subfolder.endswith("/"):
-                                subfolder = subfolder + "/"
-                    all_file_sources = glob.glob(file_source)
+                    #esm_parser.pprint_config(self.config)
+                    # restart_out* and outdata* entries in yaml files are provided without their path
+                    # as the path generated automagically. We need to add the path here so files can
+                    # be found with glob.glob(file_source)
+                    if filetype == "restart_in":
+                       file_source =  self.config["parent_restart_dir"] + "/" + os.path.basename(file_source)
+                    elif filetype == "restart_out" or filetype == "outdata" or filetype == 'log':
+                       file_source =  self.config["thisrun_work_dir"] + "/" + os.path.basename(file_source)
+                    #print("esm_sim_objects.py: FILE SOURCE: ",file_source)
+                    if glob.glob(file_source):
+                        file_category = None
+                        subfolder = None
+                        # ??? 
+                        if filetype + "_files" in self.config:
+                            if file_descriptor in self.config[filetype + "_files"]:
+                                file_category = inverted_dict[file_descriptor]
+                        if filetype + "_in_work" in self.config:
+                            if file_descriptor in self.config[filetype + "_in_work"]:
+                                subfolder = self.config[filetype + "_in_work"][file_descriptor].replace("*", "")
+                                if not subfolder.endswith("/"):
+                                    subfolder = subfolder + "/"
+                        all_file_sources = glob.glob(file_source)
 
-                    running_index = 0
-                    for new_source in all_file_sources:
-                        running_index += 1
-                        new_descriptor = file_descriptor + "_" + str(running_index)
-                        self.config[filetype + "_sources"][new_descriptor] = new_source
+                        # loop through files found with glob.glob(file_source) and add
+                        # each of them to config dict with and index added to the file descriptor
+                        running_index = 0
+                        for new_source in all_file_sources:
+                            running_index += 1
+                            new_descriptor = file_descriptor + "_" + str(running_index)
+                            self.config[filetype + "_sources"][new_descriptor] = new_source
+                            # ??? 
+                            if file_category:
+                                new_category = file_category + "_" + str(running_index)
+                                self.config[filetype + "_files"][new_category] = new_descriptor
+                            if subfolder:
+                                new_in_work = subfolder + new_source.rsplit("/", 1)[-1]
+                                self.config[filetype + "_in_work"][new_descriptor] = new_in_work
+
+                        del self.config[filetype + "_sources"][file_descriptor]
                         if file_category:
-                            new_category = file_category + "_" + str(running_index)
-                            self.config[filetype + "_files"][new_category] = new_descriptor
+                            del self.config[filetype + "_files"][file_category]
                         if subfolder:
-                            new_in_work = subfolder + new_source.rsplit("/", 1)[-1]
-                            self.config[filetype + "_in_work"][new_descriptor] = new_in_work
-
-                    del self.config[filetype + "_sources"][file_descriptor]
-                    if file_category:
-                        del self.config[filetype + "_files"][file_category]
-                    if subfolder:
-                        del self.config[filetype + "_in_work"][file_descriptor]
-
+                            del self.config[filetype + "_in_work"][file_descriptor]
+                    else:
+                        print("WARNING esm_sim_objects.py: globbing failed for file pattern: ",file_source)
 
            ######## end globbing stuff
 
@@ -1183,7 +1201,7 @@ class SimulationComponent(object):    # Not needed for compute jobs at all
                     if (
                        "need_year_after" in self.config[filetype + "_additional_information"][file_category]
                     ):
-                        all_years.append(self.general_config["next_date"].year + 1 )
+                        all_years.append(self.general_config["current_date"].year + 1 )
 
                 all_years = list(dict.fromkeys(all_years)) # removes duplicates
 

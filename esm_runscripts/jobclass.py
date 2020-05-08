@@ -1,4 +1,5 @@
 import six
+import pdb
 
 class jobclass:
 
@@ -120,36 +121,50 @@ class jobclass:
                 sources_dict
             ):
                 if "*" in file_source:
-                    #esm_parser.pprint_config(modelconfig)
-                    file_category = None
-                    subfolder = None
-                    if filetype + "_files" in modelconfig:
-                        if file_descriptor in modelconfig[filetype + "_files"]:
-                            file_category = inverted_dict[file_descriptor]
-                    if filetype + "_in_work" in modelconfig:
-                        if file_descriptor in modelconfig[filetype + "_in_work"]:
-                            subfolder = modelconfig[filetype + "_in_work"][file_descriptor].replace("*", "")
-                            if not subfolder.endswith("/"):
-                                subfolder = subfolder + "/"
-                    all_file_sources = glob.glob(file_source)
+                    #esm_parser.pprint_config(self.config)
+                    # restart_out* and outdata* entries in yaml files are provided without their path
+                    # as the path generated automagically. We need to add the path here so files can
+                    # be found with glob.glob(file_source)
+                    if filetype == "restart_in":
+                       file_source =  modelconfig["parent_restart_dir"] + "/" + os.path.basename(file_source)
+                    elif filetype == "restart_out" or filetype == "outdata" or filetype == 'log':
+                       file_source =  modelconfig["thisrun_work_dir"] + "/" + os.path.basename(file_source)
+                    #print("jobclass.py: FILE SOURCE: ",file_source)
+                    if glob.glob(file_source):
+                            file_category = None
+                            subfolder = None
+                            if filetype + "_files" in modelconfig:
+                                if file_descriptor in modelconfig[filetype + "_files"]:
+                                    file_category = inverted_dict[file_descriptor]
+                            if filetype + "_in_work" in modelconfig:
+                                if file_descriptor in modelconfig[filetype + "_in_work"]:
+                                    subfolder = modelconfig[filetype + "_in_work"][file_descriptor].replace("*", "")
+                                    if not subfolder.endswith("/"):
+                                        subfolder = subfolder + "/"
+                            all_file_sources = glob.glob(file_source)
 
-                    running_index = 0
-                    for new_source in all_file_sources:
-                        running_index += 1
-                        new_descriptor = file_descriptor + "_" + str(running_index)
-                        modelconfig[filetype + "_sources"][new_descriptor] = new_source
-                        if file_category:
-                            new_category = file_category + "_" + str(running_index)
-                            modelconfig[filetype + "_files"][new_category] = new_descriptor
-                        if subfolder:
-                            new_in_work = subfolder + new_source.rsplit("/", 1)[-1]
-                            modelconfig[filetype + "_in_work"][new_descriptor] = new_in_work
+                            running_index = 0
+                            # loop through files found with glob.glob(file_source) and add
+                            # each of them to config dict with and index added to the file descriptor
+                            for new_source in all_file_sources:
+                                running_index += 1
+                                new_descriptor = file_descriptor + "_" + str(running_index)
+                                modelconfig[filetype + "_sources"][new_descriptor] = new_source
+                                if file_category:
+                                    new_category = file_category + "_" + str(running_index)
+                                    modelconfig[filetype + "_files"][new_category] = new_descriptor
+                                if subfolder:
+                                    new_in_work = subfolder + new_source.rsplit("/", 1)[-1]
+                                    modelconfig[filetype + "_in_work"][new_descriptor] = new_in_work
 
-                    del modelconfig[filetype + "_sources"][file_descriptor]
-                    if file_category:
-                        del modelconfig[filetype + "_files"][file_category]
-                    if subfolder:
-                        del modelconfig[filetype + "_in_work"][file_descriptor]
+                            del modelconfig[filetype + "_sources"][file_descriptor]
+                            if file_category:
+                                del modelconfig[filetype + "_files"][file_category]
+                            if subfolder:
+                                del modelconfig[filetype + "_in_work"][file_descriptor]
+                    else:
+                            print("jobclass.py: globbing failed for FILE SOURCE: ",file_source)
+
 
 
            ######## end globbing stuff
@@ -198,7 +213,7 @@ class jobclass:
                     if (
                        "need_year_after" in modelconfig[filetype + "_additional_information"][file_category]
                     ):
-                        all_years.append(general_config["next_date"].year + 1 )
+                        all_years.append(general_config["current_date"].year + 1 )
 
                 all_years = list(dict.fromkeys(all_years)) # removes duplicates
 
