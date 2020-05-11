@@ -81,6 +81,8 @@ class SimulationSetup(object):
         Compute = compute(self.config)
         self.config = Compute.evaluate(self.config)
 
+        print ("I am here!!!")
+
         if kill_after_submit:
             self.end_it_all()
 
@@ -399,21 +401,95 @@ class SimulationSetup(object):
 
     @staticmethod
     def rename_sources_to_targets(config):
-        for filetype in config["general"]["out_filetypes"]:
+
+        # Purpose of this routine is to make sure that filetype_sources and filetype_targets are set correctly,
+        # and _in_work is unset
+        for filetype in config["general"]["all_filetypes"]:
             for model in config["general"]["valid_model_names"]:
-                if filetype + "_sources" in config[model]:
-                    if filetype + "_targets" in config[model]:
-                        print ("Both sources and targets defined for filetype " + filetype " in model " + model)
-                        print ("(That is not supposed to happen...)")
-                        import time
-                        time.sleep(3)
-                    else:
-                        config[model][filetype + "_targets"] = config[model][filetype + "_sources"]
-                        del config[model][filetype + "_sources"]
+
+                sources = filetype + "_sources" in config[model]
+                targets = filetype + "_targets" in config[model]
+                in_work = filetype + "_in_work" in config[model]
+
+
+                if filetype in config["general"]["out_filetypes"]:
+
+                    if sources and targets and in_work:
+                        if not config[model][filetype + "_sources"] == config[model][filetype + "_in_work"]:
+                            print ("Mismatch between " + filetype + "_sources and " + filetype + "_in_work in model " + model)
+                            sys.exit(-1)
+        
+                    elif sources and targets and not in_work:
+                        # all fine
+                        pass
+
+                    elif sources and not targets:
+                        print ("Renaming sources to targets for filetype" + filetype + " in model " + model)
+                        config[model][filetype + "_targets"] = copy.deepcopy(config[model][filetype + "_sources"])
+                        if in_work:
+                            config[model][filetype + "_sources"] = copy.deepcopy(config[model][filetype + "_in_work"])
+
+                    elif targets and not sources:
+                        if in_work:
+                            config[model][filetype + "_sources"] = copy.deepcopy(config[model][filetype + "_in_work"])
+                        else:
+                            config[model][filetype + "sources"] = copy.deepcopy(config[model][filetype + "_targets"])
+
+                else:
+
+                    if sources and targets and in_work:
+                        if not config[model][filetype + "_targets"] == config[model][filetype + "_in_work"]:
+                            print ("Mismatch between " + filetype + "_targets and " + filetype + "_in_work in model " + model)
+                            sys.exit(-1)
+        
+                    elif sources and targets and not in_work:
+                        # all fine
+                        pass
+
+                    elif not sources:
+                        print (filetype + "_sources missing in model " + model)
+                        sys.exit(-1)
+
+
+                    elif sources and not targets:
+                        if in_work:
+                            config[model][filetype + "_targets"] = copy.deepcopy(setup[model][filetype + "_in_work"])
+                        else:
+                            config[model][filetype + "_targets"]= {}
+                            for descrip, name in six.iteritems(config[model][filetype + "_sources"]):
+                                config[model][filetype + "_targets"].update({ descrip: os.path.basename(name) })
+                            
+                if in_work:
+                    del config[model][filetype + "_in_work"]
+
         return config
 
 
 
+
+
+
+
+    @staticmethod
+    def choose_needed_files(config):
+
+        for filetype in config["general"]["all_filetypes"]:
+            for model in config["general"]["valid_model_names"]:
+
+                if not filetype + "_files" in config[model]:
+                    continue
+
+                new_sources = new_targets = {}
+                for categ, name in six.iteritems(config[model][filetype + "_files"]):
+                    if not name in config[model][filetype + "_sources"] or not name in config[model][filetype + "_targets"]:
+                        print ("Implementation " + name + " not found for filetype " + filetype + " of model " + model)
+                        sys.exit(-1)
+                    new_sources.update({ name : config[model][filetype + "_sources"][name]})
+                    new_targets.update({ name : config[model][filetype + "_targets"][name]})
+
+
+                config[model][filetype + "_sources"] = new_sources
+                config[model][filetype + "_targets"] = new_targets
 
 
 
@@ -579,6 +655,7 @@ class SimulationSetup(object):
     def assemble_file_lists(self, filetypes): # not needed for compute anymore, moved to jobclass...
         all_files_to_copy = []
         six.print_("\n" "- Generating file lists for this run...")
+        self.config = SimulationSetup.rename_sources_to_targets(self.config)
         for component in self.components:
             six.print_("-" * 80)
             six.print_("* %s" % component.config["model"], "\n")
@@ -1098,7 +1175,11 @@ class SimulationComponent(object):    # Not needed for compute jobs at all
         all_files_to_process = []
         filetype_files_for_list = {}
         for filetype in filetypes:
-        #for filetype in self.config["all_filetypes"]:
+            print ("llllllllllll" + filetype)
+       
+            import esm_parser
+            esm_parser.pprint_config("self.config")
+
             filetype_files = []
             #six.print_("- %s" % filetype)
 
@@ -1115,15 +1196,45 @@ class SimulationComponent(object):    # Not needed for compute jobs at all
             # so that means no yaml files need to be changed...
             # too nice probably
 
-            self.config = SimulationSetup.rename_sources_to_targets(self.config)
+            #self.config = SimulationSetup.rename_sources_to_targets(self.config)
 
             target_dict = None
+
+            sources = filetype + "_sources" in self.config
+            in_work = filetype + "_in_work" in self.config
+            targets = filetype + "_targets" in self.config
+
+
+            if not sources and not in_work and not targets:
+                continue
+
+            if sources:
+                    sources_dict = self.config[filetype + "_in_work"]
+
+            if targets:
+                    target_dict = self.config[filetype + "_targets"]
+
+            if _in_work:
+                if sources:
+
+
+            elif sources and in_work and not targets:
+                    sources_dict = self.config[filetype + "_in_work"]
+                    target_dict = self.config[filetype + "_targets"]
+            elif sources and not in_work and not targets:            
+
+
             if filetype + "_sources" not in self.config:
-                sources_dict = copy.deepcopy(self.config[filetype + "_in_work"])
+                if filetype + "_in_work" in self.config:
+                    sources_dict_copy = copy.deepcopy(self.config[filetype + "_in_work"])
+                    sources_dict = self.config[filetype + "_in_work"]
+                else:
+                    continue
                 if filetype + "_targets" in self.config:
                     target_dict = self.config[filetype + "_targets"]
             else:
-                sources_dict = copy.deepcopy(self.config[filetype + "_sources"])
+                sources_dict_copy = copy.deepcopy(self.config[filetype + "_sources"])
+                sources_dict = self.config[filetype + "_sources"]
                 if filetype + "_in_work" in self.config:
                     target_dict = self.config[filetype + "_in_work"]
 
@@ -1133,7 +1244,7 @@ class SimulationComponent(object):    # Not needed for compute jobs at all
                     inverted_dict[v] = k
 
             for file_descriptor, file_source in six.iteritems(
-                sources_dict
+                sources_dict_copy
             ):
 
                 ####### start globbing here
@@ -1157,7 +1268,7 @@ class SimulationComponent(object):    # Not needed for compute jobs at all
                     for new_source in all_file_sources:
                         running_index += 1
                         new_descriptor = file_descriptor + "_" + str(running_index)
-                        source_dict[new_descriptor] = new_source
+                        sources_dict[new_descriptor] = new_source
                         if file_category:
                             new_category = file_category + "_" + str(running_index)
                             self.config[filetype + "_files"][new_category] = new_descriptor
@@ -1165,7 +1276,7 @@ class SimulationComponent(object):    # Not needed for compute jobs at all
                             new_in_target = subfolder + new_source.rsplit("/", 1)[-1]
                             target_dict[new_descriptor] = new_in_target
 
-                    del source_dict[file_descriptor]
+                    del sources_dict[file_descriptor]
                     if file_category:
                         del self.config[filetype + "_files"][file_category]
                     if subfolder:   # implies target_dict
@@ -1174,9 +1285,18 @@ class SimulationComponent(object):    # Not needed for compute jobs at all
 
                 ######## end globbing stuff
 
+            if filetype + "_sources" in self.config:
+                sources_or_targets = copy.deepcopy(self.config[filetype + "_sources"])
+            elif filetype + "_targets" in self.config:
+                sources_or_targets = copy.deepcopy(self.config[filetype + "_targets"])
+            else:
+                print ("Neither sources not targets found for filetype " + filetype)
+                sys.exit(1)
+
             filedir_intermediate = self.config["thisrun_" + filetype + "_dir"]
+
             for file_descriptor, file_source in six.iteritems(
-                self.config[filetype + "_sources"]
+                sources_or_targets
             ):
                 if filetype == "restart_in":
                     file_source = self.config["parent_restart_dir"] + "/" + os.path.basename(file_source)
@@ -1237,11 +1357,11 @@ class SimulationComponent(object):    # Not needed for compute jobs at all
                     file_target = (
                         filedir_intermediate + "/" + this_target_name
                     )
-
-                    if "/" in this_target_name:
-                        subfolder = this_target_name.rsplit("/", 1)[0] + "/"
-                    else:
-                        subfolder = ""
+                    if not subfolder:
+                        if "/" in this_target_name:
+                            subfolder = this_target_name.rsplit("/", 1)[0] + "/"
+                        else:
+                            subfolder = ""
 
                     filetype_files.append(
                         (
@@ -1254,5 +1374,7 @@ class SimulationComponent(object):    # Not needed for compute jobs at all
 
             filetype_files_for_list[filetype] = filetype_files
             all_files_to_process += filetype_files
+
+            print (str(filetype_files))
         return all_files_to_process, filetype_files_for_list
 

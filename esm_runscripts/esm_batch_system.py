@@ -127,6 +127,8 @@ class esm_batch_system:
         header = esm_batch_system.get_batch_header(config)
         environment = esm_batch_system.get_environment(config)
 
+        print ("still alive")
+
         if config["general"]["jobtype"] == "compute":
             commands = esm_batch_system.get_run_commands(config)
             tidy_call =  "esm_runscripts " + config["general"]["scriptname"] + " -e " + config["general"]["expid"] + " -t tidy_and_resubmit -p ${process} -j "+config["general"]["jobtype"]

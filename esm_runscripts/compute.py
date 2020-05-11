@@ -105,6 +105,7 @@ class compute(jobclass.jobclass):
             config[model] = namelist.nmls_remove(config[model])
             config[model] = namelist.nmls_modify(config[model])
             config[model] = namelist.nmls_finalize(config[model])
+            print("end of namelist section")
         return config 
 
 
@@ -277,6 +278,7 @@ class compute(jobclass.jobclass):
             os.system( restart_command )
 
             gconfig["profile"] = False
+            print("what is going on???")
             compute.end_it_all(config)
 
 

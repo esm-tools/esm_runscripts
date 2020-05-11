@@ -53,12 +53,9 @@ class namelist:
     @staticmethod
     def nmls_modify(mconfig):
         import six
-        print ("beeep")
         namelist_changes = mconfig.get("namelist_changes", {})
         for namelist, changes in six.iteritems(namelist_changes):
             print(str(mconfig["namelists"][namelist]))
-            import sys
-            sys.exit(0)
             mconfig["namelists"][namelist].patch(changes)
         return mconfig
 
