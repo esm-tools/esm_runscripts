@@ -355,8 +355,8 @@ class jobclass:
             relevant_filetypes = config["general"]["out_filetypes"]
 
         for filetype in relevant_filetypes:
-            for model in config["general"]["valid_model_names"]:
-                if filetype + "_sources" in config[model]:
+            for model in config["general"]["valid_model_names"] + ["general"]:
+                if filetype + "_sources" in config[model] and not filetype == "ignore":
                     for categ in config[model][filetype + "_sources"]:
                         file_source = config[model][filetype + "_sources"][categ]
                         if target == "thisrun":
