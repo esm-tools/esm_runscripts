@@ -70,7 +70,15 @@ def rename_sources_to_targets(config):
 
 
 
-
+def complete_targets(config):
+    import os
+    for filetype in config["general"]["all_model_filetypes"]:
+        for model in config["general"]["valid_model_names"]:
+            if filetype + "_sources" in config[model]:
+                for categ in config[model][filetype + "_sources"]:
+                    if not categ in config[model][filetype + "_targets"]:
+                        config[model][filetype + "_targets"][categ] = os.path.basename(config[model][filetype + "_sources"][categ])
+    return config
 
 
 
@@ -174,6 +182,9 @@ def complete_restart_in(config):
         if "restart_in_sources" in config[model]:
             for categ in list(config[model]["restart_in_sources"].keys()):
                 if not config[model]["restart_in_sources"][categ].startswith("/"):
+                    print ("BBBBBBBBBOOOOOOOO " + model + " " + categ)
+                    import time
+                    time.sleep(2)
                     config[model]["restart_in_sources"][categ] = config[model]["parent_restart_dir"] + config[model]["restart_in_sources"][categ]
 
 
@@ -201,6 +212,7 @@ def assemble_intermediate_files_and_finalize_targets(config):
                     else:
                         target_dir = (config["general"]["thisrun_work_dir"]).replace("//", "/")
 
+                        
                     config[model][filetype + "_intermediate"][category] =  interm_dir + target_name
                     config[model][filetype + "_targets"][category] =  target_dir + target_name
 
@@ -257,31 +269,31 @@ def replace_year_placeholder(config):
 
 #@staticmethod
 def log_used_files(config, filetypes):
-    for model in self.config["general"]["valid_model_names"]:
+    for model in config["general"]["valid_model_names"]:
         with open(
-            self.config[model]["thisrun_config_dir"]
-            + "/"                + self.config["general"]["expid"]
+            config[model]["thisrun_config_dir"]
+            + "/"                + config["general"]["expid"]
             + "_filelist_"
-            + self.config["general"]["run_datestamp"],
+            + config["general"]["run_datestamp"],
             "w",
         ) as flist:
             flist.write(
                 "These files are used for \nexperiment %s\ncomponent %s\ndate %s"
                 % (
-                    self.config["general"]["expid"],
+                    config["general"]["expid"],
                     model,
-                    self.config["run_datestamp"],
+                    config["general"]["run_datestamp"],
                 )
             )
             flist.write("\n")
             flist.write(80 * "-")
             for filetype in filetypes:
-                if filetype + "_sources" in self.config[model]:
+                if filetype + "_sources" in config[model]:
                     flist.write("\n" + filetype.upper() + ":\n")
-                    for category in self.config[model][filetype + "_sources"]:
-                        flist.write("\nSource: " + self.config[model][filetype + "_sources"][category])
-                        flist.write("\nExp Tree: " + self.config[model][filetype + "_intermediate"][category])
-                        flist.write("\nTarget: " + self.config[model][filetype + "_targets"][category])
+                    for category in config[model][filetype + "_sources"]:
+                        flist.write("\nSource: " + config[model][filetype + "_sources"][category])
+                        flist.write("\nExp Tree: " + config[model][filetype + "_intermediate"][category])
+                        flist.write("\nTarget: " + config[model][filetype + "_targets"][category])
                         flist.write("\n")
                 flist.write("\n")
                 flist.write(80 * "-")
@@ -324,41 +336,47 @@ def find_correct_source(mconfig, file_source, year): # not needed in compute any
 
 
 
-    @staticmethod
-    def check_for_unknown_files(config):
-        import glob
-        #files = os.listdir(self.config["general"]["thisrun_work_dir"])
-        all_files = glob.iglob(config["general"]["thisrun_work_dir"] + '**/*', recursive = True)
+    #@staticmethod
+def check_for_unknown_files(config):
+    import glob
+    import os
+    import time
+    #files = os.listdir(self.config["general"]["thisrun_work_dir"])
+    all_files = glob.iglob(config["general"]["thisrun_work_dir"] + '**/*', recursive = True)
 
-        known_files = ["hostfile_srun", "namcouple"]
+    known_files = [config["general"]["thisrun_work_dir"] + "/" + "hostfile_srun", config["general"]["thisrun_work_dir"] + "/" + "namcouple"]
 
-        for filetype in config["general"]["all_filetypes"]:
-            for model in config["general"]["valid_model_names"]:
-                if filetype + "_sources" in config[model][filetype + "_sources"]:
-                    known_files.append(list(config[model][filetype + "_sources"].values()))
-                    known_files.append(list(config[model][filetype + "_targets"].values()))
+    for filetype in config["general"]["all_model_filetypes"]:
+        for model in config["general"]["valid_model_names"]:
+            if filetype + "_sources" in config[model]:
+                known_files += list(config[model][filetype + "_sources"].values())
+                known_files += list(config[model][filetype + "_targets"].values())
 
-        known_files = [os.path.realpath(known_file) for known_file in known_files]
-        known_files = list(dict(known_files))
+    known_files = [os.path.realpath(known_file) for known_file in known_files]
+    known_files = list(dict.fromkeys(known_files))
 
-        unknown_files = []
-        index = 0
+    unknown_files = []
+    index = 0
 
-        for thisfile in all_files:
-            if os.path.realpath(thisfile) in known_files + unknown_files:
-                continue
-            if not "unknown_sources" in config["general"]:
-                config["general"]["unknown_sources"] = {}
+    for thisfile in all_files:
+        
+        if os.path.realpath(thisfile) in known_files + unknown_files:
+            continue
+        if not "unknown_sources" in config["general"]:
+            config["general"]["unknown_sources"] = {}
+            config["general"]["unknown_targets"] = {}
+            config["general"]["unknown_intermediate"] = {}
 
-            config["general"]["unknown_sources"][index] = os.path.realpath(thisfile)
-            config["general"]["unknown_targets"][index] = os.path.realpath(thisfile).replace(os.path.realpath(config["general"]["thisrun_work_dir"]), os.path.realpath(config["general"]["experiment_unkown_dir"]))
-            config["general"]["unknown_intermediate"][index] = os.path.realpath(thisfile).replace(os.path.realpath(config["general"]["thisrun_work_dir"]), os.path.realpath(config["general"]["thisrun_unkown_dir"]))
-                
-            unknown_files.append(os.path.realpath(thisfile))
+        config["general"]["unknown_sources"][index] = os.path.realpath(thisfile)
+        config["general"]["unknown_targets"][index] = os.path.realpath(thisfile).replace(os.path.realpath(config["general"]["thisrun_work_dir"]), os.path.realpath(config["general"]["experiment_unknown_dir"]))
+        config["general"]["unknown_intermediate"][index] = os.path.realpath(thisfile).replace(os.path.realpath(config["general"]["thisrun_work_dir"]), os.path.realpath(config["general"]["thisrun_unknown_dir"]))
+            
+        unknown_files.append(os.path.realpath(thisfile))
 
-            index += 1        
-            print ("File is not in list: " + thisfile )
+        index += 1        
+        print ("File is not in list: " + thisfile )
 
+    return config
 
 
 

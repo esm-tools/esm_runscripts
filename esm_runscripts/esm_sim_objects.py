@@ -643,6 +643,11 @@ class SimulationSetup(object):
             self.finalize_file_lists(all_listed_filetypes)
             self.config = jobclass.jobclass.copy_files_from_work_to_thisrun(self.config)
 
+            import esm_parser
+            import sys
+            esm_parser.pprint_config(self.config)
+            sys.exit
+
             monitor_file.write("Copying stuff to main experiment folder \n")
             self.copy_all_results_to_exp()
 
@@ -842,22 +847,19 @@ class SimulationSetup(object):
 
         self.config = filelists.rename_sources_to_targets(self.config)
         self.config = filelists.choose_needed_files(self.config)
+        self.config = filelists.complete_targets(self.config)
         self.config = filelists.replace_year_placeholder(self.config)
 
 
     def finalize_file_lists(self, filetypes):
         # needs to be called right before copying
         from . import filelists
-        import esm_parser
-        import sys
 
         self.config = filelists.globbing(self.config)
         self.config = filelists.target_subfolders(self.config)
         self.config = filelists.assemble_intermediate_files_and_finalize_targets(self.config)
         self.config = filelists.complete_restart_in(self.config)
         self.config = filelists.check_for_unknown_files(self.config)
-        esm_parser.pprint_config(self.config)
-        sys.exit(0)
         self.config = filelists.log_used_files(self.config, filetypes)
 
 
@@ -871,7 +873,6 @@ class SimulationSetup(object):
     def merge_thisrun_into_experiment(config):
 
         import os
-        import filecmp
         # to should be thisrun, work or experiment
 
         for filetype in config["general"]["all_model_filetypes"]:
@@ -904,7 +905,7 @@ class SimulationSetup(object):
                 destination = source.replace(self.config["general"]["thisrun_dir"], self.config["general"]["experiment_dir"])
                 destination_path = destination.rsplit("/", 1)[0]
                 if not os.path.exists(destination_path):
-                    os.mkdir(destination_path)
+                    os.makedirs(destination_path)
                 if not os.path.islink(source):
                     if os.path.isfile(destination):
                         if filecmp.cmp(source, destination):

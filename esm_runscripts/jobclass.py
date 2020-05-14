@@ -350,9 +350,9 @@ class jobclass:
 
         relevant_filetypes = config["general"]["all_model_filetypes"]
         if target == "work" or source == "init":
-            relevant_filetypes = config["general"]["out_filetypes"]
-        else:
             relevant_filetypes = config["general"]["in_filetypes"]
+        else:
+            relevant_filetypes = config["general"]["out_filetypes"]
 
         for filetype in relevant_filetypes:
             for model in config["general"]["valid_model_names"]:
@@ -366,8 +366,10 @@ class jobclass:
                         dest_dir = file_target.rsplit("/", 1)[0]
                         try:
                             if not os.path.isdir(dest_dir):
-                                os.mkdirs(dest_dir)
+                                os.makedirs(dest_dir)
                             shutil.copy2(file_source, file_target)
+                            print ("Copying " + file_source)
+                            print ("        ---> " + file_target)
                             successful_files.append(file_source)
                         except IOError:
                             missing_files.update({file_target: file_source})
