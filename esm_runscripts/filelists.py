@@ -81,6 +81,17 @@ def complete_targets(config):
     return config
 
 
+def complete_sources(config):
+    import os
+    for filetype in config["general"]["out_filetypes"]:
+        for model in config["general"]["valid_model_names"]:
+            if filetype + "_sources" in config[model]:
+                for categ in config[model][filetype + "_sources"]:
+                    if not config[model][filetype + "_sources"][categ].startswith("/"):
+                        config[model][filetype + "_sources"][categ] = config["general"]["thisrun_work_dir"] + "/" + config[model][filetype + "_sources"][categ]
+    return config
+
+
 
 #@staticmethod
 def choose_needed_files(config):
@@ -144,8 +155,7 @@ def globbing(config):
                             running_index += 1
 
                         del config[model][filetype + "_targets"][descr]
-                                
-
+    
     return config
 
 
@@ -182,9 +192,6 @@ def complete_restart_in(config):
         if "restart_in_sources" in config[model]:
             for categ in list(config[model]["restart_in_sources"].keys()):
                 if not config[model]["restart_in_sources"][categ].startswith("/"):
-                    print ("BBBBBBBBBOOOOOOOO " + model + " " + categ)
-                    import time
-                    time.sleep(2)
                     config[model]["restart_in_sources"][categ] = config[model]["parent_restart_dir"] + config[model]["restart_in_sources"][categ]
 
 
@@ -208,7 +215,8 @@ def assemble_intermediate_files_and_finalize_targets(config):
                     if filetype in config["general"]["out_filetypes"]:
                         target_dir = (config[model]["experiment_" + filetype + "_dir"] + "/").replace("//", "/")
                         source_dir = (config["general"]["thisrun_work_dir"] + "/").replace("//", "/")
-                        config[model][filetype + "_sources"][category] =  source_dir + config[model][filetype + "_sources"][category]
+                        if not config[model][filetype + "_sources"][category].startswith("/"):
+                            config[model][filetype + "_sources"][category] =  source_dir + config[model][filetype + "_sources"][category]
                     else:
                         target_dir = (config["general"]["thisrun_work_dir"]).replace("//", "/")
 
@@ -360,6 +368,7 @@ def check_for_unknown_files(config):
 
     for thisfile in all_files:
         
+
         if os.path.realpath(thisfile) in known_files + unknown_files:
             continue
         if not "unknown_sources" in config["general"]:
@@ -374,7 +383,7 @@ def check_for_unknown_files(config):
         unknown_files.append(os.path.realpath(thisfile))
 
         index += 1        
-        print ("File is not in list: " + thisfile )
+        print ("File is not in list: " + os.path.realpath(thisfile) )
 
     return config
 

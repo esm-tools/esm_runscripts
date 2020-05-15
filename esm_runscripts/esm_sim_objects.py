@@ -848,6 +848,7 @@ class SimulationSetup(object):
         self.config = filelists.rename_sources_to_targets(self.config)
         self.config = filelists.choose_needed_files(self.config)
         self.config = filelists.complete_targets(self.config)
+        self.config = filelists.complete_sources(self.config)
         self.config = filelists.replace_year_placeholder(self.config)
 
 
