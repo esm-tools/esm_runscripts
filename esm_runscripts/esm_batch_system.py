@@ -83,6 +83,13 @@ class esm_batch_system:
                     tasks += config[model]["nproc"]
                 elif "nproca" in config[model] and "nprocb" in config[model]:
                     tasks += config[model]["nproca"] * config[model]["nprocb"]
+
+# kh 30.04.20 nprocrad is replaced by more flexible partitioning using nprocar and nprocbr
+#                   if "nprocrad" in config[model]:
+                    if "nprocar" in config[model] and "nprocbr" in config[model]:
+                        if config[model]["nprocar"] != "remove_from_namelist" and config[model]["nprocbr"] != "remove_from_namelist":
+                            tasks += config[model]["nprocar"] * config[model]["nprocbr"]
+
         elif config["general"]["jobtype"] == "post":
             tasks = 1
         return tasks
