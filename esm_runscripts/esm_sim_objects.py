@@ -131,7 +131,7 @@ class SimulationSetup(object):
             post_task_list = self._assemble_postprocess_tasks(post_file)
             self.config["general"]["post_task_list"] = post_task_list
             esm_batch_system.write_simple_runscript(self.config)
-            self.submit()
+            self.config = esm_batch_system.submit(self.config)
 
     def _assemble_postprocess_tasks(self, post_file):
         """
