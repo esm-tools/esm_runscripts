@@ -112,6 +112,7 @@ class SimulationSetup(object):
 
 
     def postprocess(self):
+        from . import esm_batch_system
         """
         Calls post processing routines for this run.
         """
