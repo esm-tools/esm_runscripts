@@ -158,7 +158,7 @@ class jobclass:
             for file_descriptor, file_source in six.iteritems(
                 modelconfig[filetype + "_sources"]
             ):
-                if filetype == "restart_in":
+                if filetype == "restart_in" and not file_source.startswith("/"):
                     file_source =  modelconfig["parent_restart_dir"] + "/" + os.path.basename(file_source)
                 logging.debug(
                     "file_descriptor=%s, file_source=%s", file_descriptor, file_source
@@ -425,13 +425,14 @@ class jobclass:
                 file_target = config["general"]["thisrun_work_dir"] + "/" + subfolder + filename_work
                 dest_dir = config["general"]["thisrun_work_dir"] + "/" + subfolder
 
-            try:
-                if not os.path.isdir(dest_dir):
-                    os.mkdir(dest_dir)
-                shutil.copy2(file_source, file_target)
-                successful_files.append(file_source)
-            except IOError:
-                missing_files.update({file_target: file_source})
+            if not os.path.isdir(file_source):
+                try:
+                    if not os.path.isdir(dest_dir):
+                        os.mkdir(dest_dir)
+                    shutil.copy2(file_source, file_target)
+                    successful_files.append(file_source)
+                except IOError:
+                    missing_files.update({file_target: file_source})
         if missing_files:
             if not "files_missing_when_preparing_run" in config["general"]:
                 config["general"]["files_missing_when_preparing_run"] = {}

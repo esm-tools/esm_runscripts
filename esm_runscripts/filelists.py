@@ -183,6 +183,9 @@ def target_subfolders(config):
 
 
 def complete_restart_in(config):
+    import esm_parser
+    print("BEFORE COMPLETE RESTART: ")
+    esm_parser.pprint_config(config)
     for model in config["general"]["valid_model_names"]:
         if not config[model]["lresume"] and config["general"]["run_number"] == 1:
             if "restart_in_sources" in config[model]:
@@ -194,6 +197,9 @@ def complete_restart_in(config):
                 if not config[model]["restart_in_sources"][categ].startswith("/"):
                     config[model]["restart_in_sources"][categ] = config[model]["parent_restart_dir"] + config[model]["restart_in_sources"][categ]
 
+
+    print("AFTER COMPLETE RESTART: ")
+    esm_parser.pprint_config(config)
 
     return config
 
