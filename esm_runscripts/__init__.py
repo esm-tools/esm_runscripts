@@ -2,7 +2,7 @@
 
 __author__ = """Dirk Barbi"""
 __email__ = 'dirk.barbi@awi.de'
-__version__ = "4.0.2"
+__version__ = "4.0.3"
 
 from .esm_sim_objects import *
 from .esm_batch_system import *
