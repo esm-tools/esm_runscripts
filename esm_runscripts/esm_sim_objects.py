@@ -596,7 +596,7 @@ class SimulationSetup(object):
                         flist.write("\nExp Tree: " + exp_tree + subfolder + exp_name)
                         flist.write("\nWork Dir: " + subfolder + work_dir_name)
                         flist.write("\n")
-                        print ("-  " + subfolder + work_dir_name +": " + source) 
+                        print ("-  " + subfolder + work_dir_name +": " + source)
                     flist.write("\n")
                     flist.write(80 * "-")
             #esm_parser.pprint_config(filetype_specific_dict)
@@ -1183,7 +1183,7 @@ class SimulationComponent(object):    # Not needed for compute jobs at all
                     if (
                        "need_year_after" in self.config[filetype + "_additional_information"][file_category]
                     ):
-                        all_years.append(self.general_config["next_date"].year + 1 )
+                        all_years.append(self.general_config["current_date"].year + 1 )
 
                 all_years = list(dict.fromkeys(all_years)) # removes duplicates
 

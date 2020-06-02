@@ -11,7 +11,7 @@ class jobclass:
         import esm_rcfile
         self.recipefile = esm_rcfile.FUNCTION_PATH + "/esm_runscripts/esm_runscripts.yaml"
         self.pluginsfile = esm_rcfile.FUNCTION_PATH + "/esm_runscripts/esm_plugins.yaml"
-    
+
         import esm_plugin_manager
         self.framework_recipe = esm_plugin_manager.read_recipe(self.recipefile, {"job_type": job_type})
         self.framework_plugins = esm_plugin_manager.read_plugin_information(self.pluginsfile, self.framework_recipe)
@@ -74,7 +74,7 @@ class jobclass:
                         flist.write("\nExp Tree: " + exp_tree + subfolder + exp_name)
                         flist.write("\nWork Dir: " + subfolder + work_dir_name)
                         flist.write("\n")
-                        print ("-  " + subfolder + work_dir_name +": " + source) 
+                        print ("-  " + subfolder + work_dir_name +": " + source)
                     flist.write("\n")
                     flist.write(80 * "-")
 
@@ -198,7 +198,7 @@ class jobclass:
                     if (
                        "need_year_after" in modelconfig[filetype + "_additional_information"][file_category]
                     ):
-                        all_years.append(general_config["next_date"].year + 1 )
+                        all_years.append(general_config["current_date"].year + 1 )
 
                 all_years = list(dict.fromkeys(all_years)) # removes duplicates
 
@@ -360,7 +360,7 @@ class jobclass:
 
             if target == "thisrun":
                 file_target = filedir_intermediate + "/" + subfolder + filename_work
-                dest_dir = filedir_intermediate + "/" + subfolder 
+                dest_dir = filedir_intermediate + "/" + subfolder
             elif target == "work":
                 file_target = config["general"]["thisrun_work_dir"] + "/" + subfolder + filename_work
                 dest_dir = config["general"]["thisrun_work_dir"] + "/" + subfolder
