@@ -684,6 +684,11 @@ class SimulationSetup(object):
             monitor_file.write("tidy job initialized \n")
             monitor_file.write("attaching to process " + str(self.config["general"]["launcher_pid"]) + " \n")
             monitor_file.write("Called from a " + called_from + "job \n")
+            last_jobid = "UNKNOWN"
+            if called_from == "compute":
+                with open(self.config["general"]["experiment_log_file"], "r") as logfile:
+                    lastline = logfile.readlines()[-1]
+                    last_jobid = lastline.split(" - ")[0].split()[-1]
             #monitoring_events=self.assemble_monitoring_events()
 
             filetypes=["log", "mon", "outdata", "restart_out"]
@@ -699,7 +704,7 @@ class SimulationSetup(object):
                     called_from,
                     str(self.config["general"]["run_number"]),
                     str(self.config["general"]["current_date"]),
-                    str(self.config["general"]["jobid"]),
+                    last_jobid,
                     "- done"])
             # Tell the world you're cleaning up:
             jobclass.jobclass.write_to_log(self.config, [
