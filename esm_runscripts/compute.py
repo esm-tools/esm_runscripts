@@ -277,7 +277,7 @@ class compute(jobclass.jobclass):
             os.system( restart_command )
 
             gconfig["profile"] = False
-            compute.end_it_all(config)
+            compute.end_it_all(config, silent=True)
 
 
     @staticmethod

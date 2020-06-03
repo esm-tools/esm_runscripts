@@ -45,6 +45,8 @@ class SimulationSetup(object):
             self.command_line_config = command_line_config
         if not user_config:
             user_config = self.get_user_config_from_command_line(command_line_config)
+        if user_config["general"].get("debug_obj_init", False):
+            import pdb; pdb.set_trace()
         self.get_total_config_from_user_config(user_config)
 
     def __call__(self, *args, **kwargs):

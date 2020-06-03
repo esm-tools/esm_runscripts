@@ -275,12 +275,13 @@ class jobclass:
 
 
     @staticmethod
-    def end_it_all(config):
+    def end_it_all(config, silent=False):
         import sys
         if config["general"]["profile"]:
             for line in timing_info:
                 print(line)
-        print("Exiting entire Python process!")
+        if not silent:
+            print("Exiting entire Python process!")
         sys.exit()
 
 
