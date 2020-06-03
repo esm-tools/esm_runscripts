@@ -281,7 +281,7 @@ class jobclass:
             for line in timing_info:
                 print(line)
         if not silent:
-        print("Exiting entire Python process!")
+            print("Exiting entire Python process!")
         sys.exit()
 
 
