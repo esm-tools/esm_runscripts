@@ -687,7 +687,7 @@ class SimulationSetup(object):
             last_jobid = "UNKNOWN"
             if called_from == "compute":
                 with open(self.config["general"]["experiment_log_file"], "r") as logfile:
-                    lastline = logfile.readlines()[-1]
+                    lastline = [l for l in logfile.readlines() if "compute" in l and "start" in l][-1]
                     last_jobid = lastline.split(" - ")[0].split()[-1]
             #monitoring_events=self.assemble_monitoring_events()
 
