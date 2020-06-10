@@ -1,15 +1,19 @@
 import sys
 known_batch_systems = ["slurm"]
 
+from .slurm import Slurm
+
+class UnknownBatchSystemError(Exception):
+    """Raise this exception when an unknown batch system is encountered"""
+
+
 class esm_batch_system:
     def __init__(self, config, name):
         self.name = name
         if name == "slurm":
-            from . import slurm
-            self.bs = slurm.slurm(config)
+            self.bs = Slurm(config)
         else:
-            print ("Unknown batch system: ", name)
-            sys.exit(1)
+            raise UnknownBatchSystemError(name)
 
     def check_if_submitted(self):
         return self.bs.check_if_submitted()
@@ -84,8 +88,8 @@ class esm_batch_system:
                 elif "nproca" in config[model] and "nprocb" in config[model]:
                     tasks += config[model]["nproca"] * config[model]["nprocb"]
 
-# kh 30.04.20 nprocrad is replaced by more flexible partitioning using nprocar and nprocbr
-#                   if "nprocrad" in config[model]:
+                    # KH 30.04.20: nprocrad is replaced by more flexible
+                    # partitioning using nprocar and nprocbr
                     if "nprocar" in config[model] and "nprocbr" in config[model]:
                         if config[model]["nprocar"] != "remove_from_namelist" and config[model]["nprocbr"] != "remove_from_namelist":
                             tasks += config[model]["nprocar"] * config[model]["nprocbr"]
@@ -106,7 +110,7 @@ class esm_batch_system:
 
 
 
-    @staticmethod 
+    @staticmethod
     def get_run_commands(config):  # here or in compute.py?
         commands = []
         batch_system = config["computer"]
@@ -138,7 +142,7 @@ class esm_batch_system:
             commands = esm_batch_system.get_run_commands(config)
             tidy_call =  "esm_runscripts " + config["general"]["scriptname"] + " -e " + config["general"]["expid"] + " -t tidy_and_resubmit -p ${process} -j "+config["general"]["jobtype"]
         elif config["general"]["jobtype"] == "postprocess":
-            tidy_call = "" 
+            tidy_call = ""
             commands = config["general"]["post_task_list"]
 
         with open(sadfilename, "w") as sadfile:
@@ -171,7 +175,7 @@ class esm_batch_system:
         return config
 
 
-    @staticmethod    
+    @staticmethod
     def submit(config):
         import six
         import os
