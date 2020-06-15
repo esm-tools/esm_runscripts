@@ -4,7 +4,7 @@ from . import jobclass
     #                                   compute jobs                                        #
     #########################################################################################
 
-class compute(jobclass.jobclass):
+class compute(jobclass):
 
 
     def __init__(self, config):
@@ -206,7 +206,7 @@ class compute(jobclass.jobclass):
                     str(config["general"]["run_number"]),
                     str(config["general"]["current_date"]),
                     str(config["general"]["jobid"]),
-                    "- start",
+                    "- submitted",
                 ]
             )
         return config

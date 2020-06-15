@@ -328,22 +328,32 @@ class jobclass:
            programmer passes a ``message_sep`` argument; this one wins over
            the user choice.
         """
-        from datetime import datetime
         try:
             with open(config["general"]["experiment_log_file"], "a+") as logfile:
-                dateTimeObj = datetime.now()
-                strftime_str = config["general"].get("experiment_log_file_dateformat", "%c")
-                if message_sep is None:
-                    message_sep = config["general"].get("experiment_log_file_message_sep", " ")
-                timestampStr = dateTimeObj.strftime(strftime_str)
-                # TODO: Do we want to be able to specify a timestamp seperator as well?
-                line = timestampStr + " : " + message_sep.join(message)
+                line = jobclass.assemble_log_message(config, message, message_sep)
                 logfile.write(line + "\n")
         except KeyError:
             print("Sorry; couldn't find 'experiment_log_file' in config['general']...")
             esm_parser.pprint_config(self.config["general"])
             raise
 
+
+    @staticmethod
+    def assemble_log_message(config, message, message_sep=None, timestampStr_from_Unix=False):
+        """Assembles message for log file. See doc for write_to_log"""
+        from datetime import datetime
+        message = [str(i) for i in message]
+        dateTimeObj = datetime.now()
+        strftime_str = config["general"].get("experiment_log_file_dateformat", "%c")
+        if message_sep is None:
+            message_sep = config["general"].get("experiment_log_file_message_sep", " ")
+        if timestampStr_from_Unix:
+            timestampStr = "$(date +"+strftime_str+")"
+        else:
+            timestampStr = dateTimeObj.strftime(strftime_str)
+        # TODO: Do we want to be able to specify a timestamp seperator as well?
+        line = timestampStr + " : " + message_sep.join(message)
+        return line
 
 
     @staticmethod
