@@ -65,9 +65,6 @@ class SimulationSetup(object):
 
 
 ###################################     COMPUTE      #############################################################
-
-
-
     def compute(self, kill_after_submit=True):  # supposed to be reduced to a stump
         """
         All steps needed for a model computation.
@@ -78,19 +75,14 @@ class SimulationSetup(object):
             Default ``True``. If set, the entire Python instance is killed with
             a ``sys.exit()`` as the very last after job submission.
         """
-
         from . import compute
         Compute = compute(self.config)
         self.config = Compute.evaluate(self.config)
 
-        print ("I am here!!!")
-
         if kill_after_submit:
             self.end_it_all()
 
-
-
-
+    # NOTE(PG): No longer needed...? Defined also in jobclass...?
     def end_it_all(self):
         import sys
         if self.config["general"]["profile"]:
@@ -98,13 +90,6 @@ class SimulationSetup(object):
                 print(line)
         print("Exiting entire Python process!")
         sys.exit()
-
-
-
-
-
-
-
 
 ###############################################       POSTPROCESS ######################################
 
@@ -630,8 +615,6 @@ class SimulationSetup(object):
             if self.config["general"]["standalone"] == False:
                 self.coupler.tidy(self.config)
             monitor_file.write("job ended, starting to tidy up now \n")
-            filetypes=["log", "mon", "outdata", "restart_out"]
-            all_files_to_copy=self.assemble_file_lists(filetypes)
             # Log job completion
             if called_from != "command_line":
                 jobclass.jobclass.write_to_log(self.config, [
@@ -656,7 +639,6 @@ class SimulationSetup(object):
             import esm_parser
             import sys
             esm_parser.pprint_config(self.config)
-            sys.exit
 
             monitor_file.write("Copying stuff to main experiment folder \n")
             self.copy_all_results_to_exp()
