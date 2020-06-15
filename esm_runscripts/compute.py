@@ -105,7 +105,8 @@ class compute(jobclass.jobclass):
             config[model] = namelist.nmls_remove(config[model])
             config[model] = namelist.nmls_modify(config[model])
             config[model] = namelist.nmls_finalize(config[model])
-        return config 
+            print("end of namelist section")
+        return config
 
 
 
@@ -199,7 +200,7 @@ class compute(jobclass.jobclass):
                 os.remove(config["general"]["experiment_log_file"])
             compute.write_to_log(config, ["# Beginning of Experiment " + config["general"]["expid"]], message_sep="")
 
-        compute.write_to_log( config, 
+        compute.write_to_log( config,
                 [
                     str(config["general"]["jobtype"]),
                     str(config["general"]["run_number"]),
@@ -248,9 +249,9 @@ class compute(jobclass.jobclass):
 
         if not os.path.isdir(tools_dir):
             print("Copying from: ", esm_rcfile.FUNCTION_PATH)
-            shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir) 
+            shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir)
         if not os.path.isdir(namelists_dir):
-            shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir) 
+            shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir)
 
         if (fromdir == scriptsdir) and not gconfig["update"]:
             print ("Started from the experiment folder, continuing...")
@@ -272,7 +273,7 @@ class compute(jobclass.jobclass):
 
             restart_command = ("cd " + scriptsdir + "; " + \
                                "esm_runscripts " + \
-                               gconfig["original_command"].replace("-U", ""))           
+                               gconfig["original_command"].replace("-U", ""))
             print (restart_command)
             os.system( restart_command )
 

@@ -173,7 +173,7 @@ class jobclass:
             for file_descriptor, file_source in six.iteritems(
                 modelconfig[filetype + "_sources"]
             ):
-                if filetype == "restart_in":
+                if filetype == "restart_in" and not file_source.startswith("/"):
                     file_source =  modelconfig["parent_restart_dir"] + "/" + os.path.basename(file_source)
                 logging.debug(
                     "file_descriptor=%s, file_source=%s", file_descriptor, file_source
@@ -345,6 +345,66 @@ class jobclass:
             raise
 
 
+
+    @staticmethod
+    def copy_files_from_work_to_thisrun(config, target = "thisrun", source = "work"):
+        import logging
+        import os
+        import shutil
+        # idea is to unify all the copy routines by giving a parameter that tells from where to where stuff is to be copied
+
+        # source = "init", "thisrun", "work"
+        # target = "thisrun", "work", "experiment"
+
+        six.print_("=" * 80, "\n")
+        six.print_("COPYING STUFF FROM " + source.upper() + " TO " + target.upper() + " FOLDERS")
+
+        successful_files = []
+        missing_files = {}
+        # TODO: Check if we are on login node or elsewhere for the progress
+        # bar, it doesn't make sense on the compute nodes:
+
+        relevant_filetypes = config["general"]["all_model_filetypes"]
+        if target == "work" or source == "init":
+            relevant_filetypes = config["general"]["in_filetypes"]
+        else:
+            relevant_filetypes = config["general"]["out_filetypes"]
+
+        for filetype in relevant_filetypes:
+            for model in config["general"]["valid_model_names"] + ["general"]:
+                if filetype + "_sources" in config[model] and not filetype == "ignore":
+                    for categ in config[model][filetype + "_sources"]:
+                        file_source = config[model][filetype + "_sources"][categ]
+                        if target == "thisrun":
+                            file_target = config[model][filetype + "_intermediate"][categ]
+                        else:
+                            file_target = config[model][filetype + "_targets"][categ]
+                        dest_dir = file_target.rsplit("/", 1)[0]
+                        try:
+                            if not os.path.isdir(dest_dir):
+                                os.makedirs(dest_dir)
+                            shutil.copy2(file_source, file_target)
+                            print ("Copying " + file_source)
+                            print ("        ---> " + file_target)
+                            successful_files.append(file_source)
+                        except IOError:
+                            missing_files.update({file_target: file_source})
+        if missing_files:
+            if not "files_missing_when_preparing_run" in config["general"]:
+                config["general"]["files_missing_when_preparing_run"] = {}
+            six.print_("--- WARNING: These files were missing:")
+            for missing_file in missing_files:
+                print( "  - " + missing_file + ": " + missing_files[missing_file])
+            config["general"]["files_missing_when_preparing_run"].update(missing_files)
+        return config
+
+
+
+
+
+
+
+
     @staticmethod
     def copy_files(config, flist, source, target):
         import tqdm
@@ -381,13 +441,14 @@ class jobclass:
                 file_target = config["general"]["thisrun_work_dir"] + "/" + subfolder + filename_work
                 dest_dir = config["general"]["thisrun_work_dir"] + "/" + subfolder
 
-            try:
-                if not os.path.isdir(dest_dir):
-                    os.mkdir(dest_dir)
-                shutil.copy2(file_source, file_target)
-                successful_files.append(file_source)
-            except IOError:
-                missing_files.update({file_target: file_source})
+            if not os.path.isdir(file_source):
+                try:
+                    if not os.path.isdir(dest_dir):
+                        os.mkdir(dest_dir)
+                    shutil.copy2(file_source, file_target)
+                    successful_files.append(file_source)
+                except IOError:
+                    missing_files.update({file_target: file_source})
         if missing_files:
             if not "files_missing_when_preparing_run" in config["general"]:
                 config["general"]["files_missing_when_preparing_run"] = {}

@@ -138,10 +138,13 @@ class esm_batch_system:
         header = esm_batch_system.get_batch_header(config)
         environment = esm_batch_system.get_environment(config)
 
+        print ("still alive")
+        print ("jobtype: ", config["general"]["jobtype"])
+
         if config["general"]["jobtype"] == "compute":
             commands = esm_batch_system.get_run_commands(config)
             tidy_call =  "esm_runscripts " + config["general"]["scriptname"] + " -e " + config["general"]["expid"] + " -t tidy_and_resubmit -p ${process} -j "+config["general"]["jobtype"]
-        elif config["general"]["jobtype"] == "postprocess":
+        elif config["general"]["jobtype"] == "post":
             tidy_call = ""
             commands = config["general"]["post_task_list"]
 
