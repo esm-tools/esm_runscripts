@@ -65,9 +65,6 @@ class SimulationSetup(object):
 
 
 ###################################     COMPUTE      #############################################################
-
-
-
     def compute(self, kill_after_submit=True):  # supposed to be reduced to a stump
         """
         All steps needed for a model computation.
@@ -78,7 +75,6 @@ class SimulationSetup(object):
             Default ``True``. If set, the entire Python instance is killed with
             a ``sys.exit()`` as the very last after job submission.
         """
-
         from . import compute
         Compute = compute(self.config)
         self.config = Compute.evaluate(self.config)
@@ -86,9 +82,7 @@ class SimulationSetup(object):
         if kill_after_submit:
             self.end_it_all()
 
-
-
-
+    # NOTE(PG): No longer needed...? Defined also in jobclass...?
     def end_it_all(self):
         import sys
         if self.config["general"]["profile"]:
@@ -96,13 +90,6 @@ class SimulationSetup(object):
                 print(line)
         print("Exiting entire Python process!")
         sys.exit()
-
-
-
-
-
-
-
 
 ###############################################       POSTPROCESS ######################################
 
@@ -112,6 +99,7 @@ class SimulationSetup(object):
 
 
     def postprocess(self):
+        from . import esm_batch_system
         """
         Calls post processing routines for this run.
         """
@@ -130,7 +118,7 @@ class SimulationSetup(object):
             post_task_list = self._assemble_postprocess_tasks(post_file)
             self.config["general"]["post_task_list"] = post_task_list
             esm_batch_system.write_simple_runscript(self.config)
-            self.submit()
+            self.config = esm_batch_system.submit(self.config)
 
     def _assemble_postprocess_tasks(self, post_file):
         """
@@ -148,14 +136,14 @@ class SimulationSetup(object):
             to the sad file.
         """
         post_task_list = []
-        for component in self.components:
+        for component in self.config["general"]["valid_model_names"]:
             post_file.write(40*"+ "+"\n")
             post_file.write("Generating post-processing tasks for: %s \n" % component)
 
             post_task_list.append("\n#Postprocessing %s\n" % component)
-            post_task_list.append("cd "+component.config["experiment_outdata_dir"]+"\n")
+            post_task_list.append("cd "+ self.config[component]["experiment_outdata_dir"]+"\n")
 
-            pconfig_tasks = component.config.get('postprocess_tasks', {})
+            pconfig_tasks = self.config[component].get('postprocess_tasks', {})
             post_file.write("Configuration for post processing: %s \n" % pconfig_tasks)
             for outfile in pconfig_tasks:
                 post_file.write("Generating task to create: %s \n" % outfile)
@@ -164,8 +152,8 @@ class SimulationSetup(object):
                 # ChainMap here for more than just the bottom...
                 #
                 # Run CDO tasks (default)
-                task_definition = component.config.get("postprocess_task_definitions", {}).get(ofile_config['post_process'])
-                method_definition = component.config.get("postprocess_method_definitions", {}).get(task_definition['method'])
+                task_definition = self.config[component].get("postprocess_task_definitions", {}).get(ofile_config['post_process'])
+                method_definition = self.config[component].get("postprocess_method_definitions", {}).get(task_definition['method'])
 
                 program = method_definition.get("program", task_definition["method"])
 
@@ -259,7 +247,6 @@ class SimulationSetup(object):
         self.set_prev_date()
 
         self.config.finalize()
-        self._initialize_components()
         self.add_submission_info()
         self.initialize_batch_system()
 
@@ -280,6 +267,8 @@ class SimulationSetup(object):
 
     def _add_all_folders(self):
         self.all_filetypes = ["analysis", "config", "log", "mon", "scripts", "ignore",  "unknown"]
+        self.config["general"]["out_filetypes"] = ["analysis", "log", "mon", "scripts", "ignore",  "unknown", "outdata", "restart_out"]
+        self.config["general"]["in_filetypes"] = ["scripts", "input", "forcing", "bin", "config", "restart_in"]
         self.all_filetypes.append("work")
         self.config["general"]["thisrun_dir"] = self.config["general"]["experiment_dir"] + "/run_" + self.run_datestamp
 
@@ -389,32 +378,6 @@ class SimulationSetup(object):
     #########################       PREPARE EXPERIMENT / WORK    #############################
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    def _initialize_components(self):    # do i need that?
-        components = []
-        for component in self.config["general"]["valid_model_names"]:
-            components.append(
-                SimulationComponent(self.config["general"], self.config[component])
-            )
-        self.components = components
 
     def _create_toplevel_marker_file(self):
         if not os.path.isfile(self.config['thisrun_']):
@@ -531,6 +494,7 @@ class SimulationSetup(object):
         )
         config["general"]["last_run_datestamp"] = self.last_run_datestamp
 
+
     def set_prev_date(self):
         for model in self.config["general"]["valid_model_names"]:
             if "time_step" in self.config[model] and not (type(self.config[model]["time_step"]) == str and "${" in self.config[model]["time_step"]):
@@ -560,51 +524,6 @@ class SimulationSetup(object):
                     "experiment_restart_in_dir"
                 ]
             #print (model + "   " + str(self.config[model]["parent_date"]))
-
-
-    def assemble_file_lists(self, filetypes): # not needed for compute anymore, moved to jobclass...
-        all_files_to_copy = []
-        six.print_("\n" "- Generating file lists for this run...")
-        for component in self.components:
-            six.print_("-" * 80)
-            six.print_("* %s" % component.config["model"], "\n")
-            all_component_files, filetype_specific_dict = (
-                component.filesystem_to_experiment(filetypes)
-            )
-            with open(
-                component.config["thisrun_config_dir"]
-                + "/"
-                + self.config["general"]["expid"]
-                + "_filelist_"
-                + self.run_datestamp,
-                "w",
-            ) as flist:
-                flist.write(
-                    "These files are used for \nexperiment %s\ncomponent %s\ndate %s"
-                    % (
-                        self.config["general"]["expid"],
-                        component.config["model"],
-                        self.run_datestamp,
-                    )
-                )
-                flist.write("\n")
-                flist.write(80 * "-")
-                for filetype in filetype_specific_dict:
-                    flist.write("\n" + filetype.upper() + ":\n")
-                    for source, exp_tree, exp_name, work_dir_name, subfolder  in filetype_specific_dict[
-                        filetype
-                    ]:
-                        flist.write("\nSource: " + source)
-                        flist.write("\nExp Tree: " + exp_tree + subfolder + exp_name)
-                        flist.write("\nWork Dir: " + subfolder + work_dir_name)
-                        flist.write("\n")
-                        print ("-  " + subfolder + work_dir_name +": " + source)
-                    flist.write("\n")
-                    flist.write(80 * "-")
-            #esm_parser.pprint_config(filetype_specific_dict)
-            all_files_to_copy += all_component_files
-        return all_files_to_copy
-
 
 
     def init_coupler(self):
@@ -684,10 +603,13 @@ class SimulationSetup(object):
             monitor_file.write("tidy job initialized \n")
             monitor_file.write("attaching to process " + str(self.config["general"]["launcher_pid"]) + " \n")
             monitor_file.write("Called from a " + called_from + "job \n")
+            last_jobid = "UNKNOWN"
+            if called_from == "compute":
+                with open(self.config["general"]["experiment_log_file"], "r") as logfile:
+                    lastline = [l for l in logfile.readlines() if "compute" in l and "start" in l][-1]
+                    last_jobid = lastline.split(" - ")[0].split()[-1]
             #monitoring_events=self.assemble_monitoring_events()
 
-            filetypes=["log", "mon", "outdata", "restart_out"]
-            all_files_to_copy=self.assemble_file_lists(filetypes)
             if self.config["general"]["submitted"]:
                 self.wait_and_observe(monitor_file)
             if self.config["general"]["standalone"] == False:
@@ -695,23 +617,28 @@ class SimulationSetup(object):
             monitor_file.write("job ended, starting to tidy up now \n")
             # Log job completion
             if called_from != "command_line":
-                jobclass.jobclass.write_to_log(self.config, [
+                jobclass.write_to_log(self.config, [
                     called_from,
                     str(self.config["general"]["run_number"]),
                     str(self.config["general"]["current_date"]),
-                    str(self.config["general"]["jobid"]),
+                    last_jobid,
                     "- done"])
             # Tell the world you're cleaning up:
-            jobclass.jobclass.write_to_log(self.config, [
+            jobclass.write_to_log(self.config, [
                 str(self.config["general"]["jobtype"]),
                 str(self.config["general"]["run_number"]),
                 str(self.config["general"]["current_date"]),
                 str(self.config["general"]["jobid"]),
                 "- start"])
-            self.copy_files_from_work_to_thisrun(all_files_to_copy)
+
             all_listed_filetypes=["log", "mon", "outdata", "restart_out","bin", "config", "forcing", "input", "restart_in", "ignore"]
-            all_files_to_check = self.assemble_file_lists(all_listed_filetypes)
-            self.check_for_unknown_files(all_files_to_check)
+            self.assemble_file_lists()
+            self.finalize_file_lists(all_listed_filetypes)
+            self.config = jobclass.copy_files_from_work_to_thisrun(self.config)
+
+            import esm_parser
+            import sys
+            esm_parser.pprint_config(self.config)
 
             monitor_file.write("Copying stuff to main experiment folder \n")
             self.copy_all_results_to_exp()
@@ -742,7 +669,7 @@ class SimulationSetup(object):
             self.command_line_config["jobtype"] = "compute"
             self.command_line_config["original_command"] = self.command_line_config["original_command"].replace("tidy_and_resubmit", "compute")
 
-            jobclass.jobclass.write_to_log(self.config, [
+            jobclass.write_to_log(self.config, [
                 str(self.config["general"]["jobtype"]),
                 str(self.config["general"]["run_number"]),
                 str(self.config["general"]["current_date"]),
@@ -754,7 +681,7 @@ class SimulationSetup(object):
 
             if self.config["general"]["end_date"] >= self.config["general"]["final_date"]:
                 monitor_file.write("Reached the end of the simulation, quitting...\n")
-                jobclass.jobclass.write_to_log(self.config, ["# Experiment over"], message_sep="")
+                jobclass.write_to_log(self.config, ["# Experiment over"], message_sep="")
             else:
                 monitor_file.write("Init for next run:\n")
                 next_compute = SimulationSetup(self.command_line_config)
@@ -763,86 +690,6 @@ class SimulationSetup(object):
 
 
 
-    def copy_all_results_to_exp(self):
-        import filecmp
-
-        for root, dirs, files in os.walk(self.config["general"]["thisrun_dir"], topdown=False):
-            print ("Working on folder: " + root)
-            if root.startswith(self.config["general"]["thisrun_work_dir"]) or root.endswith("/work"):
-                print ("Skipping files in work.")
-                continue
-            for name in files:
-                source = os.path.join(root, name)
-                print ("File: " + source)
-                destination = source.replace(self.config["general"]["thisrun_dir"], self.config["general"]["experiment_dir"])
-                destination_path = destination.rsplit("/", 1)[0]
-                if not os.path.exists(destination_path):
-                    os.mkdir(destination_path)
-                if not os.path.islink(source):
-                    if os.path.isfile(destination):
-                        if filecmp.cmp(source, destination):
-                            print ("File " + source + " has not changed, skipping.")
-                            continue
-                        else:
-                            if os.path.isfile(destination + "_" + self.run_datestamp):
-                                print ("Don't know where to move " + destination +", file exists")
-                                continue
-                            else:
-                                if os.path.islink(destination):
-                                    os.remove(destination)
-                                else:
-                                    os.rename(destination, destination + "_" + self.last_run_datestamp)
-                                newdestination = destination + "_" + self.run_datestamp
-                                print ("Moving file " + source + " to " + newdestination)
-                                os.rename(source, newdestination)
-                                os.symlink(newdestination, destination)
-                                continue
-                    try:
-                        print ("Moving file " + source + " to " + destination)
-                        os.rename(source, destination)
-                    except:
-                        print(">>>>>>>>>  Something went wrong moving " + source + " to " + destination)
-                else:
-                    linkdest = os.path.realpath(source)
-                    newlinkdest = destination.rsplit("/", 1)[0] + "/" + linkdest.rsplit("/", 1)[-1]
-                    if os.path.islink(destination):
-                        os.remove(destination)
-                    if os.path.isfile(destination):
-                        os.rename(destination, destination + "_" + self.last_run_datestamp)
-                    os.symlink(newlinkdest, destination)
-
-    def check_for_unknown_files(self, listed_files):
-        import glob
-        #files = os.listdir(self.config["general"]["thisrun_work_dir"])
-        files = glob.iglob(self.config["general"]["thisrun_work_dir"] + '**/*', recursive = True)
-        known_files = ["hostfile_srun", "namcouple"]
-        unknown_files = []
-        for thisfile in files:
-            if thisfile.rsplit("/", 1)[0] in known_files:
-                break
-            found = False
-            file_in_list = False
-            file_in_work = False
-            if os.path.isfile(thisfile):
-                for (file_source, filedir_interm, filename_interm, filename_target, subfolder) in listed_files:
-                    file_intermediate = filedir_interm + subfolder + filename_interm
-                    #print (file_target.split("/", -1)[-1] + "    " + thisfile)
-                    if os.path.join(self.config["general"]["thisrun_work_dir"], subfolder + filename_target)  == thisfile:
-                        file_in_list = True
-                        if "ignore" in file_intermediate:
-                            file_in_work = True
-                        if os.path.isfile(file_intermediate):
-                            found = True
-                            file_in_work = True
-                        break
-                if not found:
-                    unknown_files.append(thisfile)
-                if not file_in_list:
-                    print ("File is not in list: " + thisfile )
-                elif not file_in_work:
-                    print ("File is not where it should be: ", thisfile)
-
-#        for thisfile in unknown_files:
 
 
 
@@ -952,55 +799,6 @@ class SimulationSetup(object):
 
 
 
-    def copy_files_from_work_to_thisrun(self, all_files_to_copy):
-        six.print_("=" * 80, "\n")
-        six.print_("COPYING STUFF FROM WORK TO THISRUN FOLDERS")
-        # Copy files:
-        successful_files = []
-        missing_files = []
-        # TODO: Check if we are on login node or elsewhere for the progress
-        # bar, it doesn't make sense on the compute nodes:
-        flist = all_files_to_copy
-        for ftuple in tqdm.tqdm(
-            flist,
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
-        ):
-            logging.debug(ftuple)
-            #(file_target, file_intermediate, file_source) = ftuple ### ???????
-            (source, filedir_interm, filename_interm, filename_target, subfolder) = ftuple
-
-            file_source = self.config["general"]["thisrun_work_dir"] + "/" + subfolder + filename_target
-            file_intermediate = filedir_interm + "/" + subfolder + filename_target
-            file_target = filedir_interm + "/" + subfolder + filename_interm
-
-            #file_source = self.config["general"]["thisrun_work_dir"] + "/" + file_source.split("/", -1)[-1]
-            #file_intermediate = file_intermediate.rsplit("/", 1)[0] + "/" + file_source.split("/", -1)[-1]
-            #file_target = file_intermediate.rsplit("/", 1)[0] + "/" + file_target.split("/", -1)[-1]
-
-            try:
-                print(file_source + " " + file_intermediate + " " + file_target)
-                if os.path.isfile(file_intermediate):
-                    os.rename(file_intermediate, file_intermediate + "_" + self.last_run_datestamp)
-                shutil.copy2(file_source, file_intermediate)
-                if not file_target == file_intermediate:
-                    if os.path.islink(file_target):
-                        os.remove(file_target)
-                    if os.path.isfile(file_target):
-                        os.rename(file_target, file_target + "_" + self.last_run_datestamp)
-
-                    os.symlink(file_intermediate, file_target)
-                successful_files.append(file_target)
-
-            except IOError:
-                missing_files.append(file_target)
-        if missing_files:
-            six.print_("--- WARNING: These files were missing:")
-            for missing_file in missing_files:
-                six.print_("- %s" % missing_file)
-
-
-
-
     def _increment_date_and_run_number(self):
         self.run_number += 1
         self.current_date += self.delta_date
@@ -1031,195 +829,105 @@ class SimulationSetup(object):
 
 
 
-    ################################# COMPONENT ###########################################
 
 
 
-class SimulationComponent(object):    # Not needed for compute jobs at all
-    def __init__(self, general, component_config):
-        self.config = component_config
-        self.general_config = general
 
-    def __repr__(self):
-        return "SimulationComponent: %s, v%s" % (self.config.get('model'), self.config.get('version'))
+    def assemble_file_lists(self):
 
-    def find_correct_source(self, file_source, year): # not needed in compute anymore, moved to jobclass
-        if isinstance(file_source, dict):
-            logging.debug(
-                "Checking which file to use for this year: %s",
-                year,
-            )
-            for fname, valid_years in six.iteritems(file_source):
-                logging.debug("Checking %s", fname)
-                min_year = float(valid_years.get("from", "-inf"))
-                max_year = float(valid_years.get("to", "inf"))
-                logging.debug("Valid from: %s", min_year)
-                logging.debug("Valid to: %s", max_year)
-                logging.debug(
-                    "%s <= %s --> %s",
-                    min_year,
-                    year,
-                    min_year <= year,
-                )
-                logging.debug(
-                    "%s <= %s --> %s",
-                    year,
-                    max_year,
-                    year <= max_year,
-                )
-                if (
-                    min_year <= year
-                    and year <= max_year
-                ):
-                    return fname
-                else:
-                    continue
-        return file_source
+        from . import filelists
+
+        self.config = filelists.rename_sources_to_targets(self.config)
+        self.config = filelists.choose_needed_files(self.config)
+        self.config = filelists.complete_targets(self.config)
+        self.config = filelists.complete_sources(self.config)
+        self.config = filelists.replace_year_placeholder(self.config)
+
+
+    def finalize_file_lists(self, filetypes):
+        # needs to be called right before copying
+        from . import filelists
+
+        self.config = filelists.globbing(self.config)
+        self.config = filelists.target_subfolders(self.config)
+        self.config = filelists.assemble_intermediate_files_and_finalize_targets(self.config)
+        self.config = filelists.complete_restart_in(self.config)
+        self.config = filelists.check_for_unknown_files(self.config)
+        self.config = filelists.log_used_files(self.config, filetypes)
 
 
 
-    def filesystem_to_experiment(self, filetypes):  # not needed for compute anymore, moved to jobclass
-        import glob
-        import copy
-        all_files_to_process = []
-        filetype_files_for_list = {}
-        for filetype in filetypes:
-        #for filetype in self.config["all_filetypes"]:
-            filetype_files = []
-            #six.print_("- %s" % filetype)
 
-            if filetype == "restart_in" and not self.config["lresume"]:
-                six.print_("- restart files do not make sense for a cold start, skipping...")
+
+
+
+
+    @staticmethod
+    def merge_thisrun_into_experiment(config):
+
+        import os
+        # to should be thisrun, work or experiment
+
+        for filetype in config["general"]["all_model_filetypes"]:
+            for model in config["general"]["valid_model_names"]:
+                from_dir = config[model]["thisrun_" + filetype + "dir"]
+                to_dir = config[model]["experiment_" + filetype + "dir"] + "/" + config["general"]["run_datestamp"]
+                os.rename(from_dir, to_dir)
+
+        for filetype in config["general"]["all_filetypes"]:
+            from_dir = config["general"]["thisrun_" + filetype + "dir"]
+            to_dir = config["general"]["experiment_" + filetype + "dir"] + "/" + config["general"]["run_datestamp"]
+            os.rename(from_dir, to_dir)
+
+        return config
+
+
+
+
+    def copy_all_results_to_exp(self):
+        import filecmp
+
+        for root, dirs, files in os.walk(self.config["general"]["thisrun_dir"], topdown=False):
+            print ("Working on folder: " + root)
+            if root.startswith(self.config["general"]["thisrun_work_dir"]) or root.endswith("/work"):
+                print ("Skipping files in work.")
                 continue
-            if filetype + "_sources" not in self.config:
-                continue
-
-            ####### start globbing here
-
-            inverted_dict = {}
-            if filetype + "_files" in self.config:
-                for k, v in six.iteritems(self.config[filetype + "_files"]):
-                    inverted_dict[v] = k
-
-            sources_dict = copy.deepcopy(self.config[filetype + "_sources"])
-
-            for file_descriptor, file_source in six.iteritems(
-                sources_dict
-            ):
-                if "*" in file_source:
-                    esm_parser.pprint_config(self.config)
-                    file_category = None
-                    subfolder = None
-                    if filetype + "_files" in self.config:
-                        if file_descriptor in self.config[filetype + "_files"]:
-                            file_category = inverted_dict[file_descriptor]
-                    if filetype + "_in_work" in self.config:
-                        if file_descriptor in self.config[filetype + "_in_work"]:
-                            subfolder = self.config[filetype + "_in_work"][file_descriptor].replace("*", "")
-                            if not subfolder.endswith("/"):
-                                subfolder = subfolder + "/"
-                    all_file_sources = glob.glob(file_source)
-
-                    running_index = 0
-                    for new_source in all_file_sources:
-                        running_index += 1
-                        new_descriptor = file_descriptor + "_" + str(running_index)
-                        self.config[filetype + "_sources"][new_descriptor] = new_source
-                        if file_category:
-                            new_category = file_category + "_" + str(running_index)
-                            self.config[filetype + "_files"][new_category] = new_descriptor
-                        if subfolder:
-                            new_in_work = subfolder + new_source.rsplit("/", 1)[-1]
-                            self.config[filetype + "_in_work"][new_descriptor] = new_in_work
-
-                    del self.config[filetype + "_sources"][file_descriptor]
-                    if file_category:
-                        del self.config[filetype + "_files"][file_category]
-                    if subfolder:
-                        del self.config[filetype + "_in_work"][file_descriptor]
-
-
-           ######## end globbing stuff
-
-            filedir_intermediate = self.config["thisrun_" + filetype + "_dir"]
-            for file_descriptor, file_source in six.iteritems(
-                self.config[filetype + "_sources"]
-            ):
-                if filetype == "restart_in":
-                    file_source = self.config["parent_restart_dir"] + "/" + os.path.basename(file_source)
-                logging.debug(
-                    "file_descriptor=%s, file_source=%s", file_descriptor, file_source
-                )
-                if filetype + "_files" in self.config:
-                    if file_descriptor not in self.config[filetype + "_files"].values():
-                        continue
-                    else:
-                        inverted_dict = {}
-                        for k, v in six.iteritems(self.config[filetype + "_files"]):
-                            inverted_dict[v] = k
-                        file_category = inverted_dict[file_descriptor]
+            for name in files:
+                source = os.path.join(root, name)
+                print ("File: " + source)
+                destination = source.replace(self.config["general"]["thisrun_dir"], self.config["general"]["experiment_dir"])
+                destination_path = destination.rsplit("/", 1)[0]
+                if not os.path.exists(destination_path):
+                    os.makedirs(destination_path)
+                if not os.path.islink(source):
+                    if os.path.isfile(destination):
+                        if filecmp.cmp(source, destination):
+                            print ("File " + source + " has not changed, skipping.")
+                            continue
+                        else:
+                            if os.path.isfile(destination + "_" + self.run_datestamp):
+                                print ("Don't know where to move " + destination +", file exists")
+                                continue
+                            else:
+                                if os.path.islink(destination):
+                                    os.remove(destination)
+                                else:
+                                    os.rename(destination, destination + "_" + self.last_run_datestamp)
+                                newdestination = destination + "_" + self.run_datestamp
+                                print ("Moving file " + source + " to " + newdestination)
+                                os.rename(source, newdestination)
+                                os.symlink(newdestination, destination)
+                                continue
+                    try:
+                        print ("Moving file " + source + " to " + destination)
+                        os.rename(source, destination)
+                    except:
+                        print(">>>>>>>>>  Something went wrong moving " + source + " to " + destination)
                 else:
-                    file_category = file_descriptor
-
-                logging.debug(type(file_source))
-
-                # should be generalized to all sorts of dates on day
-
-                all_years = [self.general_config["current_date"].year]
-                if (
-                   filetype + "_additional_information" in self.config
-                   and file_category in self.config[filetype + "_additional_information"]
-                ):
-                    if (
-                       "need_timestep_before" in self.config[filetype + "_additional_information"][file_category]
-                    ):
-                        all_years.append(self.general_config["prev_date"].year)
-                    if (
-                       "need_timestep_after" in self.config[filetype + "_additional_information"][file_category]
-                    ):
-                        all_years.append(self.general_config["next_date"].year)
-                    if (
-                       "need_year_before" in self.config[filetype + "_additional_information"][file_category]
-                    ):
-                        all_years.append(self.general_config["current_date"].year - 1)
-                    if (
-                       "need_year_after" in self.config[filetype + "_additional_information"][file_category]
-                    ):
-                        all_years.append(self.general_config["current_date"].year + 1 )
-
-                all_years = list(dict.fromkeys(all_years)) # removes duplicates
-
-                if (
-                    filetype + "_in_work" in self.config
-                    and file_category in self.config[filetype + "_in_work"].keys()
-                ):
-                    target_name = self.config[filetype + "_in_work"][file_category]
-                else:
-                    target_name = os.path.basename(file_source)
-
-                for year in all_years:
-
-                    this_target_name=target_name.replace("@YEAR@", str(year))
-                    source_name=self.find_correct_source(file_source, year)
-                    file_target = (
-                        filedir_intermediate + "/" + this_target_name
-                    )
-
-                    if "/" in this_target_name:
-                        subfolder = this_target_name.rsplit("/", 1)[0] + "/"
-                    else:
-                        subfolder = ""
-
-                    filetype_files.append(
-                        (
-                            source_name,
-                            filedir_intermediate,  os.path.basename(source_name),
-                            this_target_name.rsplit("/", 1)[-1],
-                            subfolder
-                        )
-                    )
-
-            filetype_files_for_list[filetype] = filetype_files
-            all_files_to_process += filetype_files
-        return all_files_to_process, filetype_files_for_list
-
+                    linkdest = os.path.realpath(source)
+                    newlinkdest = destination.rsplit("/", 1)[0] + "/" + linkdest.rsplit("/", 1)[-1]
+                    if os.path.islink(destination):
+                        os.remove(destination)
+                    if os.path.isfile(destination):
+                        os.rename(destination, destination + "_" + self.last_run_datestamp)
+                    os.symlink(newlinkdest, destination)

@@ -239,7 +239,7 @@ class oasis:
 
             config["outdata_files"][thisfile] = thisfile
             config["outdata_in_work"][thisfile] = thisfile
-            config["outdata_sources"][thisfile] = config["thisrun_outdata_dir"] + "/" + thisfile
+            config["outdata_sources"][thisfile] = thisfile
 
 
     def add_restart_files(self, restart_file, fconfig):
@@ -275,13 +275,13 @@ class oasis:
         config["restart_out_in_work"][restart_file] = restart_file #+ enddate
         config["restart_out_in_work"][restart_file + "_recv"] = restart_file + "_recv" #+ enddate
 
-        config["restart_out_sources"][restart_file] = config["thisrun_restart_out_dir"] + "/" + restart_file
-        config["restart_out_sources"][restart_file + "_recv"] = config["thisrun_restart_out_dir"] + "/" + restart_file + "_recv"
+        config["restart_out_sources"][restart_file] = restart_file
+        config["restart_out_sources"][restart_file + "_recv"] = restart_file + "_recv"
 
         config["restart_in_files"][restart_file] = restart_file
         config["restart_in_in_work"][restart_file] = restart_file 
         if not restart_file in config["restart_in_sources"]:
-            config["restart_in_sources"][restart_file] = config["parent_restart_dir"] + "/" + restart_file
+            config["restart_in_sources"][restart_file] = restart_file
 
 
 

@@ -1,6 +1,8 @@
 import sys
 known_batch_systems = ["slurm"]
 
+from .jobclass import jobclass
+
 from .slurm import Slurm
 
 class UnknownBatchSystemError(Exception):
@@ -115,6 +117,17 @@ class esm_batch_system:
         commands = []
         batch_system = config["computer"]
         if "execution_command" in batch_system:
+            line = jobclass.assemble_log_message(config,
+                    [
+                        config["general"]["jobtype"],
+                        config["general"]["run_number"],
+                        config["general"]["current_date"],
+                        config["general"]["jobid"],
+                        "- start"
+                    ],
+                    timestampStr_from_Unix=True,
+                )
+            commands.append("echo "+line+" >> "+config["general"]["experiment_log_file"])
             commands.append("time " + batch_system["execution_command"] + " &")
         return commands
 
@@ -138,10 +151,13 @@ class esm_batch_system:
         header = esm_batch_system.get_batch_header(config)
         environment = esm_batch_system.get_environment(config)
 
+        print ("still alive")
+        print ("jobtype: ", config["general"]["jobtype"])
+
         if config["general"]["jobtype"] == "compute":
             commands = esm_batch_system.get_run_commands(config)
             tidy_call =  "esm_runscripts " + config["general"]["scriptname"] + " -e " + config["general"]["expid"] + " -t tidy_and_resubmit -p ${process} -j "+config["general"]["jobtype"]
-        elif config["general"]["jobtype"] == "postprocess":
+        elif config["general"]["jobtype"] == "post":
             tidy_call = ""
             commands = config["general"]["post_task_list"]
 

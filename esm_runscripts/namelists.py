@@ -55,6 +55,7 @@ class namelist:
         import six
         namelist_changes = mconfig.get("namelist_changes", {})
         for namelist, changes in six.iteritems(namelist_changes):
+            print(str(mconfig["namelists"][namelist]))
             mconfig["namelists"][namelist].patch(changes)
         return mconfig
 
