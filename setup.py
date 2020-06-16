@@ -60,6 +60,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/dbarbi/esm_runscripts',
-    version="4.0.4",
+    version="4.1.2",
     zip_safe=False,
 )
