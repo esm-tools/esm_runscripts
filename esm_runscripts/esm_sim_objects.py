@@ -36,6 +36,40 @@ def date_representer(dumper, date):
 yaml.add_representer(Date, date_representer)
 
 
+# Utility functions:
+def rm_r(path):
+    """
+    Python equivalent of rm -r
+
+    Parameters
+    ----------
+    path : str
+        Path or directory to remove
+    """
+    if not os.path.exists(path):
+        return
+    if os.path.isfile(path) or os.path.islink(path):
+        os.unlink(path)
+    else:
+        shutil.rmtree(path)
+
+def size_bytes_to_human(num, suffix='B'):
+    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)
+
+# PG: BROKEN!!!
+def size_human_to_bytes(s, suffix="B"):
+    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+        num = float(s.replace(unit, ''))
+        if abs(num) < 1024.0:
+            return num
+        num *= 1024.0
+    return num
+
+
 class SimulationSetup(object):
     def __init__(self, command_line_config = None, user_config = None):
 
@@ -696,6 +730,11 @@ class SimulationSetup(object):
                 str(self.config["general"]["jobid"]),
                 "- done"])
 
+            # Clean up the run directiory if requested
+            # BUG(PG): Where does the post processing run? In the run_???
+            # folder? If yes, this routine needs to be moved into the post job.
+            self.config = self.clean_run_dir(self.config)
+
             from . import database_actions
             database_actions.database_entry_success(self.config)
 
@@ -710,8 +749,38 @@ class SimulationSetup(object):
                 next_compute(kill_after_submit=False)
             self.end_it_all()
 
+    # NOTE(PG): Turn this into a static method once we seperate out the tidy job into plugins
+    #@staticmethod
+    def clean_run_dir(self, config):
+        """
+        This plugin allows you to clean up the ``run_${DATE}`` folder. The
+        cleanup files are specified in the config ``general`` section as
+        follows:
 
+        * ``general.remove_rundir``: (bool) Removes the entire run directory.
 
+        * ``general.remove_<filetype>_dir``: (bool) Erases the run directory for a specific filetype
+
+        * ``general.remove_size``: (int or float) Erases all files with size
+          greater than ``remove_size``, must be specified in bytes!
+        """
+        filetypes = config['general']['all_filetypes']
+        for filetype in all_filetypes:
+            if config['general'].get("remove_"+filetype+"_dir", False):
+               rm_r(config['general']['thisrun_'+filetype+'_dir'])
+        if config['general'].get("remove_rundir", False):
+            rm_r(config['general']['thisrun_work_dir']+"/../")
+        rmsize = config['general'].get("remove_size", False)
+        if rmsize:
+            flist = []
+            for root, dirs, files in os.walk(config['general']['thisrun_work_dir']+"/../"):
+                for file_ in files:
+                    size = os.path.getsize(root+"/"+file_)
+                    if size >= rmsize:
+                        flist.append(root+"/"+file_)
+            for file_ in flist:
+                os.remove(file_)
+        return config
 
 
 
