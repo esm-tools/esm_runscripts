@@ -10,14 +10,21 @@ class esm_coupler:
         self.coupled_execs = []
         for exe in self.process_ordering:
             self.coupled_execs.append(full_config[exe]["executable"])
-        self.runtime=full_config["general"]["runtime"][5]
+        self.runtime=full_config["general"]["runtime"][5]        
         self.nb_of_couplings = 0
         if "coupling_target_fields" in full_config[self.name]:
             for restart_file in list(full_config[self.name]["coupling_target_fields"]):
                 self.nb_of_couplings += len(list(full_config[self.name]["coupling_target_fields"][restart_file]))
         if name == "oasis3mct":
             from . import oasis
-            self.coupler = oasis.oasis(self.nb_of_couplings,  self.coupled_execs, self.runtime)
+            print('esm_coupler: oasis3mct ',full_config["oasis3mct"]["mct_version"],full_config["oasis3mct"]["norestart"]) 
+            if full_config["oasis3mct"]["mct_version"] >= 4.0:                
+                self.norestart = full_config["oasis3mct"]["norestart"]
+                self.coupler = oasis.oasis(self.nb_of_couplings,  self.coupled_execs, self.runtime, 
+                                           nnorest=self.norestart, mct_version=full_config["oasis3mct"]["mct_version"])
+            else:
+                self.coupler = oasis.oasis(self.nb_of_couplings,  self.coupled_execs, self.runtime, 
+                                           mct_version=full_config["oasis3mct"]["mct_version"])
         else:
             print ("Unknown coupler :", name)
             sys.exit(0)
