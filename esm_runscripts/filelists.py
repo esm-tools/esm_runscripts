@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+"""
+Filelists.py contains various routines relevant for moving files to and from an
+experiment, and to and from the work folder of the experiment to the rest of
+the experiment tree.
+"""
 import copy
 import glob
 import os
