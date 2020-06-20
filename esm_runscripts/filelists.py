@@ -7,12 +7,15 @@ the experiment tree.
 import copy
 import glob
 import os
-import sys
 import time
 
 import six
 
 import esm_parser
+
+
+class FilelistError(Exception):
+    """Error raised when something messes up copying files around"""
 
 
 # @staticmethod
@@ -36,7 +39,7 @@ def rename_sources_to_targets(config):
                         not config[model][filetype + "_sources"]
                         == config[model][filetype + "_in_work"]
                     ):
-                        print(
+                        raise FilelistError(
                             "Mismatch between "
                             + filetype
                             + "_sources and "
@@ -44,7 +47,6 @@ def rename_sources_to_targets(config):
                             + "_in_work in model "
                             + model
                         )
-                        sys.exit(-1)
 
                 elif sources and targets and not in_work:
                     # all fine
@@ -82,7 +84,7 @@ def rename_sources_to_targets(config):
                         not config[model][filetype + "_targets"]
                         == config[model][filetype + "_in_work"]
                     ):
-                        print(
+                        raise FilelistError(
                             "Mismatch between "
                             + filetype
                             + "_targets and "
@@ -90,15 +92,13 @@ def rename_sources_to_targets(config):
                             + "_in_work in model "
                             + model
                         )
-                        sys.exit(-1)
 
                 elif sources and targets and not in_work:
                     # all fine
                     pass
 
                 elif (not sources and in_work) or (not sources and targets):
-                    print(filetype + "_sources missing in model " + model)
-                    sys.exit(-1)
+                    raise FilelistError(filetype + "_sources missing in model " + model)
 
                 elif sources and not targets:
                     if in_work:
@@ -163,7 +163,7 @@ def choose_needed_files(config):
             new_sources = new_targets = {}
             for categ, name in six.iteritems(config[model][filetype + "_files"]):
                 if not name in config[model][filetype + "_sources"]:
-                    print(
+                    raise FilelistError(
                         "Implementation "
                         + name
                         + " not found for filetype "
@@ -171,7 +171,6 @@ def choose_needed_files(config):
                         + " of model "
                         + model
                     )
-                    sys.exit(-1)
                 new_sources.update({categ: config[model][filetype + "_sources"][name]})
 
             config[model][filetype + "_sources"] = new_sources
@@ -233,10 +232,9 @@ def target_subfolders(config):
                     config[model][filetype + "_targets"]
                 ):  # * only in targets if denotes subfolder
                     if not descr in config[model][filetype + "_sources"]:
-                        print(
+                        raise FilelistError(
                             "no source found for target " + name + " in model " + model
                         )
-                        sys.exit(-1)
                     if "*" in filename:
                         source_filename = os.path.basename(
                             config[model][filetype + "_sources"][descr]
