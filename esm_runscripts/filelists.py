@@ -18,7 +18,6 @@ class FilelistError(Exception):
     """Error raised when something messes up copying files around"""
 
 
-# @staticmethod
 def rename_sources_to_targets(config):
 
     # Purpose of this routine is to make sure that filetype_sources and filetype_targets are set correctly,
@@ -148,7 +147,6 @@ def complete_sources(config):
     return config
 
 
-# @staticmethod
 def choose_needed_files(config):
 
     # aim of this function is to only take those files specified in fileytype_files
@@ -185,7 +183,6 @@ def choose_needed_files(config):
     return config
 
 
-# @staticmethod
 def globbing(config):
 
     for filetype in config["general"]["all_model_filetypes"]:
@@ -222,7 +219,6 @@ def globbing(config):
     return config
 
 
-# @staticmethod
 def target_subfolders(config):
 
     for filetype in config["general"]["all_model_filetypes"]:
@@ -277,7 +273,6 @@ def complete_restart_in(config):
     return config
 
 
-# @staticmethod
 def assemble_intermediate_files_and_finalize_targets(config):
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"]:
@@ -319,7 +314,6 @@ def assemble_intermediate_files_and_finalize_targets(config):
     return config
 
 
-# @staticmethod
 def replace_year_placeholder(config):
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"]:
@@ -399,7 +393,6 @@ def replace_year_placeholder(config):
     return config
 
 
-# @staticmethod
 def log_used_files(config, filetypes):
     for model in config["general"]["valid_model_names"]:
         with open(
@@ -466,8 +459,6 @@ def find_correct_source(
             else:
                 continue
     return file_source
-
-    # @staticmethod
 
 
 def check_for_unknown_files(config):
