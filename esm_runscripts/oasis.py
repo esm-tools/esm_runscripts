@@ -39,16 +39,16 @@ class oasis:
         right = sep = ""
         for righty in rights:
             right += sep + righty
-            sep = ":" 
-        
+            sep = ":"
+
         if lresume == False:
             lag = str(0)
             export_mode = "EXPOUT"
         else:
             lag = direction.get("lag", "0")
             export_mode = "EXPORTED"
-         
-        # if a transformation method for CONSERV (e.g. GLOBAL) is set below, 
+
+        # if a transformation method for CONSERV (e.g. GLOBAL) is set below,
         # increase seq (=number of lines describing the transformation) by 1
         seq = int(direction.get("seq", "2"))
         if transformation.get("postprocessing", {}).get("conserv", {}).get("method"):
@@ -57,7 +57,7 @@ class oasis:
         self.namcouple += [right + " " + left + " " + str(nb) + " " + str(time_step) + " " + str(seq) + " " + str(restart_file) + " " + export_mode]
         if lgrid and rgrid:
             self.namcouple += [str(rgrid["nx"]) + " " + str(rgrid["ny"]) + " " + str(lgrid["nx"]) + " " + str(lgrid["ny"]) + " " + rgrid["name"] + " " + lgrid["name"] + " LAG=" + str(lag)]
-        
+
         p_rgrid = p_lgrid = "0"
         if "number_of_overlapping_points" in rgrid:
             p_rgrid = str(rgrid["number_of_overlapping_points"])
@@ -160,7 +160,7 @@ class oasis:
                         sys.exit(2)
                     detail_line += " " + normalization.upper() + " " + order.upper()
                 trafo_details += [detail_line.strip()]
-            
+
 
         allpost = transformation.get("postprocessing", "bla")
         if not type(allpost) == list:
@@ -215,7 +215,7 @@ class oasis:
     def print_config_files(self):
         for line in self.namcouple:
             print (line)
-        
+
 
     def add_output_file(self, lefts, rights, leftmodel, rightmodel, config):
         out_file = []
@@ -230,8 +230,8 @@ class oasis:
         for lefty in lefts:
             out_file.append(lefty + "_" + leftmodel + "_" + this_coupling + ".nc")
         for righty in rights:
-            out_file.append(righty + "_" + rightmodel + "_" + this_coupling + ".nc") 
-    
+            out_file.append(righty + "_" + rightmodel + "_" + this_coupling + ".nc")
+
         self.next_coupling += 1
 
         if not "outdata_files" in config:
@@ -240,7 +240,7 @@ class oasis:
             config["outdata_in_work"] = {}
         if not "outdata_sources" in config:
             config["outdata_sources"] = {}
-        
+
         for thisfile in out_file:
 
             config["outdata_files"][thisfile] = thisfile
@@ -259,7 +259,7 @@ class oasis:
         parentdate = "_" + config["parent_date"].format(
                 form=9, givenph=False, givenpm=False, givenps=False
             )
- 
+
 
         if not "restart_out_files" in config:
             config["restart_out_files"] = {}
@@ -275,7 +275,7 @@ class oasis:
         if not "restart_in_sources" in config:
             config["restart_in_sources"] = {}
 
-        config["restart_out_files"][restart_file] = restart_file        
+        config["restart_out_files"][restart_file] = restart_file
         config["restart_out_files"][restart_file + "_recv"] = restart_file + "_recv"
 
         config["restart_out_in_work"][restart_file] = restart_file #+ enddate
@@ -285,7 +285,7 @@ class oasis:
         config["restart_out_sources"][restart_file + "_recv"] = restart_file + "_recv"
 
         config["restart_in_files"][restart_file] = restart_file
-        config["restart_in_in_work"][restart_file] = restart_file 
+        config["restart_in_in_work"][restart_file] = restart_file
         if not restart_file in config["restart_in_sources"]:
             config["restart_in_sources"][restart_file] = restart_file
 
@@ -329,7 +329,7 @@ class oasis:
             print("rm " + rmfile)
             os.system("rm " + rmfile)
         os.chdir(cwd)
-        
+
 
     def finalize(self, destination_dir):
         self.namcouple += [" $END"]
@@ -342,4 +342,4 @@ class oasis:
 
 
 
-	
+

@@ -553,7 +553,7 @@ class SimulationSetup(object):
                     + "/"
                 )
                 self.config["general"]["coupler_config_dir"] = self.coupler_config_dir
-                                
+
                 self.coupler = esm_coupler.esm_coupler(self.config, model)
                 self.config["general"]["coupler"] = self.coupler
                 break
@@ -887,7 +887,7 @@ class SimulationSetup(object):
             from_dir = config["general"]["thisrun_" + filetype + "dir"]
             to_dir = config["general"]["experiment_" + filetype + "dir"] + "/" + config["general"]["run_datestamp"]
             os.rename(from_dir, to_dir)
-        
+
         return config
 
 
