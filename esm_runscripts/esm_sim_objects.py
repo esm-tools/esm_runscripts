@@ -709,7 +709,7 @@ class SimulationSetup(object):
     def assemble_error_list(self):
         gconfig = self.config["general"]
         known_methods = ["warn", "kill"]
-        stdout = gconfig["thisrun_scripts_dir"] + "/" +  gconfig["expid"] + "_compute_" + gconfig["jobid"] + ".log"
+        stdout = gconfig["thisrun_scripts_dir"] + "/" +  gconfig["expid"] + "_compute_" + gconfig["run_datestamp"] + "_" + gconfig["jobid"] + ".log"
 
         error_list = [("error", stdout, "warn", 60, 60, "keyword error detected, watch out")]
 
