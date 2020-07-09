@@ -211,6 +211,8 @@ class SimulationSetup(object):
             user_config = esm_parser.initialize_from_yaml(command_line_config["scriptname"])
             if not "additional_files" in user_config["general"]:
                 user_config["general"]["additional_files"] = []
+        except esm_parser.EsmConfigFileError as error:
+            raise error
         except:
             user_config = esm_parser.initialize_from_shell_script(command_line_config["scriptname"])
 
