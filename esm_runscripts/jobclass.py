@@ -10,8 +10,8 @@ class jobclass:
 
 
         import esm_rcfile
-        self.recipefile = esm_rcfile.FUNCTION_PATH + "/esm_runscripts/esm_runscripts.yaml"
-        self.pluginsfile = esm_rcfile.FUNCTION_PATH + "/esm_runscripts/esm_plugins.yaml"
+        self.recipefile = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/esm_runscripts.yaml"
+        self.pluginsfile = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/esm_plugins.yaml"
 
         import esm_plugin_manager
         self.framework_recipe = esm_plugin_manager.read_recipe(self.recipefile, {"job_type": job_type})
