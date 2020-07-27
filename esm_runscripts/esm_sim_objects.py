@@ -501,6 +501,9 @@ class SimulationSetup(object):
         for model in self.config["general"]["valid_model_names"]:
             if "time_step" in self.config[model] and not (type(self.config[model]["time_step"]) == str and "${" in self.config[model]["time_step"]):
                 self.config[model]["prev_date"] = self.current_date - (0, 0, 0, 0, 0, int(self.config[model]["time_step"]))
+            elif "time_step" in self.config[model] and (type(self.config[model]["time_step"]) == str and "${" in self.config[model]["time_step"]):
+                dt = esm_parser.find_variable(model,self.config[model]["time_step"],self.config,[],[])
+                self.config[model]["prev_date"] = self.current_date - (0, 0, 0, 0, 0, int(dt))
             else:
                 self.config[model]["prev_date"] = self.current_date
             if self.config[model]["lresume"] == True and self.config["general"]["run_number"] == 1:
