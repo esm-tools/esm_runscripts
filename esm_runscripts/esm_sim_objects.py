@@ -498,9 +498,19 @@ class SimulationSetup(object):
 
 
     def set_prev_date(self):
+        """Sets several variables relevant for the previous date. Loops over all models in ``valid_model_names``, and sets model variables for:
+        * ``prev_date``
+        * ``parent_expid``
+        * ``parent_date``
+        * ``parent_restart_dir``
+        """
         for model in self.config["general"]["valid_model_names"]:
-            if "time_step" in self.config[model] and not (type(self.config[model]["time_step"]) == str and "${" in self.config[model]["time_step"]):
+            if "time_step" in self.config[model] and not (isinstance(self.config[model]["time_step"], str) and "${" in self.config[model]["time_step"]):
                 self.config[model]["prev_date"] = self.current_date - (0, 0, 0, 0, 0, int(self.config[model]["time_step"]))
+            # NOTE(PG, MAM): Here we check if the time step still has a variable which might be set in a different model, and resolve this case
+            elif "time_step" in self.config[model] and (isinstance(self.config[model]["time_step"], str) and "${" in self.config[model]["time_step"]):   
+                dt = esm_parser.find_variable(model, self.config[model]["time_step"], self.config, [], [])
+                self.config[model]["prev_date"] = self.current_date - (0, 0, 0, 0, 0, int(dt))
             else:
                 self.config[model]["prev_date"] = self.current_date
             if self.config[model]["lresume"] == True and self.config["general"]["run_number"] == 1:
