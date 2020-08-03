@@ -53,6 +53,24 @@ def parse_shargs():
         "-e", "--expid", help="The experiment ID to use", default="test"
     )
 
+# kh 15.07.20
+    parser.add_argument(
+        "--modify-config",
+        "-m",
+        dest="modify",
+        help="[m]odify configuration", 
+        default="", # kh 15.07.20 "usermods.yaml"
+    )
+
+# kh 21.07.20
+#    parser.add_argument(
+#        "--ignore-errors",
+#        "-i",
+#        help="Ignore errors",
+#        default=False,
+#        action="store_true",
+#    )
+
     parser.add_argument(
         "-c",
         "--check",
@@ -129,9 +147,11 @@ def main():
 
     parsed_args = vars(ARGS)
 
-    original_command = ""
-    for argument in sys.argv[1:]:
-        original_command = original_command + argument + " "
+# kh 15.07.20
+    modify_config_file = ""
+    modify_config_file_abspath = ""
+    if "modify" in parsed_args: 
+        modify_config_file = parsed_args["modify"]
 
     if "check" in parsed_args:
         check = parsed_args["check"]
@@ -146,8 +166,19 @@ def main():
     if "task" in parsed_args:
         jobtype = parsed_args["task"]
 
-
     command_line_config={}
+
+# kh 15.07.20
+    if modify_config_file:
+        modify_config_file_abspath = os.path.abspath(modify_config_file)
+        modify_config = esm_parser.yaml_file_to_dict(modify_config_file_abspath)
+    else:
+        modify_config = {}
+
+    command_line_config["modify_config_file"] = modify_config_file
+    command_line_config["modify_config_file_abspath"] = modify_config_file_abspath
+    command_line_config["modify_config"] = modify_config
+
     command_line_config["check"] = check
     command_line_config["profile"] = profile
     command_line_config["update"] = update
@@ -157,9 +188,22 @@ def main():
     command_line_config["scriptname"] = ARGS.runscript
     command_line_config["last_jobtype"] = ARGS.last_jobtype
 
+    modify_config_argument_found = False
+    original_command = ""
+    for argument in sys.argv[1:]:
+        if modify_config_argument_found:
+
+# kh 30.07.20 prepare passing of the modify_config yaml file via "tidy_and_resubmit" etc. by
+# replacing a potentially relative path with its absolute path
+            original_command = original_command + modify_config_file_abspath + " "
+            modify_config_argument_found = False
+        else:
+            original_command = original_command + argument + " "
+            if argument.startswith(("-m", "--m")):
+                modify_config_argument_found = True
+
     command_line_config["original_command"] = original_command.strip()
     command_line_config["started_from"] = os.getcwd()
-
 
     print ("Started from: ", command_line_config["started_from"])
     print ("starting : ", jobtype)
