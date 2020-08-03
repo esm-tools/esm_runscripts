@@ -45,6 +45,11 @@ class SimulationSetup(object):
             self.command_line_config = command_line_config
         if not user_config:
             user_config = self.get_user_config_from_command_line(command_line_config)
+
+# kh 17.07.20 prepare passing of modify_config
+            if command_line_config["modify_config"]:
+                user_config["modify_config"] = command_line_config["modify_config"] 
+
         if user_config["general"].get("debug_obj_init", False):
             import pdb; pdb.set_trace()
         self.get_total_config_from_user_config(user_config)
@@ -221,6 +226,11 @@ class SimulationSetup(object):
 
     def get_total_config_from_user_config(self, user_config):
 
+# kh 16.07.20 check if modify_config was additionally passed using user_config
+        modify_config = user_config.get("modify_config")
+        if modify_config:
+            del user_config["modify_config"]
+
         if "version" in user_config["general"]:
             version = str(user_config["general"]["version"])
         else:
@@ -238,15 +248,41 @@ class SimulationSetup(object):
         self.config["general"]["experiment_dir"] = self.config["general"]["base_dir"] + "/" + self.config["general"]["expid"]
 
         self._read_date_file(self.config)
+
+# kh 16.07.20
+        if modify_config:
+            settings = modify_config.get("build_and_run_modifications", {}).get("machine", {}).get("chooseable_settings")
+            self._modify_config_with_settings(self.config, settings)
+
+            settings = modify_config.get("build_only_modifications", {}).get("machine", {}).get("environment_settings")
+            self._modify_config_with_settings(self.config, settings)
+
+            settings = modify_config.get("run_only_modifications", {}).get("machine", {}).get("chooseable_settings")
+            self._modify_config_with_settings(self.config, settings)
+
         esm_parser.choose_blocks(self.config, blackdict=self.config._blackdict)
 
         self._initialize_calendar(self.config)
         esm_parser.choose_blocks(self.config, blackdict=self.config._blackdict)
 
+        if modify_config:
+            settings = modify_config.get("run_only_modifications", {}).get("batch_system", {}).get("direct_settings")
+            self._modify_config_with_settings(self.config, settings)
+
         self._add_all_folders()
         self.set_prev_date()
 
+# kh 16.07.20 protect modify_config from string to int conversions during self.config.finalize() below
+        modify_config_memo = self.config.get("general", {}).get("modify_config")
+        if modify_config_memo:
+            del self.config["general"]["modify_config"]
+
         self.config.finalize()
+
+# kh 16.07.20 reinsert protected modify_config 
+        if modify_config_memo:
+            self.config["general"]["modify_config"] = modify_config_memo
+
         self.add_submission_info()
         self.initialize_batch_system()
 
@@ -263,6 +299,24 @@ class SimulationSetup(object):
                 + self.config["general"]["setup_name"]
                 + ".log"
                 )
+
+
+# kh 22.07.20
+    def _modify_config_with_settings(self, config, settings):
+        if settings:
+            for k, v in settings.items():
+                path_to_key = k.split(".")
+                entry = path_to_key.pop()
+                selected_config = config
+                for k2 in path_to_key:
+                    selected_config = selected_config[k2]
+                if type(selected_config) == dict:
+                    selected_config[entry] = v
+                elif type(selected_config) == list:
+                    selected_config.append(entry + "=" + v)
+
+                else:
+                    raise ValueError("unexpected container type (neither dict nor list")
 
 
     def _add_all_folders(self):
