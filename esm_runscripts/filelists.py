@@ -174,7 +174,13 @@ def target_subfolders(config):
                             sys.exit(-1)
                         if "*" in filename:
                             source_filename = os.path.basename(config[model][filetype + "_sources"][descr])
-                            config[model][filetype + "_targets"][descr] = filename.replace("*", source_filename)
+                            # seb-wahl: directory wildcards are given as /*, wildcards in filenames are handled
+                            # in routine 'globbing' above, if we don't check here, wildcards are handled twice
+                            # for files and hence filenames of e.g. restart files are screwed up.
+                            if filename.endswith("/*"):
+                                config[model][filetype + "_targets"][descr] = filename.replace("*", source_filename)
+                            else:
+                                config[model][filetype + "_targets"][descr] = source_filename
                         elif filename.endswith("/"):
                             source_filename = os.path.basename(config[model][filetype + "_sources"][descr])
                             config[model][filetype + "_targets"][descr] = filename + source_filename
