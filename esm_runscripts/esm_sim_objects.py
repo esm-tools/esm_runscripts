@@ -355,12 +355,12 @@ class SimulationSetup(object):
                     user_lresume = config[model]["lresume"]
                 else:
                     user_lresume = False
-                if type(user_lresume) == str:
+                if isinstance(user_lresume, str):
                     if user_lresume == "0" or user_lresume.upper() == "FALSE":
                         user_lresume = False
                     elif user_lresume == "1" or user_lresume.upper() == "TRUE":
                         user_lresume = True
-                elif type(user_lresume) == int:
+                elif isinstance(user_lresume, int):
                     if user_lresume == 0:
                         user_lresume = False
                     elif user_lresume == 1:
@@ -498,11 +498,25 @@ class SimulationSetup(object):
 
 
     def set_prev_date(self):
+        """Sets several variables relevant for the previous date. Loops over all models in ``valid_model_names``, and sets model variables for:
+        * ``prev_date``
+        * ``parent_expid``
+        * ``parent_date``
+        * ``parent_restart_dir``
+        """
         for model in self.config["general"]["valid_model_names"]:
-            if "time_step" in self.config[model] and not (type(self.config[model]["time_step"]) == str and "${" in self.config[model]["time_step"]):
+            if "time_step" in self.config[model] and not (isinstance(self.config[model]["time_step"], str) and "${" in self.config[model]["time_step"]):
                 self.config[model]["prev_date"] = self.current_date - (0, 0, 0, 0, 0, int(self.config[model]["time_step"]))
+            # NOTE(PG, MAM): Here we check if the time step still has a variable which might be set in a different model, and resolve this case
+            elif "time_step" in self.config[model] and (isinstance(self.config[model]["time_step"], str) and "${" in self.config[model]["time_step"]):
+                dt = esm_parser.find_variable(model, self.config[model]["time_step"], self.config, [], [])
+                self.config[model]["prev_date"] = self.current_date - (0, 0, 0, 0, 0, int(dt))
             else:
                 self.config[model]["prev_date"] = self.current_date
+            # Check if lresume contains a variable which might be set in a different model, and resolve this case
+            if "lresume" in self.config[model] and isinstance(self.config[model]["lresume"], str) and "${" in self.config[model]["lresume"]:
+                lr = esm_parser.find_variable(model, self.config[model]["lresume"], self.config, [], [])
+                self.config[model]["lresume"] = eval(lr)
             if self.config[model]["lresume"] == True and self.config["general"]["run_number"] == 1:
                 self.config[model]["parent_expid"] = self.config[model][
                     "ini_parent_exp_id"
@@ -722,7 +736,7 @@ class SimulationSetup(object):
                     method = "warn"
                     frequency = 60
                     message = "keyword " + trigger + " detected, watch out"
-                    if type (self.config[model]["check_error"][trigger] ) == dict:
+                    if isinstance(self.config[model]["check_error"][trigger], dict):
                         if "file" in  self.config[model]["check_error"][trigger]:
                             search_file = self.config[model]["check_error"][trigger]["file"]
                             if search_file == "stdout" or search_file == "stderr":
@@ -739,7 +753,7 @@ class SimulationSetup(object):
                                 frequency = int(frequency)
                             except:
                                 frequency = 60
-                    elif type( self.config[model]["check_error"][trigger] ) == str:
+                    elif isinstance(self.config[model]["check_error"][trigger], str) :
                         pass
                     else:
                         continue
