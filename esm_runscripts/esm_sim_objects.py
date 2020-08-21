@@ -699,7 +699,9 @@ class SimulationSetup(object):
             from . import database_actions
             database_actions.database_entry_success(self.config)
 
-            if self.config["general"]["end_date"] >= self.config["general"]["final_date"]:
+            # seb-wahl: end_date is by definition (search for 'end_date') smaller than final_date
+            # hence we have to use next_date = current_date + increment
+            if self.config["general"]["next_date"] >= self.config["general"]["final_date"]:
                 monitor_file.write("Reached the end of the simulation, quitting...\n")
                 jobclass.write_to_log(self.config, ["# Experiment over"], message_sep="")
             else:

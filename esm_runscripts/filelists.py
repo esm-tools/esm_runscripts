@@ -175,6 +175,7 @@ def target_subfolders(config):
                         if "*" in filename:
                             source_filename = os.path.basename(config[model][filetype + "_sources"][descr])
                             # directory wildcards are given as /*, wildcards in filenames are handled 
+                            # seb-wahl: directory wildcards are given as /*, wildcards in filenames are handled
                             # in routine 'globbing' above, if we don't check here, wildcards are handled twice
                             # for files and hence filenames of e.g. restart files are screwed up.
                             if filename.endswith("/*"):
