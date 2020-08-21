@@ -355,7 +355,11 @@ class SimulationSetup(object):
                     user_lresume = config[model]["lresume"]
                 else:
                     user_lresume = False
-                if isinstance(user_lresume, str):
+
+                if isinstance(user_lresume, str) and "${" in user_lresume:
+                    user_lresume = esm_parser.find_variable(model, user_lresume, self.config, [], [])
+                if type(user_lresume) == str:
+
                     if user_lresume == "0" or user_lresume.upper() == "FALSE":
                         user_lresume = False
                     elif user_lresume == "1" or user_lresume.upper() == "TRUE":
