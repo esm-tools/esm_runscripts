@@ -236,6 +236,18 @@ class jobclass:
                 for year in all_years:
 
                     this_target_name=target_name.replace("@YEAR@", str(year))
+
+                    # deniz: fix the bug due to @YEAR@ substitution. This fix
+                    # also performs the substitution on the dictionary keys.
+                    if isinstance(file_source, dict):
+                        file_source_new = {}
+                        for key, value in six.iteritems(file_source):
+                            key_new = key.replace("@YEAR@", str(year))
+                            file_source_new[key_new] = value
+                        del file_source
+                        file_source = copy.deepcopy(file_source_new)
+                    # deniz: end fix  
+
                     source_name=self.find_correct_source(file_source, year)
                     file_target = (
                         filedir_intermediate + "/" + this_target_name
