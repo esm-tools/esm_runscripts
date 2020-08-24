@@ -3,6 +3,7 @@ Class to hold compute jobs and recipe steps
 """
 import os
 import shutil
+import sys
 
 import esm_rcfile
 import six
@@ -22,10 +23,14 @@ class compute(jobclass):
         self.relevant_files = ["bin", "config", "forcing", "input", "restart_in"]
         self.all_files_to_copy = self.assemble_file_lists(config, self.relevant_files)
         # Check for a user defined compute recipe in the setup section of the
-        # general section. If nothing is found, this evaluates to None and the
-        # default is used
-        setup_name = config["general"]["setup_name"]
-        recipe_steps = config[setup_name].get("compute_recipe") or config["general"].get("compute_recipe")
+        # general section. If nothing is found, recipe_steps should evaluate to
+        # None and the default is used
+        try:
+            setup_name = config["general"]["setup_name"]
+            recipe_steps = config.get(setup_name, {}).get("compute_recipe") or config["general"].get("compute_recipe")
+        except KeyError:
+            print("Your configuration is incorrect, and should include headings for %s as well as general!" % setup_name)
+            sys.exit(1)
         super(compute, self).__init__("compute", recipe_steps=recipe_steps)
         config["general"]["jobclass"] = self
 
