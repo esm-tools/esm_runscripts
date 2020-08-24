@@ -107,7 +107,7 @@ class Namelist:
         return mconfig
 
 
-def namelist(Namelist):
+class namelist(Namelist):
     """Legacy class name. Please use Namelist instead!"""
     def __init__(self, *args, **kwargs):
         warnings.warn(

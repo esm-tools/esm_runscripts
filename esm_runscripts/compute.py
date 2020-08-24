@@ -9,7 +9,7 @@ import six
 import yaml
 
 from .jobclass import jobclass
-from .namelists import namelist
+from .namelists import Namelist
 
 #####################################################################
 #                                   compute jobs                    #
@@ -110,10 +110,10 @@ class compute(jobclass):
         for model in config["general"]["valid_model_names"]:
             six.print_("-" * 80)
             six.print_("* %s" % config[model]["model"], "\n")
-            config[model] = namelist.nmls_load(config[model])
-            config[model] = namelist.nmls_remove(config[model])
-            config[model] = namelist.nmls_modify(config[model])
-            config[model] = namelist.nmls_finalize(config[model])
+            config[model] = Namelist.nmls_load(config[model])
+            config[model] = Namelist.nmls_remove(config[model])
+            config[model] = Namelist.nmls_modify(config[model])
+            config[model] = Namelist.nmls_finalize(config[model])
             print("end of namelist section")
         return config
 
