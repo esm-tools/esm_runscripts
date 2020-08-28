@@ -305,6 +305,23 @@ class jobclass:
                     return fname
                 else:
                     continue
+                
+            # Deniz: added error checking. Sometimes file_source becomes a dictionary
+            # instead of a string.
+            import pathlib
+            if not isinstance(file_source, str) or not instance(file_source, pathlib.Path):
+                print("==============================================")
+                print("  ERROR: file_source is not of type string or Path.")
+                print("         Exiting the program")
+                print("  - file_source: \n {}".format(file_source))
+                print()
+                print("  - type(file_source) : {}".format(type(file_source)))
+                print("==============================================")
+                raise TypeError("file_source does not have the correct type")
+
+                #import sys
+                #sys.exit(-1)
+
         return file_source
 
 
