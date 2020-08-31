@@ -19,10 +19,10 @@ class esm_coupler:
             from . import oasis
             
             # seb-wahl: manual merge from 'oifs' branch as oifs branch contains many whitespace changes
-            self.norestart = full_config["oasis3mct"]["norestart"]
+            self.norestart = full_config["oasis3mct"].get("norestart","F")
             self.coupler = oasis.oasis(self.nb_of_couplings,  self.coupled_execs, self.runtime,
-                                       nnorest=self.norestart, mct_version=full_config["oasis3mct"]["mct_version"],
-                                       lucia=full_config["oasis3mct"]["use_lucia"])
+                                       nnorest=self.norestart, mct_version=full_config["oasis3mct"].get("mct_version",2.8),
+                                       lucia=full_config["oasis3mct"].get("use_lucia",False)
         else:
             print ("Unknown coupler :", name)
             sys.exit(0)
