@@ -17,7 +17,12 @@ class esm_coupler:
                 self.nb_of_couplings += len(list(full_config[self.name]["coupling_target_fields"][restart_file]))
         if name == "oasis3mct":
             from . import oasis
-            self.coupler = oasis.oasis(self.nb_of_couplings,  self.coupled_execs, self.runtime)
+            
+            # seb-wahl: manual merge from 'oifs' branch as oifs branch contains many whitespace changes
+            self.norestart = full_config["oasis3mct"].get("norestart","F")
+            self.coupler = oasis.oasis(self.nb_of_couplings,  self.coupled_execs, self.runtime,
+                                       nnorest=self.norestart, mct_version=full_config["oasis3mct"].get("mct_version", "2.8"),
+                                       lucia=full_config["oasis3mct"].get("use_lucia",False))
         else:
             print ("Unknown coupler :", name)
             sys.exit(0)
