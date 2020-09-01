@@ -8,10 +8,10 @@ class oasis:
         elif isinstance(mct_version, int):
             mct_version = (mct_version,0) 
         elif isinstance(mct_version, float):
-            mct_version = tuple(int(x) for x in str(version).split("."))
+            mct_version = tuple(int(x) for x in str(mct_version).split("."))
         # PG: Fixup version to be tuples:
         elif isinstance(mct_version, str):
-            mct_version = tuple(int(x) for x in version.split("."))
+            mct_version = tuple(int(x) for x in mct_version.split("."))
         else:
             print("Init of Oasis needs the argument mct_version to be either a tuple or a string!")
             sys.exit(1)
