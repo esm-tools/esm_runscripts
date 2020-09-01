@@ -1,26 +1,38 @@
-import six
+import copy
+import glob
+import logging
+import os
 import pdb
+import shutil
+import sys
+from datetime import datetime
+
+import esm_rcfile
+import six
+import tqdm
+
+import esm_plugin_manager
+
 
 class jobclass:
 
     relevant_files = []
     filetype_specific_dict = {}
 
-    def __init__(self, job_type):
+    def __init__(self, job_type, recipe_steps=None):
 
 
-        import esm_rcfile
-        self.recipefile = esm_rcfile.FUNCTION_PATH + "/esm_runscripts/esm_runscripts.yaml"
-        self.pluginsfile = esm_rcfile.FUNCTION_PATH + "/esm_runscripts/esm_plugins.yaml"
+        self.recipefile = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/esm_runscripts.yaml"
+        self.pluginsfile = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/esm_plugins.yaml"
 
-        import esm_plugin_manager
         self.framework_recipe = esm_plugin_manager.read_recipe(self.recipefile, {"job_type": job_type})
+        if recipe_steps:
+            self.framework_recipe["recipe"] = recipe_steps
         self.framework_plugins = esm_plugin_manager.read_plugin_information(self.pluginsfile, self.framework_recipe)
         esm_plugin_manager.check_plugin_availability(self.framework_plugins)
 
 
     def evaluate(self, config):
-        import esm_plugin_manager
         config = esm_plugin_manager.work_through_recipe(self.framework_recipe, self.framework_plugins, config)
         return config
 
@@ -82,10 +94,6 @@ class jobclass:
 
 
     def really_assemble_file_list(self, config, model, filetypes):
-        import glob
-        import copy
-        import logging
-        import os
 
         modelconfig = config[model]
         general_config = config["general"]
@@ -228,6 +236,18 @@ class jobclass:
                 for year in all_years:
 
                     this_target_name=target_name.replace("@YEAR@", str(year))
+
+                    # deniz: fix the bug due to @YEAR@ substitution. This fix
+                    # also performs the substitution on the dictionary keys.
+                    if isinstance(file_source, dict):
+                        file_source_new = {}
+                        for key, value in six.iteritems(file_source):
+                            key_new = key.replace("@YEAR@", str(year))
+                            file_source_new[key_new] = value
+                        del file_source
+                        file_source = copy.deepcopy(file_source_new)
+                    # deniz: end fix  
+
                     source_name=self.find_correct_source(file_source, year)
                     file_target = (
                         filedir_intermediate + "/" + this_target_name
@@ -291,7 +311,6 @@ class jobclass:
 
     @staticmethod
     def end_it_all(config, silent=False):
-        import sys
         if config["general"]["profile"]:
             for line in timing_info:
                 print(line)
@@ -341,7 +360,6 @@ class jobclass:
     @staticmethod
     def assemble_log_message(config, message, message_sep=None, timestampStr_from_Unix=False):
         """Assembles message for log file. See doc for write_to_log"""
-        from datetime import datetime
         message = [str(i) for i in message]
         dateTimeObj = datetime.now()
         strftime_str = config["general"].get("experiment_log_file_dateformat", "%c")
@@ -358,9 +376,6 @@ class jobclass:
 
     @staticmethod
     def copy_files_from_work_to_thisrun(config, target = "thisrun", source = "work"):
-        import logging
-        import os
-        import shutil
         # idea is to unify all the copy routines by giving a parameter that tells from where to where stuff is to be copied
 
         # source = "init", "thisrun", "work"
@@ -417,10 +432,6 @@ class jobclass:
 
     @staticmethod
     def copy_files(config, flist, source, target):
-        import tqdm
-        import logging
-        import os
-        import shutil
         self = config["general"]["jobclass"]
         # idea is to unify all the copy routines by giving a parameter that tells from where to where stuff is to be copied
 
@@ -483,8 +494,3 @@ class jobclass:
             if not config["general"]["files_missing_when_preparing_run"] == {}:
                 print ("========================================================")
         return config
-
-
-
-
-

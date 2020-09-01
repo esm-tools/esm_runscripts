@@ -1,72 +1,89 @@
-from . import jobclass
+"""
+Class to hold compute jobs and recipe steps
+"""
+import os
+import shutil
+import sys
 
-    #########################################################################################
-    #                                   compute jobs                                        #
-    #########################################################################################
+import esm_rcfile
+import six
+import yaml
+
+from .jobclass import jobclass
+from .namelists import Namelist
+
+#####################################################################
+#                                   compute jobs                    #
+#####################################################################
+
 
 class compute(jobclass):
-
-
     def __init__(self, config):
 
         self.relevant_files = ["bin", "config", "forcing", "input", "restart_in"]
         self.all_files_to_copy = self.assemble_file_lists(config, self.relevant_files)
-        super(compute, self).__init__("compute")
+        # Check for a user defined compute recipe in the setup section of the
+        # general section. If nothing is found, recipe_steps should evaluate to
+        # None and the default is used
+        try:
+            setup_name = config["general"]["setup_name"]
+            recipe_steps = config.get(setup_name, {}).get("compute_recipe") or config["general"].get("compute_recipe")
+        except KeyError:
+            print("Your configuration is incorrect, and should include headings for %s as well as general!" % setup_name)
+            sys.exit(1)
+        super(compute, self).__init__("compute", recipe_steps=recipe_steps)
         config["general"]["jobclass"] = self
-
-
-
 
     @staticmethod
     def add_batch_hostfile(config):
-        from . import esm_batch_system
+
         self = config["general"]["jobclass"]
         config["general"]["batch"].calc_requirements(config)
 
         self.all_files_to_copy.append(
             (
-                "", config["general"]["thisrun_scripts_dir"],
+                "",
+                config["general"]["thisrun_scripts_dir"],
                 config["general"]["batch"].bs.path.rsplit("/", 1)[-1],
                 config["general"]["batch"].bs.path.rsplit("/", 1)[-1],
-                ""
+                "",
             )
         )
         return config
 
-
-
-
-
-
-
     @staticmethod
     def prepare_coupler_files(config):
         self = config["general"]["jobclass"]
-        if config["general"]["standalone"] == False:
-            coupler_filename = config["general"]["coupler"].prepare(config, config["general"]["coupler_config_dir"])
+        if config["general"]["standalone"] is False:
+            coupler_filename = config["general"]["coupler"].prepare(
+                config, config["general"]["coupler_config_dir"]
+            )
             self.all_files_to_copy.append(
                 (
                     "",
                     config["general"]["coupler_config_dir"],
                     coupler_filename,
                     coupler_filename,
-                    ""
+                    "",
                 )
             )
         return config
-
-
 
     @staticmethod
     def create_new_files(config):
         self = config["general"]["jobclass"]
         for model in list(config):
             for filetype in config["general"]["all_filetypes"]:
-                if "create_"+filetype in config[model]:
-                    filenames = config[model]["create_"+filetype].keys()
+                if "create_" + filetype in config[model]:
+                    filenames = config[model]["create_" + filetype].keys()
                     for filename in filenames:
-                        with open(config[model]["thisrun_" + filetype + "_dir"] + "/" +filename, "w") as createfile:
-                            actionlist = config[model]["create_"+filetype][filename]
+                        with open(
+                            config[model]["thisrun_" + filetype + "_dir"]
+                            + "/"
+                            + filename,
+                            "w",
+                        ) as createfile:
+                            actionlist = config[model]["create_" + filetype][filename]
                             for action in actionlist:
                                 if "<--append--" in action:
                                     appendtext = action.replace("<--append--", "")
@@ -77,25 +94,22 @@ class compute(jobclass):
                                 config[model]["thisrun_" + filetype + "_dir"],
                                 filename,
                                 filename,
-                                ""
+                                "",
                             )
                         )
         return config
 
-
     @staticmethod
     def modify_files(config):
-        for model in config:
-            for filetype in config["general"]["all_model_filetypes"]:
-                if filetype == "restart":
-                    nothing = "nothing"
+        # for model in config:
+        #     for filetype in config["general"]["all_model_filetypes"]:
+        #         if filetype == "restart":
+        #             nothing = "nothing"
         return config
-
 
     @staticmethod
     def modify_namelists(config):
-        from . import namelist
-        import six
+
         # Load and modify namelists:
         six.print_("\n" "- Setting up namelists for this run...")
         for model in config["general"]["valid_model_names"]:
@@ -107,13 +121,15 @@ class compute(jobclass):
                 config = namelist.apply_echam_disturbance(config)
             config[model] = namelist.nmls_modify(config[model])
             config[model] = namelist.nmls_finalize(config[model])
+            config[model] = Namelist.nmls_load(config[model])
+            config[model] = Namelist.nmls_remove(config[model])
+            config[model] = Namelist.nmls_modify(config[model])
+            config[model] = Namelist.nmls_finalize(config[model])
             print("end of namelist section")
         return config
 
-
-
     def copy_files_to_thisrun(config):
-        import six
+
         self = config["general"]["jobclass"]
         six.print_("=" * 80, "\n")
         six.print_("PREPARING EXPERIMENT")
@@ -124,32 +140,30 @@ class compute(jobclass):
 
         compute.print_used_files(config)
 
-        config = compute.copy_files(config, self.all_files_to_copy, source = "init", target = "thisrun")
+        config = compute.copy_files(
+            config, self.all_files_to_copy, source="init", target="thisrun"
+        )
         return config
 
-
-
     def copy_files_to_work(config):
-        import six
+
         self = config["general"]["jobclass"]
         six.print_("=" * 80, "\n")
         six.print_("PREPARING WORK FOLDER")
-        config = compute.copy_files(config, self.all_files_to_copy, source = "thisrun", target = "work")
+        config = compute.copy_files(
+            config, self.all_files_to_copy, source="thisrun", target="work"
+        )
         return config
-
-
 
     @staticmethod
     def _create_folders(config, filetypes):
-        import os
+
         for filetype in filetypes:
             if not filetype == "ignore":
                 if not os.path.exists(config["experiment_" + filetype + "_dir"]):
                     os.makedirs(config["experiment_" + filetype + "_dir"])
                 if not os.path.exists(config["thisrun_" + filetype + "_dir"]):
                     os.makedirs(config["thisrun_" + filetype + "_dir"])
-
-
 
     @staticmethod
     def _create_setup_folders(config):
@@ -159,9 +173,10 @@ class compute(jobclass):
     @staticmethod
     def _create_component_folders(config):
         for component in config["general"]["valid_model_names"]:
-            compute._create_folders(config[component], config["general"]["all_model_filetypes"])
+            compute._create_folders(
+                config[component], config["general"]["all_model_filetypes"]
+            )
         return config
-
 
     @staticmethod
     def initialize_experiment_logfile(config):
@@ -196,28 +211,31 @@ class compute(jobclass):
             the general configuration is set to 1, and a file exists for
             ``general.exp_log_file``; this file is removed; and re-initialized.
         """
-        import os
+
         if config["general"]["run_number"] == 1:
             if os.path.isfile(config["general"]["experiment_log_file"]):
                 os.remove(config["general"]["experiment_log_file"])
-            compute.write_to_log(config, ["# Beginning of Experiment " + config["general"]["expid"]], message_sep="")
-
-        compute.write_to_log( config,
-                [
-                    str(config["general"]["jobtype"]),
-                    str(config["general"]["run_number"]),
-                    str(config["general"]["current_date"]),
-                    str(config["general"]["jobid"]),
-                    "- submitted",
-                ]
+            compute.write_to_log(
+                config,
+                ["# Beginning of Experiment " + config["general"]["expid"]],
+                message_sep="",
             )
+
+        compute.write_to_log(
+            config,
+            [
+                str(config["general"]["jobtype"]),
+                str(config["general"]["run_number"]),
+                str(config["general"]["current_date"]),
+                str(config["general"]["jobid"]),
+                "- submitted",
+            ],
+        )
         return config
-
-
 
     @staticmethod
     def _write_finalized_config(config):
-        import yaml
+
         with open(
             config["general"]["thisrun_config_dir"]
             + "/"
@@ -230,9 +248,7 @@ class compute(jobclass):
 
     @staticmethod
     def copy_tools_to_thisrun(config):
-        import os
-        import shutil
-        import esm_rcfile
+
         gconfig = config["general"]
 
         fromdir = os.path.realpath(gconfig["started_from"])
@@ -241,8 +257,8 @@ class compute(jobclass):
         tools_dir = scriptsdir + "/esm_tools/functions"
         namelists_dir = scriptsdir + "/esm_tools/namelists"
 
-        print ("Started from :", fromdir)
-        print ("Scripts Dir : ", scriptsdir)
+        print("Started from :", fromdir)
+        print("Scripts Dir : ", scriptsdir)
 
         if os.path.isdir(tools_dir) and gconfig["update"]:
             shutil.rmtree(tools_dir, ignore_errors=True)
@@ -256,37 +272,39 @@ class compute(jobclass):
             shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir)
 
         if (fromdir == scriptsdir) and not gconfig["update"]:
-            print ("Started from the experiment folder, continuing...")
+            print("Started from the experiment folder, continuing...")
             return config
         else:
             if not fromdir == scriptsdir:
-                print ("Not started from experiment folder, restarting...")
+                print("Not started from experiment folder, restarting...")
             else:
-                print ("Tools were updated, restarting...")
+                print("Tools were updated, restarting...")
 
             if not os.path.isfile(scriptsdir + "/" + gconfig["scriptname"]):
                 oldscript = fromdir + "/" + gconfig["scriptname"]
-                print (oldscript)
-                shutil.copy2 (oldscript, scriptsdir)
+                print(oldscript)
+                shutil.copy2(oldscript, scriptsdir)
 
             for tfile in gconfig["additional_files"]:
                 if not os.path.isfile(scriptsdir + "/" + tfile):
-                     shutil.copy2 (fromdir + "/" + tfile, scriptsdir)
+                    shutil.copy2(fromdir + "/" + tfile, scriptsdir)
 
-            restart_command = ("cd " + scriptsdir + "; " + \
-                               "esm_runscripts " + \
-                               gconfig["original_command"].replace("-U", ""))
-            print (restart_command)
-            os.system( restart_command )
+            restart_command = (
+                "cd "
+                + scriptsdir
+                + "; "
+                + "esm_runscripts "
+                + gconfig["original_command"].replace("-U", "")
+            )
+            print(restart_command)
+            os.system(restart_command)
 
             gconfig["profile"] = False
             compute.end_it_all(config, silent=True)
 
-
     @staticmethod
     def _copy_preliminary_files_from_experiment_to_thisrun(config):
-        import os
-        import shutil
+
         filelist = [
             (
                 "scripts",
@@ -313,10 +331,9 @@ class compute(jobclass):
             shutil.copy2(additional_file, config["general"]["thisrun_scripts_dir"])
         return config
 
-
     @staticmethod
     def _show_simulation_info(config):
-        import six
+
         six.print_(80 * "=")
         six.print_("STARTING SIMULATION JOB!")
         six.print_("Experiment ID = %s" % config["general"]["expid"])
@@ -326,10 +343,3 @@ class compute(jobclass):
             six.print_("- %s" % model)
         six.print_("You are using the Python version.")
         return config
-
-
-
-
-
-
-
