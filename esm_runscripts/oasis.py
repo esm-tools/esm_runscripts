@@ -5,6 +5,8 @@ class oasis:
 	              nnorest="F", mct_version="4.0", lucia=False):
         if isinstance(mct_version, tuple):
             pass
+        elif isinstance(mct_version, int):
+            mct_version = (mct_version,0) 
         elif isinstance(mct_version, float):
             mct_version = tuple(int(x) for x in str(version).split("."))
         # PG: Fixup version to be tuples:
