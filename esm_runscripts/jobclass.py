@@ -133,11 +133,13 @@ class jobclass:
                     # restart_out* and outdata* entries in yaml files are provided without their path
                     # as the path generated automagically. We need to add the path here so files can
                     # be found with glob.glob(file_source)
-                    if filetype == "restart_in":
-                       file_source =  modelconfig["parent_restart_dir"] + "/" + os.path.basename(file_source)
+                    if filetype == "restart_in" and not file_source.startswith("/"):
+                       # don't use basename on restart_in as restarts can be in subfolders, 
+                       # relative to parent_restart_dir, example: oifs.yaml
+                       file_source =  modelconfig["parent_restart_dir"] + "/" + file_source
                     elif filetype == "restart_out" or filetype == "outdata" or filetype == 'log':
                        file_source =  modelconfig["thisrun_work_dir"] + "/" + os.path.basename(file_source)
-                    #print("jobclass.py: FILE SOURCE: ",file_source)
+                    
                     if glob.glob(file_source):
                             file_category = None
                             subfolder = None
@@ -182,7 +184,9 @@ class jobclass:
                 modelconfig[filetype + "_sources"]
             ):
                 if filetype == "restart_in" and not file_source.startswith("/"):
-                    file_source =  modelconfig["parent_restart_dir"] + "/" + os.path.basename(file_source)
+                    # don't use basename on restart_in as restarts can be in subfolders, 
+                    # relative to parent_restart_dir, example: oifs.yaml
+                    file_source =  modelconfig["parent_restart_dir"] + "/" + file_source
                 logging.debug(
                     "file_descriptor=%s, file_source=%s", file_descriptor, file_source
                 )
