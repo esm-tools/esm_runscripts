@@ -188,7 +188,6 @@ class Namelist:
         * disturbance_years (list of int): Which year to apply the disturbance
         * distrubance (float): Value to apply. Default can be found in echam.yaml
         """
-        print(">>>>>>>>>>> RUNNING apply_echam_distrubance")
         if "echam" in config["general"]["valid_model_names"]:
             # Get the echam namelist:
             nml = config['echam']['namelists']['namelist.echam']
@@ -207,7 +206,7 @@ class Namelist:
             if current_year in disturbance_years:
                 print("-------------------------------------------------------")
                 print("")
-                print(">>>>>>>>>>>>>>> Applying disturbance in echam namelist!")
+                print("              > Applying disturbance in echam namelist!")
                 print("")
                 print("-------------------------------------------------------")
                 dynctl['enstdif'] = config['echam'].get('disturbance', 1.000001)

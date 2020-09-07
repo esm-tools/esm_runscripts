@@ -121,10 +121,6 @@ class compute(jobclass):
                 config = Namelist.apply_echam_disturbance(config)
             config[model] = Namelist.nmls_modify(config[model])
             config[model] = Namelist.nmls_finalize(config[model])
-            config[model] = Namelist.nmls_load(config[model])
-            config[model] = Namelist.nmls_remove(config[model])
-            config[model] = Namelist.nmls_modify(config[model])
-            config[model] = Namelist.nmls_finalize(config[model])
             print("end of namelist section")
         return config
 
