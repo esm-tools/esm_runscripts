@@ -117,6 +117,8 @@ class compute(jobclass):
             six.print_("* %s" % config[model]["model"], "\n")
             config[model] = Namelist.nmls_load(config[model])
             config[model] = Namelist.nmls_remove(config[model])
+            if model == "echam":
+                config = Namelist.apply_echam_disturbance(config)
             config[model] = Namelist.nmls_modify(config[model])
             config[model] = Namelist.nmls_finalize(config[model])
             print("end of namelist section")
