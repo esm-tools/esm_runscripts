@@ -268,7 +268,7 @@ class SimulationSetup(object):
 
 
     def _add_all_folders(self):
-        self.all_filetypes = ["analysis", "config", "log", "mon", "scripts", "ignore",  "unknown"]
+        self.all_filetypes = ["analysis", "config", "log", "mon", "scripts", "ignore",  "unknown", "src"]
         self.config["general"]["out_filetypes"] = ["analysis", "log", "mon", "scripts", "ignore",  "unknown", "outdata", "restart_out"]
         self.config["general"]["in_filetypes"] = ["scripts", "input", "forcing", "bin", "config", "restart_in"]
         self.all_filetypes.append("work")
