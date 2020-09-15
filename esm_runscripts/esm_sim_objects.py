@@ -773,11 +773,75 @@ class SimulationSetup(object):
         * ``general.remove_size``: (int or float) Erases all files with size
           greater than ``remove_size``, must be specified in bytes!
         """
+        self._remove_run_determine_user_choice(config)
         self._remove_this_rundir(config)
         self._remove_old_rundirs_except(config)
         self._remove_old_runs_filetypes(config)
         self._remove_old_runs_size(config)
         return config
+
+
+    def _remove_run_determine_user_choice(self, config):
+        """
+        Determine user choice from a simple switch.
+
+        The user sets::
+
+        general:
+            remove_runs: <x>
+
+        where ``x`` can be one of:
+
+        * ``True`` Removes the current run dir
+        * ``False`` Keeps run dir
+        * ``int`` (must be >= 0) keep last ``x`` run dirs
+        """
+        user_remove = config["general"].get("remove_runs")
+        # TODO(PG): It might be nice if these sorts of checks happened earlier
+        # in the job, before it even gets to this function
+        if isinstance(user_remove, bool):
+            if "remove_this_run" not in config["general"]:
+                config["general"]["remove_this_run"] = user_remove
+            else:
+                print("------------------------------------------")
+                print("You have set both in your config:")
+                print()
+                print("general:")
+                print("    remove_this_run: ", config["general"]["remove_this_run"])
+                print("    remove_runs: ", user_remove)
+                print()
+                print("Please only use one of these!")
+                print("------------------------------------------")
+                sys.exit(1)
+        elif isinstance(user_remove, int):
+            if "remove_old_rundirs_except" not in config["general"]:
+                config["general"]["remove_old_rundirs_except"] = user_remove
+            else:
+                print("------------------------------------------")
+                print("You have set both in your config:")
+                print()
+                print("general:")
+                print("    remove_old_rundirs_except: ", config["general"]["remove_old_rundirs_except"])
+                print("    remove_runs: ", user_remove)
+                print()
+                print("Please only use one of these!")
+                print("------------------------------------------")
+                sys.exit(1)
+        else:
+            print("------------------------------------------")
+            print("Type Error!")
+            print("You have set this in your config:")
+            print("general:")
+            print("    remove_runs: ", user_remove)
+            print()
+            print("This is of type: ", type(user_remove))
+            print("However, only the following types are valid:")
+            print("   * boolean")
+            print("   * integer (greater or equal to 0!)")
+            print("Please correct that")
+            print("------------------------------------------")
+            sys.exit(1)
+
 
     def _remove_this_rundir(self, config):
         if config['general'].get("remove_this_rundir", False):
