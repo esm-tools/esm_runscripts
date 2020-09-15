@@ -758,37 +758,37 @@ class SimulationSetup(object):
         cleanup files are specified in the config ``general`` section as
         follows (documentation follows order of code as it is executed):
 
-        * ``general.remove_this_rundir``: (bool) Removes the entire run
+        * ``general.clean_this_rundir``: (bool) Removes the entire run
           directory.
 
-        * ``general.remove_old_rundirs_except``: (int) Removes the entire run
+        * ``general.clean_old_rundirs_except``: (int) Removes the entire run
           directory except for the last <x> runs
 
-        * ``general.remove_old_rundirs_keep_every``: (int) Removes the entire
+        * ``general.clean_old_rundirs_keep_every``: (int) Removes the entire
           run directory except every <x>th run
 
-        * ``general.remove_<filetype>_dir``: (bool) Erases the run directory
+        * ``general.clean_<filetype>_dir``: (bool) Erases the run directory
           for a specific filetype
 
-        * ``general.remove_size``: (int or float) Erases all files with size
-          greater than ``remove_size``, must be specified in bytes!
+        * ``general.clean_size``: (int or float) Erases all files with size
+          greater than ``clean_size``, must be specified in bytes!
         """
-        self._remove_run_determine_user_choice(config)
-        self._remove_this_rundir(config)
-        self._remove_old_rundirs_except(config)
-        self._remove_old_runs_filetypes(config)
-        self._remove_old_runs_size(config)
+        self._clean_run_determine_user_choice(config)
+        self._clean_this_rundir(config)
+        self._clean_old_rundirs_except(config)
+        self._clean_old_runs_filetypes(config)
+        self._clean_old_runs_size(config)
         return config
 
 
-    def _remove_run_determine_user_choice(self, config):
+    def _clean_run_determine_user_choice(self, config):
         """
         Determine user choice from a simple switch.
 
         The user sets::
 
         general:
-            remove_runs: <x>
+            clean_runs: <x>
 
         where ``x`` can be one of:
 
@@ -796,33 +796,33 @@ class SimulationSetup(object):
         * ``False`` Keeps run dir
         * ``int`` (must be >= 0) keep last ``x`` run dirs
         """
-        user_remove = config["general"].get("remove_runs")
+        user_clean = config["general"].get("clean_runs")
         # TODO(PG): It might be nice if these sorts of checks happened earlier
         # in the job, before it even gets to this function
-        if isinstance(user_remove, bool):
-            if "remove_this_run" not in config["general"]:
-                config["general"]["remove_this_run"] = user_remove
+        if isinstance(user_clean, bool):
+            if "clean_this_run" not in config["general"]:
+                config["general"]["clean_this_run"] = user_clean
             else:
                 print("------------------------------------------")
                 print("You have set both in your config:")
                 print()
                 print("general:")
-                print("    remove_this_run: ", config["general"]["remove_this_run"])
-                print("    remove_runs: ", user_remove)
+                print("    clean_this_run: ", config["general"]["clean_this_run"])
+                print("    clean_runs: ", user_clean)
                 print()
                 print("Please only use one of these!")
                 print("------------------------------------------")
                 sys.exit(1)
-        elif isinstance(user_remove, int):
-            if "remove_old_rundirs_except" not in config["general"]:
-                config["general"]["remove_old_rundirs_except"] = user_remove
+        elif isinstance(user_clean, int):
+            if "clean_old_rundirs_except" not in config["general"]:
+                config["general"]["clean_old_rundirs_except"] = user_clean
             else:
                 print("------------------------------------------")
                 print("You have set both in your config:")
                 print()
                 print("general:")
-                print("    remove_old_rundirs_except: ", config["general"]["remove_old_rundirs_except"])
-                print("    remove_runs: ", user_remove)
+                print("    clean_old_rundirs_except: ", config["general"]["clean_old_rundirs_except"])
+                print("    clean_runs: ", user_clean)
                 print()
                 print("Please only use one of these!")
                 print("------------------------------------------")
@@ -832,9 +832,9 @@ class SimulationSetup(object):
             print("Type Error!")
             print("You have set this in your config:")
             print("general:")
-            print("    remove_runs: ", user_remove)
+            print("    clean_runs: ", user_clean)
             print()
-            print("This is of type: ", type(user_remove))
+            print("This is of type: ", type(user_clean))
             print("However, only the following types are valid:")
             print("   * boolean")
             print("   * integer (greater or equal to 0!)")
@@ -843,18 +843,18 @@ class SimulationSetup(object):
             sys.exit(1)
 
 
-    def _remove_this_rundir(self, config):
-        if config['general'].get("remove_this_rundir", False):
+    def _clean_this_rundir(self, config):
+        if config['general'].get("clean_this_rundir", False):
             rm_r(config['general']['thisrun_dir'])
 
-    def _remove_old_rundirs_except(self, config):
+    def _clean_old_rundirs_except(self, config):
         all_run_folders_in_experiment = [folder for folder in os.listdir(config["general"]["experiment_dir"]) if folder.startswith("run_")]
         # Expand to full path names:
         all_run_folders_in_experiment = [pathlib.Path(config["general"]["experiment_dir"] + "/" + folder) for folder in all_run_folders_in_experiment]
         # Sort by creation time:
         all_run_folders_in_experiment.sort(key=os.path.getctime)
 
-        number_rundirs_keep_every = config["general"].get("remove_old_rundirs_keep_every")
+        number_rundirs_keep_every = config["general"].get("clean_old_rundirs_keep_every")
         runs_to_keep_via_keepevery = []
         if number_rundirs_keep_every:
             try:
@@ -865,14 +865,14 @@ class SimulationSetup(object):
                 print("-------------------------------------------------------------")
                 print()
                 print("general:")
-                print("   remove_old_rundirs_keep_every: <x>")
+                print("   clean_old_rundirs_keep_every: <x>")
                 print()
                 print("-------------------------------------------------------------")
                 print("<x> **MUST** be an integer greater or equal than 1!")
                 sys.exit(1)
             runs_to_keep_via_keepevery = all_run_folders_in_experiment[::number_rundirs_to_keep]
 
-        number_rundirs_to_keep = config["general"].get("remove_old_rundirs_except")
+        number_rundirs_to_keep = config["general"].get("clean_old_rundirs_except")
         runs_to_keep_via_end_select = []
         if number_rundirs_to_keep:
             try:
@@ -883,25 +883,25 @@ class SimulationSetup(object):
                 print("-------------------------------------------------------------")
                 print()
                 print("general:")
-                print("   remove_old_rundirs_except: <x>")
+                print("   clean_old_rundirs_except: <x>")
                 print()
                 print("-------------------------------------------------------------")
                 print("<x> **MUST** be an integer greater than 1!")
                 sys.exit(1)
             runs_to_keep_via_end_select = all_run_folders_in_experiment[:-number_rundirs_to_keep]
         runs_to_keep = set(runs_to_keep_via_keepevery + runs_to_keep_via_end_select)
-        runs_to_remove = set(all_run_folders_in_experiment) - runs_to_keep
-        for run in list(runs_to_remove):
+        runs_to_clean = set(all_run_folders_in_experiment) - runs_to_keep
+        for run in list(runs_to_clean):
             rm_r(run)
 
-    def _remove_old_runs_filetypes(self, config):
+    def _clean_old_runs_filetypes(self, config):
         all_filetypes = config['general']['all_filetypes']
         for filetype in all_filetypes:
-            if config['general'].get("remove_" + filetype + "_dir", False):
+            if config['general'].get("clean_" + filetype + "_dir", False):
                 rm_r(config['general']['thisrun_' + filetype + '_dir'])
 
-    def _remove_old_runs_size(self, config):
-        rmsize = config['general'].get("remove_size", False)
+    def _clean_old_runs_size(self, config):
+        rmsize = config['general'].get("clean_size", False)
         if rmsize:
             flist = []
             for root, _, files in os.walk(config['general']['thisrun_dir']):
