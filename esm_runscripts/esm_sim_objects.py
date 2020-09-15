@@ -5,6 +5,7 @@ from datetime import datetime
 from io import StringIO
 import collections
 import logging
+import pathlib
 import os
 import pdb
 import shutil
@@ -750,39 +751,102 @@ class SimulationSetup(object):
             self.end_it_all()
 
     # NOTE(PG): Turn this into a static method once we seperate out the tidy job into plugins
-    #@staticmethod
+    # @staticmethod
     def clean_run_dir(self, config):
         """
         This plugin allows you to clean up the ``run_${DATE}`` folder. The
         cleanup files are specified in the config ``general`` section as
-        follows:
+        follows (documentation follows order of code as it is executed):
 
-        * ``general.remove_rundir``: (bool) Removes the entire run directory.
+        * ``general.remove_this_rundir``: (bool) Removes the entire run
+          directory.
 
-        * ``general.remove_<filetype>_dir``: (bool) Erases the run directory for a specific filetype
+        * ``general.remove_old_rundirs_except``: (int) Removes the entire run
+          directory except for the last <x> runs
+
+        * ``general.remove_old_rundirs_keep_every``: (int) Removes the entire
+          run directory except every <x>th run
+
+        * ``general.remove_<filetype>_dir``: (bool) Erases the run directory
+          for a specific filetype
 
         * ``general.remove_size``: (int or float) Erases all files with size
           greater than ``remove_size``, must be specified in bytes!
         """
-        filetypes = config['general']['all_filetypes']
+        self._remove_this_rundir(config)
+        self._remove_old_rundirs_except(config)
+        self._remove_old_runs_filetypes(config)
+        self._remove_old_runs_size(config)
+        return config
+
+    def _remove_this_rundir(self, config):
+        if config['general'].get("remove_this_rundir", False):
+            rm_r(config['general']['thisrun_dir'])
+
+    def _remove_old_rundirs_except(self, config):
+        all_run_folders_in_experiment = [folder for folder in os.listdir(config["general"]["experiment_dir"]) if folder.startswith("run_")]
+        # Expand to full path names:
+        all_run_folders_in_experiment = [pathlib.Path(config["general"]["experiment_dir"] + "/" + folder) for folder in all_run_folders_in_experiment]
+        # Sort by creation time:
+        all_run_folders_in_experiment.sort(key=os.path.getctime)
+
+        number_rundirs_keep_every = config["general"].get("remove_old_rundirs_keep_every")
+        runs_to_keep_via_keepevery = []
+        if number_rundirs_keep_every:
+            try:
+                assert isinstance(number_rundirs_keep_every, int)
+                assert number_rundirs_keep_every >= 1
+            except AssertionError:
+                print("Please ensure that you use an integer in your configuration:")
+                print("-------------------------------------------------------------")
+                print()
+                print("general:")
+                print("   remove_old_rundirs_keep_every: <x>")
+                print()
+                print("-------------------------------------------------------------")
+                print("<x> **MUST** be an integer greater or equal than 1!")
+                sys.exit(1)
+            runs_to_keep_via_keepevery = all_run_folders_in_experiment[::number_rundirs_to_keep]
+
+        number_rundirs_to_keep = config["general"].get("remove_old_rundirs_except")
+        runs_to_keep_via_end_select = []
+        if number_rundirs_to_keep:
+            try:
+                assert isinstance(number_rundirs_to_keep, int)
+                assert number_rundirs_to_keep > 1
+            except AssertionError:
+                print("Please ensure that you use an integer in your configuration:")
+                print("-------------------------------------------------------------")
+                print()
+                print("general:")
+                print("   remove_old_rundirs_except: <x>")
+                print()
+                print("-------------------------------------------------------------")
+                print("<x> **MUST** be an integer greater than 1!")
+                sys.exit(1)
+            runs_to_keep_via_end_select = all_run_folders_in_experiment[:-number_rundirs_to_keep]
+        runs_to_keep = set(runs_to_keep_via_keepevery + runs_to_keep_via_end_select)
+        runs_to_remove = set(all_run_folders_in_experiment) - runs_to_keep
+        for run in list(runs_to_remove):
+            rm_r(run)
+
+    def _remove_old_runs_filetypes(self, config):
+        all_filetypes = config['general']['all_filetypes']
         for filetype in all_filetypes:
-            if config['general'].get("remove_"+filetype+"_dir", False):
-               rm_r(config['general']['thisrun_'+filetype+'_dir'])
-        if config['general'].get("remove_rundir", False):
-            rm_r(config['general']['thisrun_work_dir']+"/../")
+            if config['general'].get("remove_" + filetype + "_dir", False):
+                rm_r(config['general']['thisrun_' + filetype + '_dir'])
+
+    def _remove_old_runs_size(self, config):
         rmsize = config['general'].get("remove_size", False)
         if rmsize:
             flist = []
-            for root, dirs, files in os.walk(config['general']['thisrun_work_dir']+"/../"):
+            for root, _, files in os.walk(config['general']['thisrun_dir']):
                 for file_ in files:
-                    size = os.path.getsize(root+"/"+file_)
+                    size = os.path.getsize(root + "/" + file_)
                     if size >= rmsize:
-                        flist.append(root+"/"+file_)
+                        flist.append(root + "/" + file_)
             for file_ in flist:
                 os.remove(file_)
-        return config
-
-
 
     def wait_and_observe(self, monitor_file):
         import time
