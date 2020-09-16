@@ -799,15 +799,17 @@ class SimulationSetup(object):
         user_clean = config["general"].get("clean_runs")
         # TODO(PG): It might be nice if these sorts of checks happened earlier
         # in the job, before it even gets to this function
+        if not user_clean:
+            return  # Skip the rest of the function
         if isinstance(user_clean, bool):
-            if "clean_this_run" not in config["general"]:
-                config["general"]["clean_this_run"] = user_clean
+            if "clean_this_rundir" not in config["general"]:
+                config["general"]["clean_this_rundir"] = user_clean
             else:
                 print("------------------------------------------")
                 print("You have set both in your config:")
                 print()
                 print("general:")
-                print("    clean_this_run: ", config["general"]["clean_this_run"])
+                print("    clean_this_rundir: ", config["general"]["clean_this_rundir"])
                 print("    clean_runs: ", user_clean)
                 print()
                 print("Please only use one of these!")
