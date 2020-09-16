@@ -70,6 +70,86 @@ def size_human_to_bytes(s, suffix="B"):
         num *= 1024.0
     return num
 
+class RunFolders(list):
+    """
+    Logs the ``run_`` directories in ``<experiment_id>/log/run_folders.log``,
+    updating it with new folders. The resulting object is a list of ``run_`` paths
+    that exist or existed during the run time (even if they got deleted). This
+    is useful for indexing operations such as ``<object_name>[::<interval>]``
+    used when removing ``run_`` folders.
+
+    Notes
+    -----
+    It keeps the folder names sorted so there is no need of sorting out of the
+    object, and it also prevents the existence of duplicates.
+    """
+    def __init__(self, config):
+        """
+        The initialization of the object:
+
+        * Loads the existing paths of the ``run_`` folders
+
+        * Loads previous ``run_`` folder names from the logging file
+
+        * Adds the current folder names to the logging file
+
+        * Returns a list of ``pathlib.Path`` folder paths
+        """
+
+        # Load paths from ``config``
+        self.exp_dir = config["general"]["experiment_dir"]
+        self.log_path = self.exp_dir + "/log/run_folders.log"
+
+        # Load existing folders
+        self.current_folders = [folder for folder in os.listdir(self.exp_dir) if folder.startswith("run_")]
+        self.current_folders = [self.exp_dir + "/" + folder for folder in self.current_folders]
+
+        # Check if the ``run_folders.log`` file exists, and if not, create it
+        if not os.path.exists(self.log_path):
+            with open(self.log_path, "w") as log_file:
+                pass
+
+        # Load previous run names from ``run_folders.log``
+        self.folders = []
+        self.load()
+
+        # Add current folders
+        self.update()
+
+        # Add folders to the list
+        for folder in self.folders:
+            super().append(pathlib.Path(folder))
+
+    def load(self):
+        """
+        Loads the existing paths of the ``run_`` folders.
+        """
+        with open (self.log_path, "r") as log_file:
+            for folder in log_file.readlines():
+                self.folders.append(folder.strip())
+
+    def save(self):
+        """
+        Saves all folder names.
+        """
+        with open (self.log_path, "w") as log_file:
+            log_file.writelines([folder  + '\n' for folder in self.folders])
+
+    def update(self):
+        """
+        Updates the folders read from the log file with the currently existing
+        folders, removes duplicates, sorts them and save them into the log file.
+        """
+        # Update with ``self.curren_folders``
+        for folder in self.current_folders:
+            self.folders.append(folder)
+        # Remove duplicates
+        self.folders = list(dict.fromkeys(self.folders))
+        # Sort folders
+        self.folders.sort()
+        # Save to the log file
+        self.save()
+
 
 class SimulationSetup(object):
     def __init__(self, command_line_config = None, user_config = None):
@@ -850,11 +930,7 @@ class SimulationSetup(object):
             rm_r(config['general']['thisrun_dir'])
 
     def _clean_old_rundirs_except(self, config):
-        all_run_folders_in_experiment = [folder for folder in os.listdir(config["general"]["experiment_dir"]) if folder.startswith("run_")]
-        # Expand to full path names:
-        all_run_folders_in_experiment = [pathlib.Path(config["general"]["experiment_dir"] + "/" + folder) for folder in all_run_folders_in_experiment]
-        # Sort by creation time:
-        all_run_folders_in_experiment.sort(key=os.path.getctime)
+        all_run_folders_in_experiment = RunFolders(config)
 
         number_rundirs_keep_every = config["general"].get("clean_old_rundirs_keep_every")
         runs_to_keep_via_keepevery = []
@@ -872,7 +948,7 @@ class SimulationSetup(object):
                 print("-------------------------------------------------------------")
                 print("<x> **MUST** be an integer greater or equal than 1!")
                 sys.exit(1)
-            runs_to_keep_via_keepevery = all_run_folders_in_experiment[::number_rundirs_to_keep]
+            runs_to_keep_via_keepevery = all_run_folders_in_experiment[::number_rundirs_keep_every]
 
         number_rundirs_to_keep = config["general"].get("clean_old_rundirs_except")
         runs_to_keep_via_end_select = []
