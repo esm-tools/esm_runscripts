@@ -799,7 +799,7 @@ class SimulationSetup(object):
         user_clean = config["general"].get("clean_runs")
         # TODO(PG): It might be nice if these sorts of checks happened earlier
         # in the job, before it even gets to this function
-        if not user_clean:
+        if user_clean is None:
             return  # Skip the rest of the function
         if isinstance(user_clean, bool):
             if "clean_this_rundir" not in config["general"]:
