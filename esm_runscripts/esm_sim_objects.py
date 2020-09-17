@@ -218,7 +218,8 @@ class SimulationSetup(object):
         """
         Calls post processing routines for this run.
         """
-        with open(
+        with open( # TODO: this will be deleted by the cleanup function
+                   # maybe change its location to the general experiment folder?
             self.config["general"]["thisrun_scripts_dir"] +
             "/" +
             self.config["general"]["expid"] +
@@ -966,7 +967,7 @@ class SimulationSetup(object):
                 print("-------------------------------------------------------------")
                 print("<x> **MUST** be an integer greater than 1!")
                 sys.exit(1)
-            runs_to_keep_via_end_select = all_run_folders_in_experiment[:-number_rundirs_to_keep]
+            runs_to_keep_via_end_select = all_run_folders_in_experiment[-number_rundirs_to_keep:]
         runs_to_keep = set(runs_to_keep_via_keepevery + runs_to_keep_via_end_select)
         runs_to_clean = set(all_run_folders_in_experiment) - runs_to_keep
         for run in list(runs_to_clean):
@@ -1006,7 +1007,7 @@ class SimulationSetup(object):
     def assemble_error_list(self):
         gconfig = self.config["general"]
         known_methods = ["warn", "kill"]
-        stdout = gconfig["thisrun_scripts_dir"] + "/" +  gconfig["expid"] + "_compute_" + gconfig["run_datestamp"] + "_" + gconfig["jobid"] + ".log"
+        stdout = gconfig["experiment_dir"] + "/scripts/" +  gconfig["expid"] + "_compute_" + gconfig["run_datestamp"] + "_" + gconfig["jobid"] + ".log"
 
         error_list = [("error", stdout, "warn", 60, 60, "keyword error detected, watch out")]
 
