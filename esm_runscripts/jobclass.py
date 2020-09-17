@@ -10,8 +10,10 @@ from datetime import datetime
 import esm_rcfile
 import six
 import tqdm
+import f90nml
 
 import esm_plugin_manager
+
 
 
 class jobclass:
@@ -134,12 +136,12 @@ class jobclass:
                     # as the path generated automagically. We need to add the path here so files can
                     # be found with glob.glob(file_source)
                     if filetype == "restart_in" and not file_source.startswith("/"):
-                       # don't use basename on restart_in as restarts can be in subfolders, 
+                       # don't use basename on restart_in as restarts can be in subfolders,
                        # relative to parent_restart_dir, example: oifs.yaml
                        file_source =  modelconfig["parent_restart_dir"] + "/" + file_source
                     elif filetype == "restart_out" or filetype == "outdata" or filetype == 'log':
                        file_source =  modelconfig["thisrun_work_dir"] + "/" + os.path.basename(file_source)
-                    
+
                     if glob.glob(file_source):
                             file_category = None
                             subfolder = None
@@ -184,7 +186,7 @@ class jobclass:
                 modelconfig[filetype + "_sources"]
             ):
                 if filetype == "restart_in" and not file_source.startswith("/"):
-                    # don't use basename on restart_in as restarts can be in subfolders, 
+                    # don't use basename on restart_in as restarts can be in subfolders,
                     # relative to parent_restart_dir, example: oifs.yaml
                     file_source =  modelconfig["parent_restart_dir"] + "/" + file_source
                 logging.debug(
@@ -250,7 +252,7 @@ class jobclass:
                             file_source_new[key_new] = value
                         del file_source
                         file_source = copy.deepcopy(file_source_new)
-                    # deniz: end fix  
+                    # deniz: end fix
 
                     source_name=self.find_correct_source(file_source, year)
                     file_target = (
@@ -483,10 +485,9 @@ class jobclass:
             config["general"]["files_missing_when_preparing_run"].update(missing_files)
         return config
 
-
-
     @staticmethod
     def report_missing_files(config):
+        config = _check_fesom_missing_files(config)
         if "files_missing_when_preparing_run" in config["general"]:
             if not config["general"]["files_missing_when_preparing_run"] == {}:
                 print ()
@@ -498,3 +499,27 @@ class jobclass:
             if not config["general"]["files_missing_when_preparing_run"] == {}:
                 print ("========================================================")
         return config
+
+
+def _check_fesom_missing_files(config):
+    """
+    Checks for missing files in FESOM namelist.config
+
+    Parameters
+    ----------
+    config : dict
+        The experiment configuration
+
+    Returns
+    -------
+    config : dict
+    """
+    if "fesom" in config['general']['valid_model_names']:
+        namelist_config = f90nml.read(os.path.join(config['general']['thisrun_work_dir'], "namelist.config"))
+        for path_key, path in namelist_config['paths'].items():
+            if path:  # Remove empty strings
+                if not os.path.exists(path):
+                    if 'files_missing_when_preparing_run' not in config['general']:
+                        config['general']['files_missing_when_preparing_run'] = {}
+                    config['general']['files_missing_when_preparing_run'][path_key +" (from namelist.config in FESOM)"] = path
+    return config
