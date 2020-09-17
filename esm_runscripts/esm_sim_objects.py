@@ -968,7 +968,10 @@ class SimulationSetup(object):
                 print("<x> **MUST** be an integer greater than 1!")
                 sys.exit(1)
             runs_to_keep_via_end_select = all_run_folders_in_experiment[-number_rundirs_to_keep:]
-        runs_to_keep = set(runs_to_keep_via_keepevery + runs_to_keep_via_end_select)
+        if  number_rundirs_keep_every or number_rundirs_to_keep:
+            runs_to_keep = set(runs_to_keep_via_keepevery + runs_to_keep_via_end_select)
+        else:
+            runs_to_keep = set(all_run_folders_in_experiment)
         runs_to_clean = set(all_run_folders_in_experiment) - runs_to_keep
         for run in list(runs_to_clean):
             rm_r(run)
