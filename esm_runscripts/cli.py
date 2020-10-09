@@ -20,9 +20,6 @@ DEBUG_MODE = logger.level == logging.DEBUG
 FORMAT = (
     "[%(asctime)s,%(msecs)03d:%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s"
 )
-f_handler = logging.FileHandler("file.log")
-f_handler.setFormatter(FORMAT)
-logger.addHandler(f_handler)
 
 
 def parse_shargs():
