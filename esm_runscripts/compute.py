@@ -58,7 +58,6 @@ class compute(jobclass):
         config["general"]["all_files_to_copy"] = all_files_to_copy
         # FIXME: This should always just come from the config and not from self:
         self.all_files_to_copy = all_files_to_copy
-        import pdb; pdb.set_trace()
         return config
 
     @staticmethod
