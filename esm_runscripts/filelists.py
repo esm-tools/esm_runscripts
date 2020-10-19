@@ -1,4 +1,4 @@
-
+from loguru import logger
 
 #@staticmethod
 def rename_sources_to_targets(config):
@@ -20,7 +20,7 @@ def rename_sources_to_targets(config):
 
                 if sources and targets and in_work:
                     if not config[model][filetype + "_sources"] == config[model][filetype + "_in_work"]:
-                        print ("Mismatch between " + filetype + "_sources and " + filetype + "_in_work in model " + model)
+                        logger.debug("Mismatch between " + filetype + "_sources and " + filetype + "_in_work in model " + model)
                         sys.exit(-1)
 
                 elif sources and targets and not in_work:
@@ -28,7 +28,7 @@ def rename_sources_to_targets(config):
                     pass
 
                 elif sources and not targets:
-                    print ("Renaming sources to targets for filetype " + filetype + " in model " + model)
+                    logger.debug("Renaming sources to targets for filetype " + filetype + " in model " + model)
                     config[model][filetype + "_targets"] = copy.deepcopy(config[model][filetype + "_sources"])
                     if in_work:
                         config[model][filetype + "_sources"] = copy.deepcopy(config[model][filetype + "_in_work"])
@@ -43,7 +43,7 @@ def rename_sources_to_targets(config):
 
                 if sources and targets and in_work:
                     if not config[model][filetype + "_targets"] == config[model][filetype + "_in_work"]:
-                        print ("Mismatch between " + filetype + "_targets and " + filetype + "_in_work in model " + model)
+                        logger.debug("Mismatch between " + filetype + "_targets and " + filetype + "_in_work in model " + model)
                         sys.exit(-1)
 
                 elif sources and targets and not in_work:
@@ -51,7 +51,7 @@ def rename_sources_to_targets(config):
                     pass
 
                 elif (not sources and in_work) or (not sources and targets) :
-                    print (filetype + "_sources missing in model " + model)
+                    logger.error(filetype + "_sources missing in model " + model)
                     sys.exit(-1)
 
 
@@ -110,7 +110,7 @@ def choose_needed_files(config):
             new_sources = new_targets = {}
             for categ, name in six.iteritems(config[model][filetype + "_files"]):
                 if not name in config[model][filetype + "_sources"]:
-                    print ("Implementation " + name + " not found for filetype " + filetype + " of model " + model)
+                    logger.error("Implementation " + name + " not found for filetype " + filetype + " of model " + model)
                     sys.exit(-1)
                 new_sources.update({ categ : config[model][filetype + "_sources"][name]})
 
@@ -170,7 +170,7 @@ def target_subfolders(config):
             if filetype + "_targets" in config[model]:
                 for descr, filename in six.iteritems(config[model][filetype + "_targets"]):  # * only in targets if denotes subfolder
                         if not descr in config[model][filetype + "_sources"]:
-                            print ("no source found for target " + name + " in model " + model)
+                            logger.error("no source found for target " + name + " in model " + model)
                             sys.exit(-1)
                         if "*" in filename:
                             source_filename = os.path.basename(config[model][filetype + "_sources"][descr])
@@ -317,23 +317,23 @@ def log_used_files(config, filetypes):
 
 def find_correct_source(mconfig, file_source, year): # not needed in compute anymore, moved to jobclass
     if isinstance(file_source, dict):
-        logging.debug(
+        logger.debug(
             "Checking which file to use for this year: %s",
             year,
         )
         for fname, valid_years in six.iteritems(file_source):
-            logging.debug("Checking %s", fname)
+            logger.debug("Checking %s", fname)
             min_year = float(valid_years.get("from", "-inf"))
             max_year = float(valid_years.get("to", "inf"))
-            logging.debug("Valid from: %s", min_year)
-            logging.debug("Valid to: %s", max_year)
-            logging.debug(
+            logger.debug("Valid from: %s", min_year)
+            logger.debug("Valid to: %s", max_year)
+            logger.debug(
                 "%s <= %s --> %s",
                 min_year,
                 year,
                 min_year <= year,
             )
-            logging.debug(
+            logger.debug(
                 "%s <= %s --> %s",
                 year,
                 max_year,
@@ -389,7 +389,7 @@ def check_for_unknown_files(config):
         unknown_files.append(os.path.realpath(thisfile))
 
         index += 1
-        print ("File is not in list: " + os.path.realpath(thisfile) )
+        logger.info("File is not in list: " + os.path.realpath(thisfile) )
 
     return config
 

@@ -1,6 +1,5 @@
 import copy
 import glob
-import logging
 import os
 import pdb
 import shutil
@@ -11,6 +10,7 @@ import esm_rcfile
 import six
 import tqdm
 import f90nml
+from loguru import logger
 
 import esm_plugin_manager
 
@@ -46,10 +46,10 @@ class jobclass:
 
     def assemble_file_lists(self, config, filetypes):
         all_files_to_copy = []
-        six.print_("\n" "- Generating file lists for this run...")
+        logger.info("\n" "- Generating file lists for this run...")
         for model in config["general"]["valid_model_names"]:
-            six.print_("-" * 80)
-            six.print_("* %s" % config[model]["model"], "\n")
+            logger.info("-" * 80)
+            logger.info("* %s" % config[model]["model"])
             all_component_files, filetype_specific_dict = (
                 self.really_assemble_file_list(config, model, filetypes)
             )
@@ -89,7 +89,7 @@ class jobclass:
                         flist.write("\nExp Tree: " + exp_tree + subfolder + exp_name)
                         flist.write("\nWork Dir: " + subfolder + work_dir_name)
                         flist.write("\n")
-                        print ("-  " + subfolder + work_dir_name +": " + source)
+                        logger.info("-  " + subfolder + work_dir_name +": " + source)
                     flist.write("\n")
                     flist.write(80 * "-")
 
@@ -113,7 +113,7 @@ class jobclass:
             filetype_files = []
 
             if filetype == "restart_in" and not modelconfig["lresume"]:
-                six.print_("- restart files do not make sense for a cold start, skipping...")
+                logger.info("- restart files do not make sense for a cold start, skipping...")
                 continue
             if filetype + "_sources" not in modelconfig:
                 continue
@@ -131,7 +131,6 @@ class jobclass:
                 sources_dict
             ):
                 if "*" in file_source:
-                    #esm_parser.pprint_config(self.config)
                     # restart_out* and outdata* entries in yaml files are provided without their path
                     # as the path generated automagically. We need to add the path here so files can
                     # be found with glob.glob(file_source)
@@ -175,7 +174,7 @@ class jobclass:
                             if subfolder:
                                 del modelconfig[filetype + "_in_work"][file_descriptor]
                     else:
-                            print("jobclass.py: globbing failed for FILE SOURCE: ",file_source)
+                            logger.error("jobclass.py: globbing failed for FILE SOURCE: ",file_source)
 
 
 
@@ -189,7 +188,7 @@ class jobclass:
                     # don't use basename on restart_in as restarts can be in subfolders,
                     # relative to parent_restart_dir, example: oifs.yaml
                     file_source =  modelconfig["parent_restart_dir"] + "/" + file_source
-                logging.debug(
+                logger.debug(
                     "file_descriptor=%s, file_source=%s", file_descriptor, file_source
                 )
                 if filetype + "_files" in modelconfig:
@@ -203,7 +202,7 @@ class jobclass:
                 else:
                     file_category = file_descriptor
 
-                logging.debug(type(file_source))
+                logger.debug(type(file_source))
 
                 # should be generalized to all sorts of dates on day
 
@@ -282,23 +281,23 @@ class jobclass:
 
     def find_correct_source(self, file_source, year):
         if isinstance(file_source, dict):
-            logging.debug(
+            logger.debug(
                 "Checking which file to use for this year: %s",
                 year,
             )
             for fname, valid_years in six.iteritems(file_source):
-                logging.debug("Checking %s", fname)
+                logger.debug("Checking %s", fname)
                 min_year = float(valid_years.get("from", "-inf"))
                 max_year = float(valid_years.get("to", "inf"))
-                logging.debug("Valid from: %s", min_year)
-                logging.debug("Valid to: %s", max_year)
-                logging.debug(
+                logger.debug("Valid from: %s", min_year)
+                logger.debug("Valid to: %s", max_year)
+                logger.debug(
                     "%s <= %s --> %s",
                     min_year,
                     year,
                     min_year <= year,
                 )
-                logging.debug(
+                logger.debug(
                     "%s <= %s --> %s",
                     year,
                     max_year,
@@ -319,9 +318,9 @@ class jobclass:
     def end_it_all(config, silent=False):
         if config["general"]["profile"]:
             for line in timing_info:
-                print(line)
+                logger.info(line)
         if not silent:
-            print("Exiting entire Python process!")
+            logger.info("Exiting entire Python process!")
         sys.exit()
 
 
@@ -358,7 +357,7 @@ class jobclass:
                 line = jobclass.assemble_log_message(config, message, message_sep)
                 logfile.write(line + "\n")
         except KeyError:
-            print("Sorry; couldn't find 'experiment_log_file' in config['general']...")
+            logger.error("Sorry; couldn't find 'experiment_log_file' in config['general']...")
             esm_parser.pprint_config(self.config["general"])
             raise
 
@@ -387,8 +386,8 @@ class jobclass:
         # source = "init", "thisrun", "work"
         # target = "thisrun", "work", "experiment"
 
-        six.print_("=" * 80, "\n")
-        six.print_("COPYING STUFF FROM " + source.upper() + " TO " + target.upper() + " FOLDERS")
+        logger.info("=" * 80, "\n")
+        logger.info("COPYING STUFF FROM " + source.upper() + " TO " + target.upper() + " FOLDERS")
 
         successful_files = []
         missing_files = {}
@@ -415,17 +414,17 @@ class jobclass:
                             if not os.path.isdir(dest_dir):
                                 os.makedirs(dest_dir)
                             shutil.copy2(file_source, file_target)
-                            print ("Copying " + file_source)
-                            print ("        ---> " + file_target)
+                            logger.info("Copying " + file_source)
+                            logger.info("        ---> " + file_target)
                             successful_files.append(file_source)
                         except IOError:
                             missing_files.update({file_target: file_source})
         if missing_files:
             if not "files_missing_when_preparing_run" in config["general"]:
                 config["general"]["files_missing_when_preparing_run"] = {}
-            six.print_("--- WARNING: These files were missing:")
+            logger.warning("--- WARNING: These files were missing:")
             for missing_file in missing_files:
-                print( "  - " + missing_file + ": " + missing_files[missing_file])
+                logger.warning( "  - " + missing_file + ": " + missing_files[missing_file])
             config["general"]["files_missing_when_preparing_run"].update(missing_files)
         return config
 
@@ -452,7 +451,7 @@ class jobclass:
             flist,
             bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
         ):
-            logging.debug(ftuple)
+            logger.debug(ftuple)
             (file_init, filedir_intermediate, filename_intermediate, filename_work, subfolder) = ftuple
 
             if source == "init":
@@ -479,9 +478,9 @@ class jobclass:
         if missing_files:
             if not "files_missing_when_preparing_run" in config["general"]:
                 config["general"]["files_missing_when_preparing_run"] = {}
-            six.print_("--- WARNING: These files were missing:")
+            logger.warning("--- WARNING: These files were missing:")
             for missing_file in missing_files:
-                print( "  - " + missing_file + ": " + missing_files[missing_file])
+                logger.warning("  - " + missing_file + ": " + missing_files[missing_file])
             config["general"]["files_missing_when_preparing_run"].update(missing_files)
         return config
 
@@ -490,14 +489,14 @@ class jobclass:
         config = _check_fesom_missing_files(config)
         if "files_missing_when_preparing_run" in config["general"]:
             if not config["general"]["files_missing_when_preparing_run"] == {}:
-                print ()
-                print ("========================================================")
-                print ("MISSING FILES:")
+                logger.warning("")
+                logger.warning("========================================================")
+                logger.warning("MISSING FILES:")
             for missing_file in config["general"]["files_missing_when_preparing_run"]:
-                print ("--  " + missing_file +": ")
-                print ("        --> " + config["general"]["files_missing_when_preparing_run"][missing_file] )
+                logger.warning("--  " + missing_file +": ")
+                logger.warning("        --> " + config["general"]["files_missing_when_preparing_run"][missing_file] )
             if not config["general"]["files_missing_when_preparing_run"] == {}:
-                print ("========================================================")
+                logger.warning("========================================================")
         return config
 
 

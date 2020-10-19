@@ -1,9 +1,12 @@
 import sys
-known_batch_systems = ["slurm"]
+
+from loguru import logger
 
 from .jobclass import jobclass
-
 from .slurm import Slurm
+
+known_batch_systems = ["slurm"]
+
 
 class UnknownBatchSystemError(Exception):
     """Raise this exception when an unknown batch system is encountered"""
@@ -144,15 +147,14 @@ class esm_batch_system:
 
     @staticmethod
     def write_simple_runscript(config):
-        import six
         import os
         self = config["general"]["batch"]
         sadfilename = esm_batch_system.get_sad_filename(config)
         header = esm_batch_system.get_batch_header(config)
         environment = esm_batch_system.get_environment(config)
 
-        print ("still alive")
-        print ("jobtype: ", config["general"]["jobtype"])
+        logger.debug("still alive")
+        logger.debug(f"jobtype: {config['general']['jobtype']}")
 
         if config["general"]["jobtype"] == "compute":
             commands = esm_batch_system.get_run_commands(config)
@@ -179,28 +181,27 @@ class esm_batch_system:
 
         config["general"]["submit_command"] = esm_batch_system.get_submit_command(config, sadfilename)
 
-        six.print_("\n", 40 * "+ ")
-        six.print_("Contents of ",sadfilename, ":")
+        logger.info("\n", 40 * "+ ")
+        logger.info("Contents of ",sadfilename, ":")
         with open(sadfilename, "r") as fin:
-            print (fin.read())
+            logger.info(fin.read())
         if os.path.isfile(self.bs.filename):
-            six.print_("\n", 40 * "+ ")
-            six.print_("Contents of ",self.bs.filename, ":")
+            logger.info("\n", 40 * "+ ")
+            logger.info("Contents of ",self.bs.filename, ":")
             with open(self.bs.filename, "r") as fin:
-                print (fin.read())
+                logger.info(fin.read())
         return config
 
 
     @staticmethod
     def submit(config):
-        import six
         import os
         if not config["general"]["check"]:
-            six.print_("\n", 40 * "+ ")
-            print ("Submitting sad jobscript to batch system...")
+            logger.info("\n", 40 * "+ ")
+            logger.info("Submitting sad jobscript to batch system...")
             for command in config["general"]["submit_command"]:
-                print (command)
-            six.print_("\n", 40 * "+ ")
+                logger.info(command)
+            logger.info("\n", 40 * "+ ")
             for command in config["general"]["submit_command"]:
                 os.system(command)
         return config

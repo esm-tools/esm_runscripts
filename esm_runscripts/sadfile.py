@@ -1,3 +1,5 @@
+from loguru import logger
+
 class sadfile:
 
     def __init__(self, config, commands):
@@ -30,13 +32,12 @@ class sadfile:
 
         self.submit_command = self.get_submit_command(sadfilename)
 
-        six.print_("\n", 40 * "+ ")
-        six.print_("Contents of ",sadfilename, ":")
+        logger.info("\n", 40 * "+ ")
+        logger.info("Contents of ",sadfilename, ":")
         with open(sadfilename, "r") as fin:
-            print (fin.read())
+            logger.info(fin.read())
         if os.path.isfile(self.batch.bs.filename):
-            six.print_("\n", 40 * "+ ")
-            six.print_("Contents of ",self.batch.bs.filename, ":")
+            logger.info("\n", 40 * "+ ")
+            logger.info("Contents of ",self.batch.bs.filename, ":")
             with open(self.batch.bs.filename, "r") as fin:
-                print (fin.read())
-
+                logger.info(fin.read())

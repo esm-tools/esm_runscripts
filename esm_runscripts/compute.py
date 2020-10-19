@@ -5,6 +5,8 @@ import os
 import shutil
 import sys
 
+from loguru import logger
+
 import esm_rcfile
 import six
 import yaml
@@ -29,7 +31,8 @@ class compute(jobclass):
             setup_name = config["general"]["setup_name"]
             recipe_steps = config.get(setup_name, {}).get("compute_recipe") or config["general"].get("compute_recipe")
         except KeyError:
-            print("Your configuration is incorrect, and should include headings for %s as well as general!" % setup_name)
+            logger.error("Your configuration is incorrect!")
+            logger.error(f"It should include headings for {setup_name} as well as general!")
             sys.exit(1)
         super(compute, self).__init__("compute", recipe_steps=recipe_steps)
         config["general"]["jobclass"] = self
@@ -111,28 +114,28 @@ class compute(jobclass):
     def modify_namelists(config):
 
         # Load and modify namelists:
-        six.print_("\n" "- Setting up namelists for this run...")
+        logger.info("\n" "- Setting up namelists for this run...")
         for model in config["general"]["valid_model_names"]:
-            six.print_("-" * 80)
-            six.print_("* %s" % config[model]["model"], "\n")
+            logger.info("-" * 80)
+            logger.info("* %s" % config[model]["model"], "\n")
             config[model] = Namelist.nmls_load(config[model])
             config[model] = Namelist.nmls_remove(config[model])
             if model == "echam":
                 config = Namelist.apply_echam_disturbance(config)
             config[model] = Namelist.nmls_modify(config[model])
             config[model] = Namelist.nmls_finalize(config[model])
-            print("end of namelist section")
+            logger.info("end of namelist section")
         return config
 
     def copy_files_to_thisrun(config):
 
         self = config["general"]["jobclass"]
-        six.print_("=" * 80, "\n")
-        six.print_("PREPARING EXPERIMENT")
+        logger.info("=" * 80, "\n")
+        logger.info("PREPARING EXPERIMENT")
         # Copy files:
-        six.print_("\n" "- File lists populated, proceeding with copy...")
-        six.print_("- Note that you can see your file lists in the config folder")
-        six.print_("- You will be informed about missing files")
+        logger.info("\n" "- File lists populated, proceeding with copy...")
+        logger.info("- Note that you can see your file lists in the config folder")
+        logger.info("- You will be informed about missing files")
 
         compute.print_used_files(config)
 
@@ -144,8 +147,8 @@ class compute(jobclass):
     def copy_files_to_work(config):
 
         self = config["general"]["jobclass"]
-        six.print_("=" * 80, "\n")
-        six.print_("PREPARING WORK FOLDER")
+        logger.info("=" * 80, "\n")
+        logger.info("PREPARING WORK FOLDER")
         config = compute.copy_files(
             config, self.all_files_to_copy, source="thisrun", target="work"
         )
@@ -253,8 +256,8 @@ class compute(jobclass):
         tools_dir = scriptsdir + "/esm_tools/functions"
         namelists_dir = scriptsdir + "/esm_tools/namelists"
 
-        print("Started from :", fromdir)
-        print("Scripts Dir : ", scriptsdir)
+        logger.info("Started from :", fromdir)
+        logger.info("Scripts Dir : ", scriptsdir)
 
         if os.path.isdir(tools_dir) and gconfig["update"]:
             shutil.rmtree(tools_dir, ignore_errors=True)
@@ -262,23 +265,23 @@ class compute(jobclass):
             shutil.rmtree(namelists_dir, ignore_errors=True)
 
         if not os.path.isdir(tools_dir):
-            print("Copying from: ", esm_rcfile.FUNCTION_PATH)
+            logger.info("Copying from: ", esm_rcfile.FUNCTION_PATH)
             shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir)
         if not os.path.isdir(namelists_dir):
             shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir)
 
         if (fromdir == scriptsdir) and not gconfig["update"]:
-            print("Started from the experiment folder, continuing...")
+            logger.info("Started from the experiment folder, continuing...")
             return config
         else:
             if not fromdir == scriptsdir:
-                print("Not started from experiment folder, restarting...")
+                logger.info("Not started from experiment folder, restarting...")
             else:
-                print("Tools were updated, restarting...")
+                logger.info("Tools were updated, restarting...")
 
             if not os.path.isfile(scriptsdir + "/" + gconfig["scriptname"]):
                 oldscript = fromdir + "/" + gconfig["scriptname"]
-                print(oldscript)
+                logger.info(oldscript)
                 shutil.copy2(oldscript, scriptsdir)
 
             for tfile in gconfig["additional_files"]:
@@ -292,7 +295,7 @@ class compute(jobclass):
                 + "esm_runscripts "
                 + gconfig["original_command"].replace("-U", "")
             )
-            print(restart_command)
+            logger.info(restart_command)
             os.system(restart_command)
 
             gconfig["profile"] = False
@@ -330,12 +333,12 @@ class compute(jobclass):
     @staticmethod
     def _show_simulation_info(config):
 
-        six.print_(80 * "=")
-        six.print_("STARTING SIMULATION JOB!")
-        six.print_("Experiment ID = %s" % config["general"]["expid"])
-        six.print_("Setup = %s" % config["general"]["setup_name"])
-        six.print_("This setup consists of:")
+        logger.info(80 * "=")
+        logger.info("STARTING SIMULATION JOB!")
+        logger.info("Experiment ID = %s" % config["general"]["expid"])
+        logger.info("Setup = %s" % config["general"]["setup_name"])
+        logger.info("This setup consists of:")
         for model in config["general"]["valid_model_names"]:
-            six.print_("- %s" % model)
-        six.print_("You are using the Python version.")
+            logger.info("- %s" % model)
+        logger.info("You are using the Python version.")
         return config

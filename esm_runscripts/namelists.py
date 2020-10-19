@@ -6,7 +6,7 @@ Namelists as part of the ``esm-runscripts`` recipe. All plugins are found under
 the class Namelist as static methods. A deprecated class ``namelist`` (small "n") is
 provided, which warns you when it is used.
 """
-import logging
+from loguru import logger
 import os
 import sys
 import warnings
@@ -71,7 +71,7 @@ class Namelist:
         mconfig["namelists"] = dict.fromkeys(nmls)
         for nml in nmls:
             if os.path.isfile(os.path.join(mconfig["thisrun_config_dir"], nml)):
-                logging.debug("Loading %s", nml)
+                logger.debug("Loading %s", nml)
                 mconfig["namelists"][nml] = f90nml.read(
                     os.path.join(mconfig["thisrun_config_dir"], nml)
                 )
@@ -118,8 +118,8 @@ class Namelist:
         namelist_removes = []
         for namelist in list(namelist_changes):
             changes = namelist_changes[namelist]
-            logging.debug("Determining remove entires for %s", namelist)
-            logging.debug("All changes: %s", changes)
+            logger.debug("Determining remove entires for %s", namelist)
+            logger.debug("All changes: %s", changes)
             for change_chapter in list(changes):
                 change_entries = changes[change_chapter]
                 for key in list(change_entries):
@@ -129,7 +129,7 @@ class Namelist:
                         del namelist_changes[namelist][change_chapter][key]
         for remove in namelist_removes:
             namelist, change_chapter, key = remove
-            logging.debug("Removing from %s: %s, %s", namelist, change_chapter, key)
+            logger.debug("Removing from %s: %s, %s", namelist, change_chapter, key)
             if key in mconfig["namelists"][namelist][change_chapter]:
                 del mconfig["namelists"][namelist][change_chapter][key]
         return mconfig
@@ -197,23 +197,23 @@ class Namelist:
             if os.path.isfile(config["general"]["experiment_scripts_dir"]+"/disturb_years.dat"):
                 with open(config["general"]["experiment_scripts_dir"]+"/disturb_years.dat") as f:
                         disturbance_file = [int(line.strip()) for line in f.readlines() if line.strip()]
-                print(disturbance_file)
+                logger.debug(disturbance_file)
             else:
                 disturbance_file = None
-                print(config["general"]["experiment_scripts_dir"]+"/disturb_years.dat", "was not found")
+                logger.debug(config["general"]["experiment_scripts_dir"]+"/disturb_years.dat was not found")
             disturbance_years = disturbance_file or config["echam"].get("disturbance_years", [])
             current_year = config['general']['current_date'].year
             if current_year in disturbance_years:
-                print("-------------------------------------------------------")
-                print("")
-                print("              > Applying disturbance in echam namelist!")
-                print("")
-                print("-------------------------------------------------------")
+                logger.info("-------------------------------------------------------")
+                logger.info("")
+                logger.info("              > Applying disturbance in echam namelist!")
+                logger.info("")
+                logger.info("-------------------------------------------------------")
                 dynctl['enstdif'] = config['echam'].get('disturbance', 1.000001)
                 nml['dynctl'] = dynctl
             else:
-                print("Check failed:")
-                print("Current year", current_year, "disturbance_years", disturbance_years)
+                logger.debug("Check failed:")
+                logger.debug("Current year", current_year, "disturbance_years", disturbance_years)
         return config
 
     @staticmethod
@@ -258,13 +258,13 @@ class Namelist:
                 nml_obj.write(nml_file)
             all_nmls[nml_name] = nml_obj  # PG: or a string representation?
         mconfig["namelist_objs"] = all_nmls
-        six.print_(
+        logger.info(
             "\n" "- Namelists modified according to experiment specifications..."
         )
         for nml_name, nml in all_nmls.items():
-            six.print_("Final Contents of ", nml_name, ":")
+            logger.info("Final Contents of ", nml_name, ":")
             nml.write(sys.stdout)
-            six.print_("\n", 40 * "+ ")
+            logger.info("\n", 40 * "+ ")
         return mconfig
 
 
