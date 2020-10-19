@@ -152,7 +152,7 @@ class RunFolders(list):
 
 
 class SimulationSetup(object):
-    def __init__(self, command_line_config = None, user_config = None):
+    def __init__(self, command_line_config=None, user_config=None):
 
         if not command_line_config and not user_config:
             raise ValueError("SimulationSetup needs to be initialized with either command_line_config or user_config.")

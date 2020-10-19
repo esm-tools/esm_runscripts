@@ -147,7 +147,7 @@ def main():
         jobtype = parsed_args["task"]
 
 
-    command_line_config={}
+    command_line_config = {}
     command_line_config["check"] = check
     command_line_config["profile"] = profile
     command_line_config["update"] = update
@@ -161,8 +161,8 @@ def main():
     command_line_config["started_from"] = os.getcwd()
 
 
-    print ("Started from: ", command_line_config["started_from"])
-    print ("starting : ", jobtype)
+    print("Started from: ", command_line_config["started_from"])
+    print("starting : ", jobtype)
 
     Setup = SimulationSetup(command_line_config)
     Setup()

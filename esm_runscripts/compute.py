@@ -19,9 +19,6 @@ from .namelists import Namelist
 
 class compute(jobclass):
     def __init__(self, config):
-
-        self.relevant_files = ["bin", "config", "forcing", "input", "restart_in"]
-        self.all_files_to_copy = self.assemble_file_lists(config, self.relevant_files)
         # Check for a user defined compute recipe in the setup section of the
         # general section. If nothing is found, recipe_steps should evaluate to
         # None and the default is used
@@ -29,10 +26,40 @@ class compute(jobclass):
             setup_name = config["general"]["setup_name"]
             recipe_steps = config.get(setup_name, {}).get("compute_recipe") or config["general"].get("compute_recipe")
         except KeyError:
-            print("Your configuration is incorrect, and should include headings for %s as well as general!" % setup_name)
+            print("Your configuration is incorrect!")
+            print(f"It should include headings for {setup_name} as well as general!")
             sys.exit(1)
         super(compute, self).__init__("compute", recipe_steps=recipe_steps)
         config["general"]["jobclass"] = self
+
+    @staticmethod
+    def assemble_filelists(config):
+        """
+        Assembles the list of files needed for the experiment that shall be
+        copied to the experiment tree. **DOES NOT PERFORM ANY COPYING YET!**.
+        Actual filesystem copying is done by copy_files_to_thisrun (from entire
+        filesystem to experiment tree) and copy_files_to_work (from experiment
+        tree to work folder)
+
+        Parameters
+        ----------
+        config : dict
+            The entire experiment configuration
+
+        Returns
+        -------
+        config : dict
+            The entire experiment configuration
+
+        """
+        self = config["general"]["jobclass"]
+        relevant_files = ["bin", "config", "forcing", "input", "restart_in"]
+        all_files_to_copy = self.assemble_file_lists(config, relevant_files)
+        config["general"]["all_files_to_copy"] = all_files_to_copy
+        # FIXME: This should always just come from the config and not from self:
+        self.all_files_to_copy = all_files_to_copy
+        import pdb; pdb.set_trace()
+        return config
 
     @staticmethod
     def add_batch_hostfile(config):
