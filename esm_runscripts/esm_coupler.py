@@ -3,6 +3,7 @@ known_couplers = ["oasis3mct", "yac"]
 
 class esm_coupler:
 
+
     def __init__(self, full_config, name):
         self.name = name
 
@@ -24,7 +25,7 @@ class esm_coupler:
                                        lucia=full_config["oasis3mct"].get("use_lucia",False))
         elif name == "yac":
             from . import yac
-            self.coupler = yac.yac(self.nb_of_couplings, self.coupled_execs, full_config[self.name]["grids"], self.runtime)
+            self.coupler = yac.yac(full_config, self.nb_of_couplings, self.process_ordering, full_config[self.name]["grids"], self.runtime)
         else:
             print ("Unknown coupler :", name)
             sys.exit(0)
@@ -163,6 +164,11 @@ class esm_coupler:
 
 
     def add_couplings(self, full_config):
+
+        """
+        doc-string here
+        """
+
         self.coupler.next_coupling = 1
         if "coupling_target_fields" in full_config[self.name]:
             print('coupler_name: ', self.coupler.name)
@@ -237,12 +243,9 @@ class esm_coupler:
                 if "coupling_directions" in full_config[self.name]:
                     transient_id = 1
                     for direction in list(full_config[self.name]["coupling_directions"]):
-                        self.coupler.add_coupling(direction,full_config[self.name])
                         for coupling_field in full_config[self.name]["coupling_target_fields"][direction]:
-                            self.coupler.add_coupling_field(coupling_field, transient_id, direction, full_config[self.name])
+                            self.coupler.add_coupling(coupling_field, transient_id, direction, full_config[self.name])
                             transient_id += 1
-                        self.coupler.finalize_coupling()
-                        
 
 
     def finalize(self, destination_dir):
