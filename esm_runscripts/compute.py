@@ -302,11 +302,15 @@ class compute(jobclass):
 
             # At this point, ``fromdir`` and ``scriptsdir`` are different. Update the
             # runscript if necessary
-            compute.update_runscript(fromdir, scriptsdir, gconfig["scriptname"], gconfig, "runscript")
+            compute.update_runscript(
+                fromdir, scriptsdir, gconfig["scriptname"], gconfig, "runscript"
+            )
 
             # Update the ``additional_files`` if necessary
             for tfile in gconfig["additional_files"]:
-                compute.update_runscript(fromdir, scriptsdir, tfile, gconfig, "additional file")
+                compute.update_runscript(
+                    fromdir, scriptsdir, tfile, gconfig, "additional file"
+                )
 
             restart_command = (
                 "cd "
@@ -363,15 +367,17 @@ class compute(jobclass):
         else:
             import difflib
             import esm_parser
+
             script_o = open(fromdir + "/" + tfile).readlines()
             script_t = open(scriptsdir + "/" + tfile).readlines()
 
             diffobj = difflib.SequenceMatcher(a=script_t, b=script_o)
             # If the files are different
-            if not diffobj.ratio()==1:
+            if not diffobj.ratio() == 1:
                 # Find differences
-                differences = (f"{fromdir + '/' + tfile} differs from " +
-                    f"{scriptsdir + '/' + tfile}:\n"
+                differences = (
+                    f"{fromdir + '/' + tfile} differs from "
+                    + f"{scriptsdir + '/' + tfile}:\n"
                 )
                 for line in difflib.unified_diff(script_t, script_o):
                     differences += line
@@ -379,9 +385,11 @@ class compute(jobclass):
                 # If the --update flag is used, notify that the target script will
                 # be updated and do update it
                 if gconfig["update"]:
-                    esm_parser.user_note(f"Original {file_type} different from target",
-                        differences + "\n" +
-                        f"{scriptsdir + '/' + tfile} will be updated!"
+                    esm_parser.user_note(
+                        f"Original {file_type} different from target",
+                        differences
+                        + "\n"
+                        + f"{scriptsdir + '/' + tfile} will be updated!",
                     )
                     oldscript = fromdir + "/" + tfile
                     print(oldscript)
@@ -389,13 +397,16 @@ class compute(jobclass):
                 # If the --update flag is not called, exit with an error showing the
                 # user how to proceed
                 else:
-                    esm_parser.user_error(f"Original {file_type} different from target",
-                        differences + "\n" +
-                        (f"If you want that {scriptsdir + '/' + tfile} is " +
-                        "updated with the above changes, please use -U flag in the " +
-                        "esm_runscript call (WARNING: This will overwrite your " +
-                        f"{file_type} in the experiment folder!)"
-                        )
+                    esm_parser.user_error(
+                        f"Original {file_type} different from target",
+                        differences
+                        + "\n"
+                        + (
+                            f"If you want that {scriptsdir + '/' + tfile} is "
+                            + "updated with the above changes, please use -U flag in the "
+                            + "esm_runscript call (WARNING: This will overwrite your "
+                            + f"{file_type} in the experiment folder!)"
+                        ),
                     )
 
     @staticmethod
