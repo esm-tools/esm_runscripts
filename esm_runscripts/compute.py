@@ -244,46 +244,69 @@ class compute(jobclass):
 
     @staticmethod
     def copy_tools_to_thisrun(config):
+        """
+        Copies the tools, namelists and runscripts to the experiment directory,
+        making sure that they don't overwrite previously existing files unless
+        the ``-U`` flag is used.
 
+        Parameters
+        ----------
+        config : dict
+            Dictionary containing the configuration information.
+        """
         gconfig = config["general"]
 
+        # Directory where the original runscript is
         fromdir = os.path.realpath(gconfig["started_from"])
+        # Directory where the runscript is copied to
         scriptsdir = os.path.realpath(gconfig["experiment_scripts_dir"])
 
+        # Paths inside the experiment directory where esm_tools and namelists
+        # are copied to. Those are not functional but a reference to what was
+        # the original state when the experiment was firstly started
         tools_dir = scriptsdir + "/esm_tools/functions"
         namelists_dir = scriptsdir + "/esm_tools/namelists"
 
         print("Started from :", fromdir)
         print("Scripts Dir : ", scriptsdir)
 
+        # Update namelists and esm_tools. These have no effect on the final
+        # simulation as only the installed esm_tools with their runscripts
+        # are used, unless esm_tools and namelists paths are manually defined
+        # by the model or user (not recommended for the esm_tools path)
         if os.path.isdir(tools_dir) and gconfig["update"]:
             shutil.rmtree(tools_dir, ignore_errors=True)
         if os.path.isdir(namelists_dir) and gconfig["update"]:
             shutil.rmtree(namelists_dir, ignore_errors=True)
 
+        # In case there is no esm_tools or namelists in the experiment folder,
+        # copy from the default esm_tools path
         if not os.path.isdir(tools_dir):
             print("Copying from: ", esm_rcfile.FUNCTION_PATH)
             shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir)
         if not os.path.isdir(namelists_dir):
             shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir)
 
+        # If ``fromdir`` and ``scriptsdir`` are the same, this is already a computing
+        # simulation which means we want to use the script in the experiment folder,
+        # so no copying is needed
         if (fromdir == scriptsdir) and not gconfig["update"]:
             print("Started from the experiment folder, continuing...")
             return config
+        # Not computing but initialisation
         else:
             if not fromdir == scriptsdir:
                 print("Not started from experiment folder, restarting...")
             else:
                 print("Tools were updated, restarting...")
 
-            if not os.path.isfile(scriptsdir + "/" + gconfig["scriptname"]):
-                oldscript = fromdir + "/" + gconfig["scriptname"]
-                print(oldscript)
-                shutil.copy2(oldscript, scriptsdir)
+            # At this point, ``fromdir`` and ``scriptsdir`` are different. Update the
+            # runscript if necessary
+            compute.update_runscript(fromdir, scriptsdir, gconfig["scriptname"], gconfig, "runscript")
 
+            # Update the ``additional_files`` if necessary
             for tfile in gconfig["additional_files"]:
-                if not os.path.isfile(scriptsdir + "/" + tfile):
-                    shutil.copy2(fromdir + "/" + tfile, scriptsdir)
+                compute.update_runscript(fromdir, scriptsdir, tfile, gconfig, "additional file")
 
             restart_command = (
                 "cd "
@@ -297,6 +320,83 @@ class compute(jobclass):
 
             gconfig["profile"] = False
             compute.end_it_all(config, silent=True)
+
+    @classmethod
+    def update_runscript(cls, fromdir, scriptsdir, tfile, gconfig, file_type):
+        """
+        Updates the script ``tfile`` in the directory ``scriptdir`` with the file in
+        the directory ``fromdir`` if the update flag (``-U``) is used during the call of
+        ``esm_runscripts``. If that flag is not used and the source and target are different
+        then raises a user-friendly error recommending to use the ``-U`` flag with the warning
+        that the files will be overwritten.
+
+        Parameters
+        ----------
+        cls : obj
+            Compute objetc.
+        fromdir : str
+            Path of the source.
+        scriptsdir : str
+            Path of the target.
+        tfile : str
+            Name of the script to be updated.
+        gconfig : dict
+            Dictionary containing the general information about the compute task.
+        file_type : str
+            String specifying the nature of the file, only necessary for printing information
+            and for the error description.
+
+        Exceptions
+        ----------
+        UserError
+            If the target and source are different and the ``-U`` flag is not used when calling
+            ``esm_runscripts``, returns an error.
+        """
+
+        # If the target path ``scriptsdir`` does not exist, then copy the file
+        # to the target.
+        if not os.path.isfile(scriptsdir + "/" + tfile):
+            oldscript = fromdir + "/" + tfile
+            print(oldscript)
+            shutil.copy2(oldscript, scriptsdir)
+        # If the target path exist compare the two scripts
+        else:
+            import difflib
+            import esm_parser
+            script_o = open(fromdir + "/" + tfile).readlines()
+            script_t = open(scriptsdir + "/" + tfile).readlines()
+
+            diffobj = difflib.SequenceMatcher(a=script_t, b=script_o)
+            # If the files are different
+            if not diffobj.ratio()==1:
+                # Find differences
+                differences = (f"{fromdir + '/' + tfile} differs from " +
+                    f"{scriptsdir + '/' + tfile}:\n"
+                )
+                for line in difflib.unified_diff(script_t, script_o):
+                    differences += line
+
+                # If the --update flag is used, notify that the target script will
+                # be updated and do update it
+                if gconfig["update"]:
+                    esm_parser.user_note(f"Original {file_type} different from target",
+                        differences + "\n" +
+                        f"{scriptsdir + '/' + tfile} will be updated!"
+                    )
+                    oldscript = fromdir + "/" + tfile
+                    print(oldscript)
+                    shutil.copy2(oldscript, scriptsdir)
+                # If the --update flag is not called, exit with an error showing the
+                # user how to proceed
+                else:
+                    esm_parser.user_error(f"Original {file_type} different from target",
+                        differences + "\n" +
+                        (f"If you want that {scriptsdir + '/' + tfile} is " +
+                        "updated with the above changes, please use -U flag in the " +
+                        "esm_runscript call (WARNING: This will overwrite your " +
+                        f"{file_type} in the experiment folder!)"
+                        )
+                    )
 
     @staticmethod
     def _copy_preliminary_files_from_experiment_to_thisrun(config):
