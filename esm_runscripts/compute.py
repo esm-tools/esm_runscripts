@@ -337,7 +337,7 @@ class compute(jobclass):
         Parameters
         ----------
         cls : obj
-            Compute objetc.
+            Compute object.
         fromdir : str
             Path of the source.
         scriptsdir : str
@@ -357,13 +357,13 @@ class compute(jobclass):
             ``esm_runscripts``, returns an error.
         """
 
-        # If the target path ``scriptsdir`` does not exist, then copy the file
+        # If the target file in ``scriptsdir`` does not exist, then copy the file
         # to the target.
         if not os.path.isfile(scriptsdir + "/" + tfile):
             oldscript = fromdir + "/" + tfile
             print(oldscript)
             shutil.copy2(oldscript, scriptsdir)
-        # If the target path exist compare the two scripts
+        # If the target path exists compare the two scripts
         else:
             import difflib
             import esm_parser
@@ -404,7 +404,7 @@ class compute(jobclass):
                         + (
                             f"If you want that {scriptsdir + '/' + tfile} is "
                             + "updated with the above changes, please use -U flag in the "
-                            + "esm_runscript call (WARNING: This will overwrite your "
+                            + "esm_runscripts call (WARNING: This will overwrite your "
                             + f"{file_type} in the experiment folder!)"
                         ),
                     )
