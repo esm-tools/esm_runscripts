@@ -101,7 +101,7 @@ def parse_shargs():
     parser.add_argument(
         "-U",
         "--update",
-        help="[U]date the tools from the current version",
+        help="[U]pdate the runscript in the experiment folder and associated files",
         default=False,
         action="store_true",
     )
