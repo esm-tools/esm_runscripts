@@ -446,13 +446,13 @@ class SimulationSetup(object):
                 + ".date"
             )
         if os.path.isfile(date_file):
-            logger.info("Date file read from %s", date_file)
+            logger.info(f"Date file read from {date_file}")
             with open(date_file) as date_file:
                 date, self.run_number = date_file.readline().strip().split()
                 self.run_number = int(self.run_number)
             write_file = False
         else:
-            logger.info("No date file found %s", date_file)
+            logger.info(f"No date file found, was looking for {date_file}")
             logger.info("Initializing run_number=1 and date=18500101")
             date = config["general"].get("initial_date", "18500101")
             self.run_number = 1
@@ -491,8 +491,8 @@ class SimulationSetup(object):
         # if write_file:
         #    self._write_date_file()
 
-        logger.info("current_date = %s", self.current_date)
-        logger.info("run_number = %s", self.run_number)
+        logger.info(f"current_date = {self.current_date}")
+        logger.info(f"run_number = {self.run_number}")
 
 
 
