@@ -397,17 +397,39 @@ class compute(jobclass):
                 # If the --update flag is not called, exit with an error showing the
                 # user how to proceed
                 else:
-                    esm_parser.user_error(
+                    esm_parser.user_note(
                         f"Original {file_type} different from target",
                         differences
                         + "\n"
-                        + (
-                            f"If you want that {scriptsdir + '/' + tfile} is "
-                            + "updated with the above changes, please use -U flag in the "
-                            + "esm_runscripts call (WARNING: This will overwrite your "
-                            + f"{file_type} in the experiment folder!)"
-                        ),
+                        + "Note: You can choose to use -U flag in the esm_runscripts call "
+                        + "to automatically update the runscript (WARNING: This "
+                        + f"will overwrite your {file_type} in the experiment folder!)\n",
                     )
+                    correct_input = False
+                    while not correct_input:
+                        update_choice = input(
+                            f"Do you want that {scriptsdir + '/' + tfile} is "
+                            + "updated with the above changes? (y/n): "
+                        )
+                        if update_choice == "y":
+                            correct_input = True
+                            oldscript = fromdir + "/" + tfile
+                            print(oldscript)
+                            shutil.copy2(oldscript, scriptsdir)
+                            print(f"{scriptsdir + '/' + tfile} updated!")
+                        elif update_choice == "n":
+                            correct_input = True
+                            esm_parser.user_error(
+                                f"Original {file_type} different from target",
+                                differences
+                                + "\n"
+                                + "You can choose to -U flag in the esm_runscripts call "
+                                + "to update the runscript without asking (WARNING: This "
+                                + f"will overwrite your {file_type} in the experiment folder!)\n\n",
+                            )
+                        else:
+                            print(f"'{update_choice}' is not a valid answer.")
+
 
     @staticmethod
     def _copy_preliminary_files_from_experiment_to_thisrun(config):
