@@ -325,8 +325,7 @@ class compute(jobclass):
             gconfig["profile"] = False
             compute.end_it_all(config, silent=True)
 
-    @classmethod
-    def update_runscript(cls, fromdir, scriptsdir, tfile, gconfig, file_type):
+    def update_runscript(fromdir, scriptsdir, tfile, gconfig, file_type):
         """
         Updates the script ``tfile`` in the directory ``scriptdir`` with the file in
         the directory ``fromdir`` if the update flag (``-U``) is used during the call of
