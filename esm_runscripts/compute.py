@@ -3,6 +3,7 @@ Class to hold compute jobs and recipe steps
 """
 import os
 import shutil
+import subprocess
 import sys
 
 import esm_rcfile
@@ -33,6 +34,19 @@ class compute(jobclass):
             sys.exit(1)
         super(compute, self).__init__("compute", recipe_steps=recipe_steps)
         config["general"]["jobclass"] = self
+
+    @staticmethod
+    def compile_model(config):
+        """Compiles the desired model before the run starts"""
+        model = config["general"]["setup_name"]
+        version = config["general"]["version"]
+        if config.get("general", {}).get("run_number") == 1:
+            print("First year, checking if we need to compile...")
+            if not config.get("general", {}).get("use_compiled_model", True):
+                print(f"Huhu --> compiling {model}-{version}")
+                subprocess.run(f"esm_master install-{model}-{version}", shell=True, cwd=config['general']['experiment_src_dir'])
+                config['general']['model_dir'] = config['general']['experiment_src_dir']+f"/{model}-{version}"
+        return config
 
     @staticmethod
     def add_batch_hostfile(config):
