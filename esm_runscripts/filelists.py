@@ -83,12 +83,26 @@ def complete_targets(config):
 
 def complete_sources(config):
     import os
+    print("Complete sources")
     for filetype in config["general"]["out_filetypes"]:
         for model in config["general"]["valid_model_names"]:
             if filetype + "_sources" in config[model]:
                 for categ in config[model][filetype + "_sources"]:
                     if not config[model][filetype + "_sources"][categ].startswith("/"):
                         config[model][filetype + "_sources"][categ] = config["general"]["thisrun_work_dir"] + "/" + config[model][filetype + "_sources"][categ]
+
+    if config["general"]["run_number"] > 1:
+        print("Reusing files...")
+        for filetype in config["general"]["reusable_filetypes"]:
+            print(f"    {filetype}")
+            for model in config["general"]["valid_model_names"]:
+                print(f"            {model}")
+                if filetype + "_sources" in config[model]:
+                    for categ in config[model][filetype + "_sources"]:
+                        config[model][filetype + "_sources"][categ] = \
+                                config[model]["experiment_" + filetype + "_dir"] \
+                                + "/" \
+                                + config[model][filetype + "_sources"][categ].split("/")[-1]
     return config
 
 
@@ -282,7 +296,8 @@ def replace_year_placeholder(config):
 
 
 #@staticmethod
-def log_used_files(config, filetypes):
+def log_used_files(config):
+    filetypes = config["general"]["relevant_filetypes"]
     for model in config["general"]["valid_model_names"]:
         with open(
             config[model]["thisrun_config_dir"]
@@ -308,45 +323,13 @@ def log_used_files(config, filetypes):
                         flist.write("\nSource: " + config[model][filetype + "_sources"][category])
                         flist.write("\nExp Tree: " + config[model][filetype + "_intermediate"][category])
                         flist.write("\nTarget: " + config[model][filetype + "_targets"][category])
+                        print ("-  " +  config[model][filetype + "_targets"][category] + \
+                                " : " +  config[model][filetype + "_sources"][category])
                         flist.write("\n")
                 flist.write("\n")
                 flist.write(80 * "-")
     return config
 
-
-
-def find_correct_source(mconfig, file_source, year): # not needed in compute anymore, moved to jobclass
-    if isinstance(file_source, dict):
-        logging.debug(
-            "Checking which file to use for this year: %s",
-            year,
-        )
-        for fname, valid_years in six.iteritems(file_source):
-            logging.debug("Checking %s", fname)
-            min_year = float(valid_years.get("from", "-inf"))
-            max_year = float(valid_years.get("to", "inf"))
-            logging.debug("Valid from: %s", min_year)
-            logging.debug("Valid to: %s", max_year)
-            logging.debug(
-                "%s <= %s --> %s",
-                min_year,
-                year,
-                min_year <= year,
-            )
-            logging.debug(
-                "%s <= %s --> %s",
-                year,
-                max_year,
-                year <= max_year,
-            )
-            if (
-                min_year <= year
-                and year <= max_year
-            ):
-                return fname
-            else:
-                continue
-    return file_source
 
 
 
@@ -395,3 +378,81 @@ def check_for_unknown_files(config):
 
 
 
+@staticmethod
+def copy_files(config, filetypes, source, target):
+    successful_files = []
+    missing_files = {}
+
+    if source == "init":
+        text_source = "sources"
+    elif source == "thisrun":
+        text_source = "intermediate"
+
+    if target == "thisrun":
+        text_target = "intermediate"
+    elif target == "work":
+        text_target = "targets"
+
+    for filetype in filetypes:
+        for model in config["general"]["valid_model_names"]:
+            if filetype + "_" + text_source in config[model]:
+                sourceblock = config[model][filetype + "_" + text_source]
+                targetblock = config[model][filetype + "_" + text_target]
+                for categ in sourceblock:
+                    file_source = sourceblock[categ]
+                    file_target = targetblock[categ]
+                    dest_dir = os.path.dirname(file_target)
+                    if not os.path.isdir(file_source):
+                        try:
+                            if not os.path.isdir(dest_dir):
+                                os.mkdir(dest_dir)
+                            shutil.copy2(file_source, file_target)
+                            successful_files.append(file_source)
+                        except IOError:
+                            missing_files.update({file_target: file_source})
+
+    if missing_files:
+        if not "files_missing_when_preparing_run" in config["general"]:
+            config["general"]["files_missing_when_preparing_run"] = {}
+        six.print_("--- WARNING: These files were missing:")
+        for missing_file in missing_files:
+            print( "  - " + missing_file + ": " + missing_files[missing_file])
+        config["general"]["files_missing_when_preparing_run"].update(missing_files)
+    return config
+
+
+
+
+
+
+@staticmethod
+def report_missing_files(config):
+    if "files_missing_when_preparing_run" in config["general"]:
+        if not config["general"]["files_missing_when_preparing_run"] == {}:
+            print ()
+            print ("========================================================")
+            print ("MISSING FILES:")
+        for missing_file in config["general"]["files_missing_when_preparing_run"]:
+            print ("--  " + missing_file +": ")
+            print ("        --> " + config["general"]["files_missing_when_preparing_run"][missing_file] )
+        if not config["general"]["files_missing_when_preparing_run"] == {}:
+            print ("========================================================")
+    return config
+
+
+
+@staticmethod
+def assemble(config):
+    config = rename_sources_to_targets(config)
+    config = choose_needed_files(config)
+    config = complete_targets(config)
+    config = complete_sources(config)
+    config = replace_year_placeholder(config)
+
+    config = globbing(config)
+    config = target_subfolders(config)
+    config = assemble_intermediate_files_and_finalize_targets(config)
+    config = complete_restart_in(config)
+    config = check_for_unknown_files(config)
+    config = log_used_files(config)
+    return config

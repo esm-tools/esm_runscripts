@@ -1,7 +1,7 @@
 import sys
 known_batch_systems = ["slurm"]
 
-from .jobclass import jobclass
+from . import helpers
 
 from .slurm import Slurm
 
@@ -9,7 +9,7 @@ class UnknownBatchSystemError(Exception):
     """Raise this exception when an unknown batch system is encountered"""
 
 
-class esm_batch_system:
+class batch_system:
     def __init__(self, config, name):
         self.name = name
         if name == "slurm":
@@ -53,7 +53,7 @@ class esm_batch_system:
         batch_system = config["computer"]
         if "sh_interpreter" in batch_system:
             header.append("#!"+batch_system["sh_interpreter"])
-        tasks = esm_batch_system.calculate_requirements(config)
+        tasks = batch_system.calculate_requirements(config)
         replacement_tags = [("@tasks@", tasks)]
         all_flags = ["partition_flag",
                      "time_flag",
@@ -117,7 +117,7 @@ class esm_batch_system:
         commands = []
         batch_system = config["computer"]
         if "execution_command" in batch_system:
-            line = jobclass.assemble_log_message(config,
+            line = helpers.assemble_log_message(config,
                     [
                         config["general"]["jobtype"],
                         config["general"]["run_number"],
@@ -147,15 +147,15 @@ class esm_batch_system:
         import six
         import os
         self = config["general"]["batch"]
-        sadfilename = esm_batch_system.get_sad_filename(config)
-        header = esm_batch_system.get_batch_header(config)
-        environment = esm_batch_system.get_environment(config)
+        sadfilename = batch_system.get_sad_filename(config)
+        header = batch_system.get_batch_header(config)
+        environment = batch_system.get_environment(config)
 
         print ("still alive")
         print ("jobtype: ", config["general"]["jobtype"])
 
         if config["general"]["jobtype"] == "compute":
-            commands = esm_batch_system.get_run_commands(config)
+            commands = batch_system.get_run_commands(config)
             tidy_call =  "esm_runscripts " + config["general"]["scriptname"] + " -e " + config["general"]["expid"] + " -t tidy_and_resubmit -p ${process} -j "+config["general"]["jobtype"]
         elif config["general"]["jobtype"] == "post":
             tidy_call = ""
@@ -177,7 +177,7 @@ class esm_batch_system:
 
 
 
-        config["general"]["submit_command"] = esm_batch_system.get_submit_command(config, sadfilename)
+        config["general"]["submit_command"] = batch_system.get_submit_command(config, sadfilename)
 
         six.print_("\n", 40 * "+ ")
         six.print_("Contents of ",sadfilename, ":")

@@ -10,7 +10,6 @@ import pdb
 import shutil
 import sys
 
-import f90nml
 import six
 import tqdm
 import yaml
@@ -20,7 +19,7 @@ import time
 from esm_calendar import Date, Calendar
 import esm_parser
 from . import esm_coupler
-from . import esm_methods
+from . import helpers
 #import .esm_coupler
 from esm_profile import *
 
@@ -58,7 +57,7 @@ class SimulationSetup(object):
             self.postprocess(*args, **kwargs)
         else:
             print("Unknown jobtype specified! Goodbye...")
-            self.end_it_all()
+            helpers.end_it_all()
 
 
 
@@ -76,21 +75,10 @@ class SimulationSetup(object):
             a ``sys.exit()`` as the very last after job submission.
         """
         from . import compute
-        Compute = compute(self.config)
-        self.config = Compute.evaluate(self.config)
+        self.config = compute.run_job(self.config)
 
         if kill_after_submit:
-            self.end_it_all()
-
-    # NOTE(PG): No longer needed...? Defined also in jobclass...?
-    def end_it_all(self):
-        import sys
-        if self.config["general"]["profile"]:
-            for line in timing_info:
-                print(line)
-        print("Exiting entire Python process!")
-        sys.exit()
-
+            helpers.end_it_all()
 ###############################################       POSTPROCESS ######################################
 
 
@@ -99,7 +87,7 @@ class SimulationSetup(object):
 
 
     def postprocess(self):
-        from . import esm_batch_system
+        from . import batch_system
         """
         Calls post processing routines for this run.
         """
@@ -117,8 +105,8 @@ class SimulationSetup(object):
         ) as post_file:
             post_task_list = self._assemble_postprocess_tasks(post_file)
             self.config["general"]["post_task_list"] = post_task_list
-            esm_batch_system.write_simple_runscript(self.config)
-            self.config = esm_batch_system.submit(self.config)
+            batch_system.write_simple_runscript(self.config)
+            self.config = batch_system.submit(self.config)
 
     def _assemble_postprocess_tasks(self, post_file):
         """
@@ -271,6 +259,7 @@ class SimulationSetup(object):
         self.all_filetypes = ["analysis", "config", "log", "mon", "scripts", "ignore",  "unknown"]
         self.config["general"]["out_filetypes"] = ["analysis", "log", "mon", "scripts", "ignore",  "unknown", "outdata", "restart_out"]
         self.config["general"]["in_filetypes"] = ["scripts", "input", "forcing", "bin", "config", "restart_in"]
+        self.config["general"]["reusable_filetypes"] = ["bin"]
         self.all_filetypes.append("work")
         self.config["general"]["thisrun_dir"] = self.config["general"]["experiment_dir"] + "/run_" + self.run_datestamp
 
@@ -568,8 +557,8 @@ class SimulationSetup(object):
 
 
     def initialize_batch_system(self):
-        from . import esm_batch_system
-        self.batch = esm_batch_system(self.config, self.config["computer"]["batch_system"])
+        from . import batch_system
+        self.batch = batch_system(self.config, self.config["computer"]["batch_system"])
         self.config["general"]["batch"] = self.batch
 
 
@@ -584,7 +573,6 @@ class SimulationSetup(object):
     ################################# TIDY STUFF ###########################################
 
     def tidy(self):
-        from . import jobclass
         """
         Performs steps for tidying up a simulation after a job has finished and
         submission of following jobs.
@@ -615,6 +603,10 @@ class SimulationSetup(object):
 
         called_from = self.config["general"]["last_jobtype"]
 
+        from . import tidy
+        self.config = tidy.run_job(self.config)
+
+
         with open(
             self.config["general"]["thisrun_scripts_dir"] + "/monitoring_file.out",
             "w",
@@ -637,14 +629,14 @@ class SimulationSetup(object):
             monitor_file.write("job ended, starting to tidy up now \n")
             # Log job completion
             if called_from != "command_line":
-                jobclass.write_to_log(self.config, [
+                helpers.write_to_log(self.config, [
                     called_from,
                     str(self.config["general"]["run_number"]),
                     str(self.config["general"]["current_date"]),
                     last_jobid,
                     "- done"])
             # Tell the world you're cleaning up:
-            jobclass.write_to_log(self.config, [
+            helpers.write_to_log(self.config, [
                 str(self.config["general"]["jobtype"]),
                 str(self.config["general"]["run_number"]),
                 str(self.config["general"]["current_date"]),
@@ -654,11 +646,14 @@ class SimulationSetup(object):
             all_listed_filetypes=["log", "mon", "outdata", "restart_out","bin", "config", "forcing", "input", "restart_in", "ignore"]
             self.assemble_file_lists()
             self.finalize_file_lists(all_listed_filetypes)
-            self.config = jobclass.copy_files_from_work_to_thisrun(self.config)
 
-            import esm_parser
-            import sys
-            esm_parser.pprint_config(self.config)
+            self.config = filelists.copy_files(self.config, all_listed_filetypes, "work", "init")
+
+            #self.config = jobclass.copy_files_from_work_to_thisrun(self.config)
+
+            #import esm_parser
+            #import sys
+            #esm_parser.pprint_config(self.config)
 
             monitor_file.write("Copying stuff to main experiment folder \n")
             self.copy_all_results_to_exp()
@@ -689,7 +684,7 @@ class SimulationSetup(object):
             self.command_line_config["jobtype"] = "compute"
             self.command_line_config["original_command"] = self.command_line_config["original_command"].replace("tidy_and_resubmit", "compute")
 
-            jobclass.write_to_log(self.config, [
+            helpers.write_to_log(self.config, [
                 str(self.config["general"]["jobtype"]),
                 str(self.config["general"]["run_number"]),
                 str(self.config["general"]["current_date"]),
@@ -703,12 +698,12 @@ class SimulationSetup(object):
             # hence we have to use next_date = current_date + increment
             if self.config["general"]["next_date"] >= self.config["general"]["final_date"]:
                 monitor_file.write("Reached the end of the simulation, quitting...\n")
-                jobclass.write_to_log(self.config, ["# Experiment over"], message_sep="")
+                helpers.write_to_log(self.config, ["# Experiment over"], message_sep="")
             else:
                 monitor_file.write("Init for next run:\n")
                 next_compute = SimulationSetup(self.command_line_config)
                 next_compute(kill_after_submit=False)
-            self.end_it_all()
+            helpers.end_it_all()
 
 
 
@@ -807,8 +802,8 @@ class SimulationSetup(object):
         return False
 
     def add_submission_info(self):
-        from . import esm_batch_system
-        bs = esm_batch_system(self.config, self.config["computer"]["batch_system"])
+        from . import batch_system
+        bs = batch_system(self.config, self.config["computer"]["batch_system"])
 
         submitted = bs.check_if_submitted()
         if submitted:
