@@ -37,7 +37,7 @@ class oasis:
         self.next_coupling=1
         self.name = "oasis3mct"
 
-    def add_coupling(self, lefts, lgrid, rights, rgrid, direction, transformation, restart_file, time_step, lresume):
+    def add_coupling(self, lefts, lgrid, rights, rgrid, direction, transformation, restart_file, time_step, lresume, export_mode="EXPORTED"):
         import sys
         self.namcouple += ["#"]
 
@@ -56,14 +56,12 @@ class oasis:
         for righty in rights:
             right += sep + righty
             sep = ":" 
-
+         
         if lresume == False:
             lag = str(0)
-            export_mode = "EXPOUT"
         else:
             lag = direction.get("lag", "0")
-            export_mode = "EXPORTED"
-         
+        
         # if a transformation method for CONSERV (e.g. GLOBAL) is set below, 
         # increase seq (=number of lines describing the transformation) by 1
         seq = int(direction.get("seq", "2"))

@@ -230,8 +230,12 @@ class esm_coupler:
                         if "coupling_methods" in full_config[self.name]:
                             if interpolation in full_config[self.name]["coupling_methods"]:
                                 transf_info=full_config[self.name]["coupling_methods"][interpolation]
-
-                        self.coupler.add_coupling(lefts, lgrid_info, rights, rgrid_info, direction_info, transf_info, restart_file, full_config[self.name]["coupling_time_step"], full_config[self.name]["lresume"])
+                        if "export_mode" in full_config[self.name]:
+                            export_mode = full_config[self.name]["export_mode"]
+                        else:
+                            export_mode = "EXPORTED" 
+                        print("DEBUG: EXPORT_MODE: ",export_mode)
+                        self.coupler.add_coupling(lefts, lgrid_info, rights, rgrid_info, direction_info, transf_info, restart_file, full_config[self.name]["coupling_time_step"], full_config[self.name]["lresume"], export_mode=export_mode)
 
                         
 
