@@ -1,6 +1,5 @@
 
 
-#@staticmethod
 def rename_sources_to_targets(config):
     import copy
     import sys, os
@@ -107,7 +106,6 @@ def complete_sources(config):
 
 
 
-#@staticmethod
 def choose_needed_files(config):
     import six
     import sys
@@ -141,7 +139,6 @@ def choose_needed_files(config):
 
 
 
-#@staticmethod
 def globbing(config):
     import six
     import glob
@@ -175,7 +172,6 @@ def globbing(config):
 
 
 
-#@staticmethod
 def target_subfolders(config):
     import six
     import os
@@ -221,7 +217,6 @@ def complete_restart_in(config):
 
 
 
-#@staticmethod
 def assemble_intermediate_files_and_finalize_targets(config):
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"]:
@@ -248,7 +243,6 @@ def assemble_intermediate_files_and_finalize_targets(config):
 
 
 
-#@staticmethod
 def replace_year_placeholder(config):
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"]:
@@ -295,7 +289,6 @@ def replace_year_placeholder(config):
 
 
 
-#@staticmethod
 def log_used_files(config):
     filetypes = config["general"]["relevant_filetypes"]
     for model in config["general"]["valid_model_names"]:
@@ -333,7 +326,6 @@ def log_used_files(config):
 
 
 
-    #@staticmethod
 def check_for_unknown_files(config):
     import glob
     import os
@@ -378,7 +370,6 @@ def check_for_unknown_files(config):
 
 
 
-@staticmethod
 def copy_files(config, filetypes, source, target):
     successful_files = []
     missing_files = {}
@@ -425,7 +416,6 @@ def copy_files(config, filetypes, source, target):
 
 
 
-@staticmethod
 def report_missing_files(config):
     if "files_missing_when_preparing_run" in config["general"]:
         if not config["general"]["files_missing_when_preparing_run"] == {}:
@@ -441,7 +431,6 @@ def report_missing_files(config):
 
 
 
-@staticmethod
 def assemble(config):
     config = rename_sources_to_targets(config)
     config = choose_needed_files(config)

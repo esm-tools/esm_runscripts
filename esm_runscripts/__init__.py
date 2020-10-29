@@ -9,5 +9,6 @@ from .batch_system import *
 from .database import *
 from .database_actions import *
 from .compute import *
+from .filelists import *
 from .tidy import *
 from .namelists import *

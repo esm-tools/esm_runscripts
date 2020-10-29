@@ -37,8 +37,6 @@ def all_files_to_copy_append(config, model, filetype, categ, file_source, file_i
         config[model][filetype + "_targets"][categ] = file_target
     return config
     
-
-@staticmethod
 def add_batch_hostfile(config):
 
     config["general"]["batch"].calc_requirements(config)
@@ -55,14 +53,12 @@ def add_batch_hostfile(config):
         )
     return config
 
-
-@staticmethod
 def prepare_coupler_files(config):
     if config["general"]["standalone"] is False:
         coupler_filename = config["general"]["coupler"].prepare(
             config, config["general"]["coupler_config_dir"]
         )
-        coupler_name = 
+        coupler_name = config["general"]["coupler"].name 
         all_files_to_copy_append(
                 config,
                 coupler_name,
@@ -74,8 +70,6 @@ def prepare_coupler_files(config):
             )
     return config
 
-
-@staticmethod
 def create_new_files(config):
     for model in list(config):
         for filetype in config["general"]["all_filetypes"]:
@@ -104,7 +98,6 @@ def create_new_files(config):
                         )
     return config
 
-@staticmethod
 def modify_files(config):
     # for model in config:
     #     for filetype in config["general"]["all_model_filetypes"]:
@@ -112,7 +105,6 @@ def modify_files(config):
     #             nothing = "nothing"
     return config
 
-@staticmethod
 def modify_namelists(config):
 
     # Load and modify namelists:
@@ -139,7 +131,7 @@ def copy_files_to_thisrun(config):
     six.print_("- Note that you can see your file lists in the config folder")
     six.print_("- You will be informed about missing files")
 
-    compute.print_used_files(config) <---- Problem
+    print_used_files(config) <---- Problem
 
     config = filelists.copy_files(
         config, config["general"]["in_filetypes"], source="init", target="thisrun"
@@ -156,8 +148,6 @@ def copy_files_to_work(config):
     )
     return config
 
-
-@staticmethod
 def _create_folders(config, filetypes):
 
     for filetype in filetypes:
@@ -167,23 +157,17 @@ def _create_folders(config, filetypes):
             if not os.path.exists(config["thisrun_" + filetype + "_dir"]):
                 os.makedirs(config["thisrun_" + filetype + "_dir"])
 
-
-
-@staticmethod
 def _create_setup_folders(config):
-    compute._create_folders(config["general"], config["general"]["all_filetypes"])
+    _create_folders(config["general"], config["general"]["all_filetypes"])
     return config
 
-
-@staticmethod
 def _create_component_folders(config):
     for component in config["general"]["valid_model_names"]:
-        compute._create_folders(
+        _create_folders(
             config[component], config["general"]["all_model_filetypes"]
         )
     return config
 
-@staticmethod
 def initialize_experiment_logfile(config):
     """
     Initializes the log file for the entire experiment.
@@ -220,13 +204,13 @@ def initialize_experiment_logfile(config):
     if config["general"]["run_number"] == 1:
         if os.path.isfile(config["general"]["experiment_log_file"]):
             os.remove(config["general"]["experiment_log_file"])
-        compute.write_to_log(
+        helpers.write_to_log(
             config,
             ["# Beginning of Experiment " + config["general"]["expid"]],
             message_sep="",
         )
 
-    compute.write_to_log(
+    helpers.write_to_log(
         config,
         [
             str(config["general"]["jobtype"]),
@@ -238,7 +222,6 @@ def initialize_experiment_logfile(config):
     )
     return config
 
-@staticmethod
 def _write_finalized_config(config):
 
     with open(
@@ -251,7 +234,6 @@ def _write_finalized_config(config):
         yaml.dump(config, config_file)
     return config
 
-@staticmethod
 def copy_tools_to_thisrun(config):
 
     gconfig = config["general"]
@@ -307,7 +289,6 @@ def copy_tools_to_thisrun(config):
         gconfig["profile"] = False
         helpers.end_it_all(config, silent=True)
 
-@staticmethod
 def _copy_preliminary_files_from_experiment_to_thisrun(config):
 
     filelist = [
@@ -336,7 +317,6 @@ def _copy_preliminary_files_from_experiment_to_thisrun(config):
         shutil.copy2(additional_file, config["general"]["thisrun_scripts_dir"])
     return config
 
-@staticmethod
 def _show_simulation_info(config):
 
     six.print_(80 * "=")
