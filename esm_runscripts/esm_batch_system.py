@@ -141,6 +141,15 @@ class esm_batch_system:
         return commands
 
 
+    @staticmethod
+    def get_extra(config):
+        extras = []
+        if config["general"].get("unlimited_stack_size", True):
+            extras.append("# Set stack size to unlimited")
+            extras.append("ulimit -s")
+        if config["general"].get("funny_comment", True):
+            extras.append("# 3...2...1...Liftoff!")
+        return extras
 
     @staticmethod
     def write_simple_runscript(config):
@@ -150,6 +159,8 @@ class esm_batch_system:
         sadfilename = esm_batch_system.get_sad_filename(config)
         header = esm_batch_system.get_batch_header(config)
         environment = esm_batch_system.get_environment(config)
+
+        extra = esm_batch_system.get_extra(config)
 
         print ("still alive")
         print ("jobtype: ", config["general"]["jobtype"])
@@ -166,6 +177,9 @@ class esm_batch_system:
                 sadfile.write(line + "\n")
             sadfile.write("\n")
             for line in environment:
+                sadfile.write(line + "\n")
+            sadfile.write("\n")
+            for line in extra:
                 sadfile.write(line + "\n")
             sadfile.write("\n")
             sadfile.write("cd "+ config["general"]["thisrun_work_dir"] + "\n")
