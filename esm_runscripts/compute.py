@@ -8,6 +8,7 @@ import esm_rcfile
 import six
 import yaml
 
+from . import filelists
 from . import helpers
 from .namelists import Namelist
 
@@ -131,7 +132,7 @@ def copy_files_to_thisrun(config):
     six.print_("- Note that you can see your file lists in the config folder")
     six.print_("- You will be informed about missing files")
 
-    print_used_files(config) <---- Problem
+    filelists.log_used_files(config)
 
     config = filelists.copy_files(
         config, config["general"]["in_filetypes"], source="init", target="thisrun"

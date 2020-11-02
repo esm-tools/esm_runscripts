@@ -57,7 +57,7 @@ class SimulationSetup(object):
             self.postprocess(*args, **kwargs)
         else:
             print("Unknown jobtype specified! Goodbye...")
-            helpers.end_it_all()
+            helpers.end_it_all(self.config)
 
 
 
@@ -78,7 +78,7 @@ class SimulationSetup(object):
         self.config = compute.run_job(self.config)
 
         if kill_after_submit:
-            helpers.end_it_all()
+            helpers.end_it_all(self.config)
 ###############################################       POSTPROCESS ######################################
 
 
@@ -703,7 +703,7 @@ class SimulationSetup(object):
                 monitor_file.write("Init for next run:\n")
                 next_compute = SimulationSetup(self.command_line_config)
                 next_compute(kill_after_submit=False)
-            helpers.end_it_all()
+            helpers.end_it_all(self.config)
 
 
 

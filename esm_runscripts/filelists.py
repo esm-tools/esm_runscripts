@@ -371,6 +371,9 @@ def check_for_unknown_files(config):
 
 
 def copy_files(config, filetypes, source, target):
+    import os
+    import shutil
+
     successful_files = []
     missing_files = {}
 

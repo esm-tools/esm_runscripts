@@ -50,9 +50,9 @@ class batch_system:
     @staticmethod
     def get_batch_header(config):
         header = []
-        batch_system = config["computer"]
-        if "sh_interpreter" in batch_system:
-            header.append("#!"+batch_system["sh_interpreter"])
+        this_batch_system = config["computer"]
+        if "sh_interpreter" in this_batch_system:
+            header.append("#!" + this_batch_system["sh_interpreter"])
         tasks = batch_system.calculate_requirements(config)
         replacement_tags = [("@tasks@", tasks)]
         all_flags = ["partition_flag",
@@ -69,12 +69,12 @@ class batch_system:
         if config["general"]["jobtype"] in ["compute", "tidy_and_resume"]:
             conditional_flags.append("exclusive_flag")
         for flag in conditional_flags:
-            if flag in batch_system and not batch_system[flag].strip() == "":
+            if flag in this_batch_system and not this_batch_system[flag].strip() == "":
                 all_flags.append(flag)
         for flag in all_flags:
             for (tag, repl) in replacement_tags:
-                batch_system[flag] = batch_system[flag].replace(tag, str(repl))
-            header.append(batch_system["header_start"] + " " + batch_system[flag])
+                this_batch_system[flag] = this_batch_system[flag].replace(tag, str(repl))
+            header.append(this_batch_system["header_start"] + " " + this_batch_system[flag])
         return header
 
 
