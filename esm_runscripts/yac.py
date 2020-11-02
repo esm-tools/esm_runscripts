@@ -58,8 +58,6 @@ class yac:
     def add_coupling(self, field, transient_id, direction, config):
         import sys
 
-        print('calling add_coupling')
-
         coupling_field = field.replace("<--", "%").replace("--", "&")
         source, rest = coupling_field.split("%")
         source=source.strip()
@@ -101,13 +99,11 @@ class yac:
 
 
     def print_config_files(self):
-        print('calling print_config_files')
         for line in self.namcouple:
             print (line)
         
 
     def add_output_file(self, lefts, rights, leftmodel, rightmodel, config):
-        print('calling add_output_file')
         out_file = []
 
         coupling = self.next_coupling
@@ -139,7 +135,6 @@ class yac:
 
 
     def add_restart_files(self, restart_file, fconfig):
-        print('calling add_restart_files')
         config = fconfig[self.name]
         gconfig = fconfig["general"]
         #enddate = "_" + str(gconfig["end_date"].year) + str(gconfig["end_date"].month) + str(gconfig["end_date"].day)
@@ -184,7 +179,6 @@ class yac:
 
 
     def prepare_restarts(self, restart_file, all_fields, model, config):
-        print('calling prepare_restarts')
         enddate = "_" + config["general"]["end_date"].format(
                 form=9, givenph=False, givenpm=False, givenps=False
             )
@@ -224,7 +218,6 @@ class yac:
         
 
     def finalize(self, destination_dir):
-        print('calling finalize')
         self.namcouple += ["\t\t</couple>"]
         self.namcouple += ["\t</couples>"]
         self.namcouple += ["</coupling>"]
