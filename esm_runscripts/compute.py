@@ -37,7 +37,8 @@ def all_files_to_copy_append(config, model, filetype, categ, file_source, file_i
     if file_target:
         config[model][filetype + "_targets"][categ] = file_target
     return config
-    
+
+
 def add_batch_hostfile(config):
 
     config["general"]["batch"].calc_requirements(config)

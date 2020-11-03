@@ -89,19 +89,23 @@ def complete_sources(config):
                 for categ in config[model][filetype + "_sources"]:
                     if not config[model][filetype + "_sources"][categ].startswith("/"):
                         config[model][filetype + "_sources"][categ] = config["general"]["thisrun_work_dir"] + "/" + config[model][filetype + "_sources"][categ]
+    return config
 
-    if config["general"]["run_number"] > 1:
-        print("Reusing files...")
-        for filetype in config["general"]["reusable_filetypes"]:
-            print(f"    {filetype}")
-            for model in config["general"]["valid_model_names"]:
-                print(f"            {model}")
-                if filetype + "_sources" in config[model]:
-                    for categ in config[model][filetype + "_sources"]:
-                        config[model][filetype + "_sources"][categ] = \
-                                config[model]["experiment_" + filetype + "_dir"] \
-                                + "/" \
-                                + config[model][filetype + "_sources"][categ].split("/")[-1]
+
+def reuse_sources(config):
+    if config["general"]["run_number"] = 1:
+        return config
+    print("Reusing files...")
+    for filetype in config["general"]["reusable_filetypes"]:
+        print(f"    {filetype}")
+        for model in config["general"]["valid_model_names"]:
+            print(f"            {model}")
+            if filetype + "_sources" in config[model]:
+                for categ in config[model][filetype + "_sources"]:
+                    config[model][filetype + "_sources"][categ] = \
+                            config[model]["experiment_" + filetype + "_dir"] \
+                            + "/" \
+                            + config[model][filetype + "_sources"][categ].split("/")[-1]
     return config
 
 
@@ -144,7 +148,6 @@ def globbing(config):
     import glob
     import os
     import copy
-    import time
 
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"]:
@@ -329,7 +332,6 @@ def log_used_files(config):
 def check_for_unknown_files(config):
     import glob
     import os
-    import time
     #files = os.listdir(self.config["general"]["thisrun_work_dir"])
     all_files = glob.iglob(config["general"]["thisrun_work_dir"] + '**/*', recursive = True)
 
@@ -344,19 +346,18 @@ def check_for_unknown_files(config):
     known_files = [os.path.realpath(known_file) for known_file in known_files]
     known_files = list(dict.fromkeys(known_files))
 
+    if not "unknown_sources" in config["general"]:
+        config["general"]["unknown_sources"] = {}
+        config["general"]["unknown_targets"] = {}
+        config["general"]["unknown_intermediate"] = {}
+
     unknown_files = []
     index = 0
 
     for thisfile in all_files:
 
-
         if os.path.realpath(thisfile) in known_files + unknown_files:
             continue
-        if not "unknown_sources" in config["general"]:
-            config["general"]["unknown_sources"] = {}
-            config["general"]["unknown_targets"] = {}
-            config["general"]["unknown_intermediate"] = {}
-
         config["general"]["unknown_sources"][index] = os.path.realpath(thisfile)
         config["general"]["unknown_targets"][index] = os.path.realpath(thisfile).replace(os.path.realpath(config["general"]["thisrun_work_dir"]), os.path.realpath(config["general"]["experiment_unknown_dir"]))
         config["general"]["unknown_intermediate"][index] = os.path.realpath(thisfile).replace(os.path.realpath(config["general"]["thisrun_work_dir"]), os.path.realpath(config["general"]["thisrun_unknown_dir"]))
@@ -373,6 +374,7 @@ def check_for_unknown_files(config):
 def copy_files(config, filetypes, source, target):
     import os
     import shutil
+    import six
 
     successful_files = []
     missing_files = {}
@@ -439,6 +441,7 @@ def assemble(config):
     config = choose_needed_files(config)
     config = complete_targets(config)
     config = complete_sources(config)
+    config = reuse_sources(config)
     config = replace_year_placeholder(config)
 
     config = globbing(config)
