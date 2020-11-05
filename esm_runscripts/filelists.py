@@ -291,7 +291,6 @@ def replace_year_placeholder(config):
 
 
 
-
 def log_used_files(config):
     filetypes = config["general"]["relevant_filetypes"]
     for model in config["general"]["valid_model_names"]:
@@ -328,11 +327,10 @@ def log_used_files(config):
 
 
 
-
 def check_for_unknown_files(config):
     import glob
     import os
-    #files = os.listdir(self.config["general"]["thisrun_work_dir"])
+    #files = os.listdir(config["general"]["thisrun_work_dir"])
     all_files = glob.iglob(config["general"]["thisrun_work_dir"] + '**/*', recursive = True)
 
     known_files = [config["general"]["thisrun_work_dir"] + "/" + "hostfile_srun", config["general"]["thisrun_work_dir"] + "/" + "namcouple"]
@@ -448,6 +446,4 @@ def assemble(config):
     config = target_subfolders(config)
     config = assemble_intermediate_files_and_finalize_targets(config)
     config = complete_restart_in(config)
-    config = check_for_unknown_files(config)
-    config = log_used_files(config)
     return config

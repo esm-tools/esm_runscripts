@@ -12,7 +12,7 @@ import sys
 # Import from 3rd Party packages
 import coloredlogs
 
-from .esm_sim_objects import *
+from .sim_objects import *
 
 # Logger and related constants
 logger = logging.getLogger("root")

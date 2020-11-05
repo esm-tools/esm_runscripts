@@ -1,25 +1,12 @@
-"""
-Class to hold compute jobs and recipe steps
-"""
-import os
-import shutil
-
-import esm_rcfile
-import six
-import yaml
-
-from . import filelists
-from . import helpers
-from .namelists import Namelist
-
 #####################################################################
 #                                   compute jobs                    #
 #####################################################################
 
 
 def run_job(config):
+    from .helpers import evaluate
     config["general"]["relevant_filetypes"] = ["bin", "config", "forcing", "input", "restart_in"]
-    config = helpers.evaluate(config, "compute", "compute_recipe")
+    config = evaluate(config, "compute", "compute_recipe")
     return config
 
 
@@ -40,7 +27,6 @@ def all_files_to_copy_append(config, model, filetype, categ, file_source, file_i
 
 
 def add_batch_hostfile(config):
-
     config["general"]["batch"].calc_requirements(config)
     setup_name = config["general"]["setup_name"]
 
@@ -54,6 +40,7 @@ def add_batch_hostfile(config):
             None,
         )
     return config
+
 
 def prepare_coupler_files(config):
     if config["general"]["standalone"] is False:
@@ -71,6 +58,7 @@ def prepare_coupler_files(config):
                 None,
             )
     return config
+
 
 def create_new_files(config):
     for model in list(config):
@@ -100,6 +88,7 @@ def create_new_files(config):
                         )
     return config
 
+
 def modify_files(config):
     # for model in config:
     #     for filetype in config["general"]["all_model_filetypes"]:
@@ -107,8 +96,10 @@ def modify_files(config):
     #             nothing = "nothing"
     return config
 
-def modify_namelists(config):
 
+def modify_namelists(config):
+    import six
+    from .namelists import Namelist
     # Load and modify namelists:
     six.print_("\n" "- Setting up namelists for this run...")
     for model in config["general"]["valid_model_names"]:
@@ -125,7 +116,8 @@ def modify_namelists(config):
 
 
 def copy_files_to_thisrun(config):
-
+    from .filelists import log_used_files, copy_files
+    import six
     six.print_("=" * 80, "\n")
     six.print_("PREPARING EXPERIMENT")
     # Copy files:
@@ -133,25 +125,27 @@ def copy_files_to_thisrun(config):
     six.print_("- Note that you can see your file lists in the config folder")
     six.print_("- You will be informed about missing files")
 
-    filelists.log_used_files(config)
+    log_used_files(config)
 
-    config = filelists.copy_files(
+    config = copy_files(
         config, config["general"]["in_filetypes"], source="init", target="thisrun"
     )
     return config
 
 
 def copy_files_to_work(config):
-
+    from .filelists import copy_files
+    import six
     six.print_("=" * 80, "\n")
     six.print_("PREPARING WORK FOLDER")
-    config = filelists.copy_files(
+    config = copy_files(
         config, config["general"]["in_filetypes"], source="thisrun", target="work"
     )
     return config
 
-def _create_folders(config, filetypes):
 
+def _create_folders(config, filetypes):
+    import os
     for filetype in filetypes:
         if not filetype == "ignore":
             if not os.path.exists(config["experiment_" + filetype + "_dir"]):
@@ -159,9 +153,11 @@ def _create_folders(config, filetypes):
             if not os.path.exists(config["thisrun_" + filetype + "_dir"]):
                 os.makedirs(config["thisrun_" + filetype + "_dir"])
 
+
 def _create_setup_folders(config):
     _create_folders(config["general"], config["general"]["all_filetypes"])
     return config
+
 
 def _create_component_folders(config):
     for component in config["general"]["valid_model_names"]:
@@ -170,7 +166,10 @@ def _create_component_folders(config):
         )
     return config
 
+
 def initialize_experiment_logfile(config):
+    from .helpers import write_to_log
+    import os
     """
     Initializes the log file for the entire experiment.
 
@@ -206,13 +205,12 @@ def initialize_experiment_logfile(config):
     if config["general"]["run_number"] == 1:
         if os.path.isfile(config["general"]["experiment_log_file"]):
             os.remove(config["general"]["experiment_log_file"])
-        helpers.write_to_log(
+        write_to_log(
             config,
             ["# Beginning of Experiment " + config["general"]["expid"]],
             message_sep="",
         )
-
-    helpers.write_to_log(
+    write_to_log(
         config,
         [
             str(config["general"]["jobtype"]),
@@ -224,8 +222,12 @@ def initialize_experiment_logfile(config):
     )
     return config
 
-def _write_finalized_config(config):
 
+def _write_finalized_config(config):
+    import yaml
+    def date_representer(dumper, date):
+       return dumper.represent_str("%s" % date.output())
+    yaml.add_representer(Date, date_representer)
     with open(
         config["general"]["thisrun_config_dir"]
         + "/"
@@ -236,8 +238,12 @@ def _write_finalized_config(config):
         yaml.dump(config, config_file)
     return config
 
-def copy_tools_to_thisrun(config):
 
+def copy_tools_to_thisrun(config):
+    from .helpers import end_it_all
+    import esm_rcfile
+    import shutil
+    import os
     gconfig = config["general"]
 
     fromdir = os.path.realpath(gconfig["started_from"])
@@ -291,8 +297,11 @@ def copy_tools_to_thisrun(config):
         gconfig["profile"] = False
         helpers.end_it_all(config, silent=True)
 
-def _copy_preliminary_files_from_experiment_to_thisrun(config):
 
+def _copy_preliminary_files_from_experiment_to_thisrun(config):
+    import shutil
+    import os
+    # I don't like this one bit. DB
     filelist = [
         (
             "scripts",
@@ -319,8 +328,9 @@ def _copy_preliminary_files_from_experiment_to_thisrun(config):
         shutil.copy2(additional_file, config["general"]["thisrun_scripts_dir"])
     return config
 
-def _show_simulation_info(config):
 
+def _show_simulation_info(config):
+    import six
     six.print_(80 * "=")
     six.print_("STARTING SIMULATION JOB!")
     six.print_("Experiment ID = %s" % config["general"]["expid"])

@@ -35,6 +35,7 @@ def _read_date_file(config):
     logging.info("run_number = %s", run_number)
     return config
 
+
 def check_model_lresume(config):
     if config["general"]["run_number"] != 1:
         for model in config["general"]["valid_model_names"]:
@@ -48,7 +49,7 @@ def check_model_lresume(config):
                 user_lresume = False
 
             if isinstance(user_lresume, str) and "${" in user_lresume:
-                user_lresume = esm_parser.find_variable(model, user_lresume, self.config, [], [])
+                user_lresume = esm_parser.find_variable(model, user_lresume, config, [], [])
             if type(user_lresume) == str:
 
                 if user_lresume == "0" or user_lresume.upper() == "FALSE":
@@ -61,6 +62,15 @@ def check_model_lresume(config):
                 elif user_lresume == 1:
                     user_lresume = True
             config[model]["lresume"] = user_lresume
+    for model in config["general"]["valid_model_names"]:
+        # Check if lresume contains a variable which might be set in a different model, and resolve this case
+        if "lresume" in config[model] \
+                and isinstance(config[model]["lresume"], str) \
+                and "${" in config[model]["lresume"]:
+            lr = esm_parser.find_variable(model, \
+                    config[model]["lresume"], \
+                    config, [], [])
+            config[model]["lresume"] = eval(lr)
     return config
 
 
@@ -69,7 +79,6 @@ def resolve_some_choose_blocks(config):
     choose_blocks(config, blackdict=config._blackdict)
     return config
     
-
 
 def _initialize_calendar(config):
     config = set_restart_chunk(config)
@@ -110,7 +119,7 @@ def set_leapyear(config):
         for model in config["general"]["valid_model_names"]:
             config[model]["leapyear"] = config["general"]["leapyear"]
     else:
-        for model in self.config["general"]["valid_model_names"]:
+        for model in config["general"]["valid_model_names"]:
             if "leapyear" in config[model]:
                 for other_model in config["general"]["valid_model_names"]:
                     if "leapyear" in config[other_model]:
@@ -262,7 +271,7 @@ def set_prev_date(config):
             dt = esm_parser.find_variable(model, \
                     config[model]["time_step"], \
                     config, [], [])
-            self.config[model]["prev_date"] = config["general"]["current_date"]\
+            config[model]["prev_date"] = config["general"]["current_date"]\
                     - (0, 0, 0, 0, 0, int(dt))
    
         else:
@@ -277,17 +286,39 @@ def set_parent_info(config):
     * ``parent_date``
     * ``parent_restart_dir``
     """
+
+    #Make sure "ini_parent_dir" and "ini_restart_dir" both work:
     for model in config["general"]["valid_model_names"]:
-        # Check if lresume contains a variable which might be set in a different model, and resolve this case
-        if "lresume" in config[model] \
-                and isinstance(self.config[model]["lresume"], str) \
-                and "${" in self.config[model]["lresume"]:
-            lr = esm_parser.find_variable(model, \
-                    config[model]["lresume"], \
-                    config, [], [])
-            config[model]["lresume"] = eval(lr)
+        if not "ini_parent_dir" in config[model]:
+            if "ini_restart_dir" in config[model]:
+                config[model]["ini_parent_dir"] = config[model]["ini_restart_dir"]
+        if not "ini_parent_exp_id" in config[model]:
+            if "ini_restart_exp_id" in config[model]:
+                config[model]["ini_parent_exp_id"] = config[model]["ini_restart_exp_id"]
+        if not "ini_parent_date" in config[model]:
+            if "ini_restart_date" in config[model]:
+                config[model]["ini_parent_date"] = config[model]["ini_restart_date"]
+
+    # check if parent is defined in esm_tools style
+    # (only given for setup)
+    setup = config["general"]["setup_name"]
+    if "ini_parent_exp_id" in config[setup]:
+        for model in config["general"]["valid_model_names"]:
+            if not "ini_parent_exp_id" in config[model]:
+                config[model]["ini_parent_exp_id"] = config[setup]["ini_parent_exp_id"]
+    if "ini_parent_date" in config[setup]:
+        for model in config["general"]["valid_model_names"]:
+            if not "ini_parent_date" in config[model]:
+                config[model]["ini_parent_date"] = config[setup]["ini_parent_date"]
+    if "ini_parent_dir" in config[setup]:
+        for model in config["general"]["valid_model_names"]:
+            if not "ini_parent_dir" in config[model]:
+                config[model]["ini_parent_dir"] = config[setup]["ini_parent_dir"] + "/" + model
+
+    # Get correct parent info
+    for model in config["general"]["valid_model_names"]:
         if config[model]["lresume"] == True \
-                and self.config["general"]["run_number"] == 1:
+                and config["general"]["run_number"] == 1:
             config[model]["parent_expid"] = config[model][
                 "ini_parent_exp_id"
             ]
@@ -296,7 +327,7 @@ def set_parent_info(config):
                     "ini_parent_date"
                 ]
             config[model]["parent_restart_dir"] = config[model][
-                "ini_restart_dir"
+                "ini_parent_dir"
             ]
         else:
             config[model]["parent_expid"] = config["general"][
@@ -317,8 +348,6 @@ def finalize_config(config):
     return config
 
 
-
-@staticmethod
 def add_submission_info(config):
     from . import batch_system
     bs = batch_system(config, config["computer"]["batch_system"])
@@ -338,27 +367,27 @@ def add_submission_info(config):
 def initialize_batch_system(config):
     from . import batch_system    
     config["general"]["batch"] = \
-            batch_system(self.config, self.config["computer"]["batch_system"])
+            batch_system(config, config["computer"]["batch_system"])
     return config
 
 
 def initialize_coupler(config):
     if config["general"]["standalone"] == False:
-        from . import esm_coupler
+        from . import coupler
         for model in list(config):
-            if model in esm_coupler.known_couplers:
+            if model in coupler.known_couplers:
                 config["general"]["coupler_config_dir"] = (
-                    self.config["general"]["base_dir"]
+                    config["general"]["base_dir"]
                     + "/"
-                    + self.config["general"]["expid"]
+                    + config["general"]["expid"]
                     + "/run_"
-                    + self.run_datestamp
+                    + config["general"]["run_datestamp"]
                     + "/config/"
                     + model
                     + "/"
                 )
                 = coupler_config_dir
-                config["general"]["coupler"] = esm_coupler.esm_coupler(config, model)
+                config["general"]["coupler"] = coupler.coupler_class(config, model)
                 break
         config["general"]["coupler"].add_files(config)
     return config

@@ -59,7 +59,7 @@ def write_to_log(config, message, message_sep=None):
         A list of the message elements; which is joined by either (highest
         to lowest): 1) the message_sep argument passed to the method, 2)
         The user's chosen seperator, as written in
-        ``self.config["general"]["experiment_log_file_message_sep"]``, 3)
+        ``config["general"]["experiment_log_file_message_sep"]``, 3)
         An empty space ``" "``.
     message_sep : None
         The hard-coded message seperator to use; which ignores user choices.
@@ -80,8 +80,9 @@ def write_to_log(config, message, message_sep=None):
             line = assemble_log_message(config, message, message_sep)
             logfile.write(line + "\n")
     except KeyError:
+        import esm_parser
         print("Sorry; couldn't find 'experiment_log_file' in config['general']...")
-        esm_parser.pprint_config(self.config["general"])
+        esm_parser.pprint_config(config["general"])
         raise
 
 def assemble_log_message(config, message, message_sep=None, timestampStr_from_Unix=False):

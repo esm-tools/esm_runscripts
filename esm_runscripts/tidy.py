@@ -6,7 +6,6 @@ def run_job(config):
     return config
 
 
-@staticmethod
 def init_monitor_file(config):
     called_from = config["general"]["last_jobtype"]
     monitor_file = config["general"]["monitor_file"]
@@ -17,20 +16,17 @@ def init_monitor_file(config):
     return config
 
 
-
-@staticmethod
 def get_last_jobid(config):
     called_from = config["general"]["last_jobtype"]
     last_jobid = "UNKNOWN"
     if called_from == "compute":
-        with open(self.config["general"]["experiment_log_file"], "r") as logfile:
+        with open(config["general"]["experiment_log_file"], "r") as logfile:
             lastline = [l for l in logfile.readlines() if "compute" in l and "start" in l][-1]
             last_jobid = lastline.split(" - ")[0].split()[-1]
     config["general"]["last_jobid"] = last_jobid
     return config
 
 
-@staticmethod
 def copy_stuff_back_from_work(config):
     config = filelists.copy_files(
             config, \
@@ -41,16 +37,6 @@ def copy_stuff_back_from_work(config):
     return config
 
 
-
-@staticmethod
-def copy_results_to_exp(config):
-    monitor_file = config["general"]["monitor_file"]
-    monitor_file.write("Copying stuff to main experiment folder \n")
-    self.copy_all_results_to_exp()
-    return config
-
-
-@staticmethod
 def wait_and_observe(config):
     import time
     if config["general"]["submitted"]:
@@ -69,14 +55,12 @@ def wait_and_observe(config):
     return config
 
 
-@staticmethod
 def tidy_coupler(config):
     if config["general"]["standalone"] == False:
         config["general"["coupler"].tidy(config)
     return config
 
 
-@staticmethod
 def wake_up_call(config):
     called_from = config["general"]["last_jobtype"]
     monitor_file = config["general"]["monitor_file"]
@@ -100,8 +84,6 @@ def wake_up_call(config):
     return config
 
 
-
-@staticmethod
 def assemble_error_list(config):
     gconfig = config["general"]
     known_methods = ["warn", "kill"]
@@ -142,7 +124,6 @@ def assemble_error_list(config):
     return config
 
 
-@staticmethod
 def check_for_errors(config):
     import re
     import os
@@ -179,8 +160,6 @@ def check_for_errors(config):
     return config
 
 
-
-@staticmethod
 def job_is_still_running(config):
     import psutil
     if psutil.pid_exists(config["general"]["launcher_pid"]):
@@ -188,14 +167,12 @@ def job_is_still_running(config):
     return False
 
 
-@staticmethod
 def _increment_date_and_run_number(config):
     config["general"]["run_number"] += 1
     config["general"]["current_date"] += config["general"]["delta_date"]
     return config
 
 
-@staticmethod
 def _write_date_file(config): #self, date_file=None):
     monitor_file = config["general"]["monitor_file"]
         #if not date_file:
@@ -213,7 +190,6 @@ def _write_date_file(config): #self, date_file=None):
     return config
 
 
-@staticmethod
 def start_post_job(config):
     monitor_file = config["general"]["monitor_file"]
     do_post = False
@@ -236,9 +212,8 @@ def start_post_job(config):
     return config
 
 
-@staticmethod
 def all_done(config):
-    helpers.write_to_log(self.config, [
+    helpers.write_to_log(config, [
         str(config["general"]["jobtype"]),
         str(config["general"]["run_number"]),
         str(config["general"]["current_date"]),
@@ -246,12 +221,11 @@ def all_done(config):
         "- done"])
 
     from . import database_actions
-    database_actions.database_entry_success(self.config)
+    database_actions.database_entry_success(config)
 
     return config
 
 
-@staticmethod
 def maybe_resubmit(config):
     monitor_file = config["general"]["monitor_file"]
     monitor_file.write("resubmitting \n")
@@ -260,7 +234,7 @@ def maybe_resubmit(config):
 
     # seb-wahl: end_date is by definition (search for 'end_date') smaller than final_date
     # hence we have to use next_date = current_date + increment
-    if self.config["general"]["next_date"] >= self.config["general"]["final_date"]:
+    if config["general"]["next_date"] >= config["general"]["final_date"]:
         monitor_file.write("Reached the end of the simulation, quitting...\n")
         helpers.write_to_log(config, ["# Experiment over"], message_sep="")
     else:
@@ -273,42 +247,25 @@ def maybe_resubmit(config):
 
 
 
-# DONT LIKE THE FOLLOWING PART
+# DONT LIKE THE FOLLOWING PART...
+# I wish it was closer to the copy_files routine in filelists,
+# but as it is really a different thing - moving everything
+# found compared to copying everything in filelists - a second
+# implementation might be OK... (DB)
 
-@staticmethod
-def merge_thisrun_into_experiment(config):
-
-    import os
-    # to should be thisrun, work or experiment
-
-    for filetype in config["general"]["all_model_filetypes"]:
-        for model in config["general"]["valid_model_names"]:
-            from_dir = config[model]["thisrun_" + filetype + "dir"]
-            to_dir = config[model]["experiment_" + filetype + "dir"] + "/" + config["general"]["run_datestamp"]
-            os.rename(from_dir, to_dir)
-
-    for filetype in config["general"]["all_filetypes"]:
-        from_dir = config["general"]["thisrun_" + filetype + "dir"]
-        to_dir = config["general"]["experiment_" + filetype + "dir"] + "/" + config["general"]["run_datestamp"]
-        os.rename(from_dir, to_dir)
-
-    return config
-
-
-
-
-def copy_all_results_to_exp(self):
+def copy_all_results_to_exp(config):
     import filecmp
-
-    for root, dirs, files in os.walk(self.config["general"]["thisrun_dir"], topdown=False):
+    monitor_file = config["general"]["monitor_file"]
+    monitor_file.write("Copying stuff to main experiment folder \n")
+    for root, dirs, files in os.walk(config["general"]["thisrun_dir"], topdown=False):
         print ("Working on folder: " + root)
-        if root.startswith(self.config["general"]["thisrun_work_dir"]) or root.endswith("/work"):
+        if root.startswith(config["general"]["thisrun_work_dir"]) or root.endswith("/work"):
             print ("Skipping files in work.")
             continue
         for name in files:
             source = os.path.join(root, name)
             print ("File: " + source)
-            destination = source.replace(self.config["general"]["thisrun_dir"], self.config["general"]["experiment_dir"])
+            destination = source.replace(config["general"]["thisrun_dir"], config["general"]["experiment_dir"])
             destination_path = destination.rsplit("/", 1)[0]
             if not os.path.exists(destination_path):
                 os.makedirs(destination_path)
@@ -318,15 +275,15 @@ def copy_all_results_to_exp(self):
                         print ("File " + source + " has not changed, skipping.")
                         continue
                     else:
-                        if os.path.isfile(destination + "_" + self.run_datestamp):
+                        if os.path.isfile(destination + "_" + config["general"]["run_datestamp"]):
                             print ("Don't know where to move " + destination +", file exists")
                             continue
                         else:
                             if os.path.islink(destination):
                                 os.remove(destination)
                             else:
-                                os.rename(destination, destination + "_" + self.last_run_datestamp)
-                            newdestination = destination + "_" + self.run_datestamp
+                                os.rename(destination, destination + "_" + config["general"]["last_run_datestamp"])
+                            newdestination = destination + "_" + config["general"]["run_datestamp"]
                             print ("Moving file " + source + " to " + newdestination)
                             os.rename(source, newdestination)
                             os.symlink(newdestination, destination)
@@ -342,5 +299,6 @@ def copy_all_results_to_exp(self):
                 if os.path.islink(destination):
                     os.remove(destination)
                 if os.path.isfile(destination):
-                    os.rename(destination, destination + "_" + self.last_run_datestamp)
+                    os.rename(destination, destination + "_" + config["general"]["last_run_datestamp"])
                 os.symlink(newlinkdest, destination)
+    return config

@@ -1,7 +1,7 @@
 import sys
 known_couplers = ["oasis3mct"]
 
-class esm_coupler:
+class coupler_class:
 
     def __init__(self, full_config, name):
         self.name = name
