@@ -11,6 +11,10 @@ import tqdm
 
 import esm_plugin_manager
 
+def vprint(config, message):
+    if config["general"]["verbose"]:
+        print (message)
+
 
 def evaluate(config, job_type, recipe_name):
 
@@ -40,11 +44,11 @@ def evaluate(config, job_type, recipe_name):
 #########################################################################################
 #                                   general stuff                                       #
 #########################################################################################
-def end_it_all(config, silent=False):
+def end_it_all(config):
     if config["general"]["profile"]:
         for line in timing_info:
             print(line)
-    if not silent:
+    if config["general"]["verbose"]:
         print("Exiting entire Python process!")
     sys.exit()
 

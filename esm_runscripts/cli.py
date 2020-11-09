@@ -44,9 +44,8 @@ def parse_shargs():
         "-v",
         "--verbose",
         help="Be verbose",
-        action="store_const",
-        dest="loglevel",
-        const=logging.INFO,
+        action="store_true",
+        default=False,
     )
 
     parser.add_argument(
@@ -126,6 +125,7 @@ def main():
     expid = "test"
     pid = -666
     jobtype = "compute"
+    verbose = False
 
     parsed_args = vars(ARGS)
 
@@ -145,6 +145,8 @@ def main():
         expid = parsed_args["expid"]
     if "task" in parsed_args:
         jobtype = parsed_args["task"]
+    if "verbose" in parsed_args:
+        verbose = parsed_args["verbose"]
 
 
     command_line_config={}
@@ -156,13 +158,14 @@ def main():
     command_line_config["jobtype"] = jobtype
     command_line_config["scriptname"] = ARGS.runscript
     command_line_config["last_jobtype"] = ARGS.last_jobtype
+    command_line_config["verbose"] = verbose
 
     command_line_config["original_command"] = original_command.strip()
     command_line_config["started_from"] = os.getcwd()
 
-
-    print ("Started from: ", command_line_config["started_from"])
-    print ("starting : ", jobtype)
+    if verbose:
+        print ("Started from: ", command_line_config["started_from"])
+        print ("starting : ", jobtype)
 
     Setup = SimulationSetup(command_line_config)
     Setup()

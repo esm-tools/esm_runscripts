@@ -16,12 +16,16 @@ class SimulationSetup(object):
             raise ValueError("SimulationSetup needs to be initialized with either command_line_config or user_config.")
         if command_line_config:
             self.command_line_config = command_line_config
+        else:
+            self.command_line_config = {}
+
         if not user_config:
             user_config = self.get_user_config_from_command_line(command_line_config)
         if user_config["general"].get("debug_obj_init", False):
             import pdb; pdb.set_trace()
         self.get_total_config_from_user_config(user_config)
-
+         
+        self.config["general"]["command_line_config"] = self.command_line_config
         # read the prepare recipe 
         from . import prepare
         self.config = prepare.run_job(self.config)

@@ -151,12 +151,13 @@ class batch_system:
         header = batch_system.get_batch_header(config)
         environment = batch_system.get_environment(config)
 
-        print ("still alive")
-        print ("jobtype: ", config["general"]["jobtype"])
+        if config["general"]["verbose"]:
+            print ("still alive")
+            print ("jobtype: ", config["general"]["jobtype"])
 
         if config["general"]["jobtype"] == "compute":
             commands = batch_system.get_run_commands(config)
-            tidy_call =  "esm_runscripts " + config["general"]["scriptname"] + " -e " + config["general"]["expid"] + " -t tidy_and_resubmit -p ${process} -j "+config["general"]["jobtype"]
+            tidy_call =  "esm_runscripts " + config["general"]["scriptname"] + " -e " + config["general"]["expid"] + " -t tidy_and_resubmit -p ${process} -j " + config["general"]["jobtype"]
         elif config["general"]["jobtype"] == "post":
             tidy_call = ""
             commands = config["general"]["post_task_list"]
@@ -179,15 +180,16 @@ class batch_system:
 
         config["general"]["submit_command"] = batch_system.get_submit_command(config, sadfilename)
 
-        six.print_("\n", 40 * "+ ")
-        six.print_("Contents of ",sadfilename, ":")
-        with open(sadfilename, "r") as fin:
-            print (fin.read())
-        if os.path.isfile(self.bs.filename):
+        if config["general"]["verbose"]:
             six.print_("\n", 40 * "+ ")
-            six.print_("Contents of ",self.bs.filename, ":")
-            with open(self.bs.filename, "r") as fin:
+            six.print_("Contents of ",sadfilename, ":")
+            with open(sadfilename, "r") as fin:
                 print (fin.read())
+            if os.path.isfile(self.bs.filename):
+                six.print_("\n", 40 * "+ ")
+                six.print_("Contents of ",self.bs.filename, ":")
+                with open(self.bs.filename, "r") as fin:
+                    print (fin.read())
         return config
 
 
@@ -196,11 +198,17 @@ class batch_system:
         import six
         import os
         if not config["general"]["check"]:
-            six.print_("\n", 40 * "+ ")
-            print ("Submitting sad jobscript to batch system...")
-            for command in config["general"]["submit_command"]:
-                print (command)
-            six.print_("\n", 40 * "+ ")
+            if config["general"]["verbose"]:
+                six.print_("\n", 40 * "+ ")
+            print ("Submitting jobscript to batch system...")
+            print()
+            if config["general"]["verbose"]:
+                for command in config["general"]["submit_command"]:
+                    print (command)
+                six.print_("\n", 40 * "+ ")
             for command in config["general"]["submit_command"]:
                 os.system(command)
+        else:
+            print ("Actually not submitting anything, this job preparation was launched in 'check' mode (-c).")
+            print()
         return config

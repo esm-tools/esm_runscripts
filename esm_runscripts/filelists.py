@@ -27,7 +27,8 @@ def rename_sources_to_targets(config):
                     pass
 
                 elif sources and not targets:
-                    print ("Renaming sources to targets for filetype " + filetype + " in model " + model)
+                    if config["general"]["verbose"]:
+                        print ("Renaming sources to targets for filetype " + filetype + " in model " + model)
                     config[model][filetype + "_targets"] = copy.deepcopy(config[model][filetype + "_sources"])
                     if in_work:
                         config[model][filetype + "_sources"] = copy.deepcopy(config[model][filetype + "_in_work"])
@@ -82,7 +83,8 @@ def complete_targets(config):
 
 def complete_sources(config):
     import os
-    print("Complete sources")
+    if config["general"]["verbose"]:
+        print("Complete sources")
     for filetype in config["general"]["out_filetypes"]:
         for model in config["general"]["valid_model_names"]:
             if filetype + "_sources" in config[model]:
@@ -93,7 +95,7 @@ def complete_sources(config):
 
 
 def reuse_sources(config):
-    if config["general"]["run_number"] = 1:
+    if config["general"]["run_number"] == 1:
         return config
     print("Reusing files...")
     for filetype in config["general"]["reusable_filetypes"]:
@@ -127,6 +129,8 @@ def choose_needed_files(config):
             for categ, name in six.iteritems(config[model][filetype + "_files"]):
                 if not name in config[model][filetype + "_sources"]:
                     print ("Implementation " + name + " not found for filetype " + filetype + " of model " + model)
+                    print (config[model][filetype + "_files"])
+                    print (config[model][filetype + "_sources"])
                     sys.exit(-1)
                 new_sources.update({ categ : config[model][filetype + "_sources"][name]})
 
@@ -318,8 +322,9 @@ def log_used_files(config):
                         flist.write("\nSource: " + config[model][filetype + "_sources"][category])
                         flist.write("\nExp Tree: " + config[model][filetype + "_intermediate"][category])
                         flist.write("\nTarget: " + config[model][filetype + "_targets"][category])
-                        print ("-  " +  config[model][filetype + "_targets"][category] + \
-                                " : " +  config[model][filetype + "_sources"][category])
+                        if config["general"]["verbose"]:
+                            print ("-  " +  config[model][filetype + "_targets"][category] + \
+                                    " : " +  config[model][filetype + "_sources"][category])
                         flist.write("\n")
                 flist.write("\n")
                 flist.write(80 * "-")
@@ -373,6 +378,7 @@ def copy_files(config, filetypes, source, target):
     import os
     import shutil
     import six
+    import filecmp
 
     successful_files = []
     missing_files = {}
@@ -395,6 +401,8 @@ def copy_files(config, filetypes, source, target):
                 for categ in sourceblock:
                     file_source = sourceblock[categ]
                     file_target = targetblock[categ]
+                    if filecmp.cmp(file_source, file_target):
+                        continue
                     dest_dir = os.path.dirname(file_target)
                     if not os.path.isdir(file_source):
                         try:
@@ -403,14 +411,17 @@ def copy_files(config, filetypes, source, target):
                             shutil.copy2(file_source, file_target)
                             successful_files.append(file_source)
                         except IOError:
+                            print(file_target)
+                            print(file_source)
                             missing_files.update({file_target: file_source})
 
     if missing_files:
         if not "files_missing_when_preparing_run" in config["general"]:
             config["general"]["files_missing_when_preparing_run"] = {}
-        six.print_("--- WARNING: These files were missing:")
-        for missing_file in missing_files:
-            print( "  - " + missing_file + ": " + missing_files[missing_file])
+        if config["general"]["verbose"]:
+            six.print_("--- WARNING: These files were missing:")
+            for missing_file in missing_files:
+                print( "  - " + missing_file + ": " + missing_files[missing_file])
         config["general"]["files_missing_when_preparing_run"].update(missing_files)
     return config
 
@@ -421,15 +432,15 @@ def copy_files(config, filetypes, source, target):
 
 def report_missing_files(config):
     if "files_missing_when_preparing_run" in config["general"]:
+        import six
         if not config["general"]["files_missing_when_preparing_run"] == {}:
-            print ()
-            print ("========================================================")
+            six.print_(80 * "=")
             print ("MISSING FILES:")
         for missing_file in config["general"]["files_missing_when_preparing_run"]:
             print ("--  " + missing_file +": ")
             print ("        --> " + config["general"]["files_missing_when_preparing_run"][missing_file] )
         if not config["general"]["files_missing_when_preparing_run"] == {}:
-            print ("========================================================")
+            six.print_(80 * "=")
     return config
 
 

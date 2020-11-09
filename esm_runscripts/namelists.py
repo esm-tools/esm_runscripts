@@ -217,7 +217,7 @@ class Namelist:
         return config
 
     @staticmethod
-    def nmls_finalize(mconfig):
+    def nmls_finalize(mconfig, verbose):
         """
         Writes namelists to disk after all modifications have finished.
 
@@ -258,13 +258,14 @@ class Namelist:
                 nml_obj.write(nml_file)
             all_nmls[nml_name] = nml_obj  # PG: or a string representation?
         mconfig["namelist_objs"] = all_nmls
-        six.print_(
-            "\n" "- Namelists modified according to experiment specifications..."
-        )
-        for nml_name, nml in all_nmls.items():
-            six.print_("Final Contents of ", nml_name, ":")
-            nml.write(sys.stdout)
-            six.print_("\n", 40 * "+ ")
+        if verbose:
+            six.print_(
+                "\n" "- Namelists modified according to experiment specifications..."
+            )
+            for nml_name, nml in all_nmls.items():
+                six.print_("Final Contents of ", nml_name, ":")
+                nml.write(sys.stdout)
+                six.print_("\n", 40 * "+ ")
         return mconfig
 
 

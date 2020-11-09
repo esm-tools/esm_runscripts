@@ -110,6 +110,12 @@ def set_restart_chunk(config):
         and not nsecond
     ):
         nyear = 1
+    config["general"]["nyear"] = nyear
+    config["general"]["nmonth"] = nmonth
+    config["general"]["nday"] = nday
+    config["general"]["nhour"] = nhour
+    config["general"]["nminute"] = nminute
+    config["general"]["nsecond"] = nsecond
     return config
 
 
@@ -139,6 +145,7 @@ def set_leapyear(config):
 
 
 def set_overall_calendar(config):
+    from esm_calendar import Calendar
     # set the overall calendar
     if config["general"]["leapyear"]:
         config["general"]["calendar"] = Calendar(1)
@@ -148,9 +155,18 @@ def set_overall_calendar(config):
 
     
 def set_most_dates(config):
+    from esm_calendar import Calendar, Date
+
     calendar = config["general"]["calendar"]
     current_date = Date(config["general"]["current_date"], calendar)
-    delta_date = (nyear, nmonth, nday, nhour, nminute, nsecond)
+    delta_date = (
+            config["general"]["nyear"],
+            config["general"]["nmonth"],
+            config["general"]["nday"],
+            config["general"]["nhour"],
+            config["general"]["nminute"],
+            config["general"]["nsecond"],
+            )
 
     config["general"]["delta_date"] = delta_date
     config["general"]["current_date"] = current_date
@@ -349,6 +365,7 @@ def finalize_config(config):
 
 
 def add_submission_info(config):
+    import os
     from . import batch_system
     bs = batch_system(config, config["computer"]["batch_system"])
 
@@ -386,7 +403,6 @@ def initialize_coupler(config):
                     + model
                     + "/"
                 )
-                = coupler_config_dir
                 config["general"]["coupler"] = coupler.coupler_class(config, model)
                 break
         config["general"]["coupler"].add_files(config)

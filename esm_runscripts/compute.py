@@ -11,18 +11,22 @@ def run_job(config):
 
 
 def all_files_to_copy_append(config, model, filetype, categ, file_source, file_interm, file_target):
-    if not filetype + "_sources" in config[model]:
-        config[model][filetype + "_sources"] = {}
-    if not filetype + "_intermediate" in config[model]:
-        config[model][filetype + "_sources"] = {}
-    if not filetype + "_targets" in config[model]:
-        config[model][filetype + "_sources"] = {}
     if file_source:
+        if not filetype + "_sources" in config[model]:
+            config[model][filetype + "_sources"] = {}
         config[model][filetype + "_sources"][categ] = file_source
     if file_interm:
+        if not filetype + "_intermediate" in config[model]:
+            config[model][filetype + "_intermediate"] = {}
         config[model][filetype + "_intermediate"][categ] = file_interm
     if file_target:
+        if not filetype + "_targets" in config[model]:
+            config[model][filetype + "_targets"] = {}
         config[model][filetype + "_targets"][categ] = file_target
+
+    if filetype + "_files" in config[model]:
+        config[model][filetype + "_files"][categ] = categ
+
     return config
 
 
@@ -82,7 +86,7 @@ def create_new_files(config):
                             model,
                             filetype,
                             filename,
-                            filename,
+                            config[model]["thisrun_" + filetype + "_dir"] + "/" + filename,
                             None,
                             None,
                         )
@@ -98,32 +102,39 @@ def modify_files(config):
 
 
 def modify_namelists(config):
-    import six
     from .namelists import Namelist
     # Load and modify namelists:
-    six.print_("\n" "- Setting up namelists for this run...")
+
+    if config["general"]["verbose"]:
+        import six
+        six.print_("\n" "- Setting up namelists for this run...")
+        for model in config["general"]["valid_model_names"]:
+            six.print_("-" * 80)
+            six.print_("* %s" % config[model]["model"], "\n")
+    
     for model in config["general"]["valid_model_names"]:
-        six.print_("-" * 80)
-        six.print_("* %s" % config[model]["model"], "\n")
         config[model] = Namelist.nmls_load(config[model])
         config[model] = Namelist.nmls_remove(config[model])
         if model == "echam":
             config = Namelist.apply_echam_disturbance(config)
         config[model] = Namelist.nmls_modify(config[model])
-        config[model] = Namelist.nmls_finalize(config[model])
+        config[model] = Namelist.nmls_finalize(config[model], config["general"]["verbose"])
+     
+    if config["general"]["verbose"]:
         print("end of namelist section")
     return config
 
 
 def copy_files_to_thisrun(config):
     from .filelists import log_used_files, copy_files
-    import six
-    six.print_("=" * 80, "\n")
-    six.print_("PREPARING EXPERIMENT")
-    # Copy files:
-    six.print_("\n" "- File lists populated, proceeding with copy...")
-    six.print_("- Note that you can see your file lists in the config folder")
-    six.print_("- You will be informed about missing files")
+    if config["general"]["verbose"]:
+        import six
+        six.print_("=" * 80, "\n")
+        six.print_("PREPARING EXPERIMENT")
+        # Copy files:
+        six.print_("\n" "- File lists populated, proceeding with copy...")
+        six.print_("- Note that you can see your file lists in the config folder")
+        six.print_("- You will be informed about missing files")
 
     log_used_files(config)
 
@@ -135,9 +146,10 @@ def copy_files_to_thisrun(config):
 
 def copy_files_to_work(config):
     from .filelists import copy_files
-    import six
-    six.print_("=" * 80, "\n")
-    six.print_("PREPARING WORK FOLDER")
+    if config["general"]["verbose"]:
+        import six
+        six.print_("=" * 80, "\n")
+        six.print_("PREPARING WORK FOLDER")
     config = copy_files(
         config, config["general"]["in_filetypes"], source="thisrun", target="work"
     )
@@ -148,8 +160,9 @@ def _create_folders(config, filetypes):
     import os
     for filetype in filetypes:
         if not filetype == "ignore":
-            if not os.path.exists(config["experiment_" + filetype + "_dir"]):
-                os.makedirs(config["experiment_" + filetype + "_dir"])
+            if not filetype == "work":
+                if not os.path.exists(config["experiment_" + filetype + "_dir"]):
+                    os.makedirs(config["experiment_" + filetype + "_dir"])
             if not os.path.exists(config["thisrun_" + filetype + "_dir"]):
                 os.makedirs(config["thisrun_" + filetype + "_dir"])
 
@@ -225,6 +238,8 @@ def initialize_experiment_logfile(config):
 
 def _write_finalized_config(config):
     import yaml
+    from esm_calendar import Date
+
     def date_representer(dumper, date):
        return dumper.represent_str("%s" % date.output())
     yaml.add_representer(Date, date_representer)
@@ -252,8 +267,9 @@ def copy_tools_to_thisrun(config):
     tools_dir = scriptsdir + "/esm_tools/functions"
     namelists_dir = scriptsdir + "/esm_tools/namelists"
 
-    print("Started from :", fromdir)
-    print("Scripts Dir : ", scriptsdir)
+    if config["general"]["verbose"]:
+        print("Started from :", fromdir)
+        print("Scripts Dir : ", scriptsdir)
 
     if os.path.isdir(tools_dir) and gconfig["update"]:
         shutil.rmtree(tools_dir, ignore_errors=True)
@@ -261,23 +277,27 @@ def copy_tools_to_thisrun(config):
         shutil.rmtree(namelists_dir, ignore_errors=True)
 
     if not os.path.isdir(tools_dir):
-        print("Copying from: ", esm_rcfile.FUNCTION_PATH)
+        if config["general"]["verbose"]:
+            print("Copying from: ", esm_rcfile.FUNCTION_PATH)
         shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir)
     if not os.path.isdir(namelists_dir):
         shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir)
 
     if (fromdir == scriptsdir) and not gconfig["update"]:
-        print("Started from the experiment folder, continuing...")
+        if config["general"]["verbose"]:
+            print("Started from the experiment folder, continuing...")
         return config
     else:
         if not fromdir == scriptsdir:
-            print("Not started from experiment folder, restarting...")
+            if config["general"]["verbose"]:
+                print("Not started from experiment folder, restarting...")
         else:
             print("Tools were updated, restarting...")
 
         if not os.path.isfile(scriptsdir + "/" + gconfig["scriptname"]):
             oldscript = fromdir + "/" + gconfig["scriptname"]
-            print(oldscript)
+            if config["general"]["verbose"]:
+                print(oldscript)
             shutil.copy2(oldscript, scriptsdir)
 
         for tfile in gconfig["additional_files"]:
@@ -291,11 +311,12 @@ def copy_tools_to_thisrun(config):
             + "esm_runscripts "
             + gconfig["original_command"].replace("-U", "")
         )
-        print(restart_command)
+        if config["general"]["verbose"]:
+            print(restart_command)
         os.system(restart_command)
 
         gconfig["profile"] = False
-        helpers.end_it_all(config, silent=True)
+        end_it_all(config)
 
 
 def _copy_preliminary_files_from_experiment_to_thisrun(config):
@@ -331,12 +352,17 @@ def _copy_preliminary_files_from_experiment_to_thisrun(config):
 
 def _show_simulation_info(config):
     import six
+    six.print_()
     six.print_(80 * "=")
     six.print_("STARTING SIMULATION JOB!")
     six.print_("Experiment ID = %s" % config["general"]["expid"])
     six.print_("Setup = %s" % config["general"]["setup_name"])
-    six.print_("This setup consists of:")
-    for model in config["general"]["valid_model_names"]:
-        six.print_("- %s" % model)
-    six.print_("You are using the Python version.")
+    if "coupled_setup" in config["general"]:
+        six.print_("This setup consists of:")
+        for model in config["general"]["valid_model_names"]:
+            six.print_("- %s" % model)
+    six.print_("Experiment is installed in:")
+    six.print_("       %s" % config["general"]["base_dir"] + "/" + config["general"]["expid"])
+    six.print_(80 * "=")
+    six.print_()
     return config

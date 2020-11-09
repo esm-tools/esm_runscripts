@@ -1,6 +1,9 @@
 from . import helpers
 
 def run_job(config):
+    config["general"]["relevant_filetypes"] = ["log", "mon", "outdata", "restart_out","bin", "config", "forcing", "input", "restart_in", "ignore"]
+    helpers.evaluate(config, "postprocess", "post_recipe")
+    return config
 
     
 def _assemble_postprocess_tasks(config):
@@ -78,8 +81,7 @@ def _assemble_postprocess_tasks(config):
     return config
 
 #?????
-def write_simple_postscript(config):
-    batch_system.write_simple_runscript(config)
-    return config
+#def write_simple_postscript(config):
+#    batch_system.write_simple_runscript(config)
+#    return config
 
-def submit_postscript(config):

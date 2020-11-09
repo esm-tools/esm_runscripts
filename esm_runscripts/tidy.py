@@ -42,7 +42,7 @@ def wait_and_observe(config):
     if config["general"]["submitted"]:
         monitor_file = config["general"]["monitor_file"]
         thistime = 0
-        error_check_list = assemble_error_list()
+        error_check_list = assemble_error_list(config)
         while job_is_still_running(config):
             monitor_file.write("still running \n")
             config["general"]["next_test_time"] = thistime
@@ -56,8 +56,9 @@ def wait_and_observe(config):
 
 
 def tidy_coupler(config):
+    from . import coupler
     if config["general"]["standalone"] == False:
-        config["general"["coupler"].tidy(config)
+        config["general"]["coupler"].tidy(config)
     return config
 
 
