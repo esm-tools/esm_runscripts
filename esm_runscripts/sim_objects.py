@@ -26,6 +26,8 @@ class SimulationSetup(object):
         self.get_total_config_from_user_config(user_config)
          
         self.config["general"]["command_line_config"] = self.command_line_config
+        if not "verbose" in self.config["general"]:
+            self.config["general"]["verbose"] = False
         # read the prepare recipe 
         from . import prepare
         self.config = prepare.run_job(self.config)
