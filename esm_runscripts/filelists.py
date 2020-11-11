@@ -107,7 +107,7 @@ def reuse_sources(config):
                     config[model][filetype + "_sources"][categ] = \
                             config[model]["experiment_" + filetype + "_dir"] \
                             + "/" \
-                            + config[model][filetype + "_sources"][categ].split("/")[-1]
+                            + config[model][filetype + "_targets"][categ].split("/")[-1]
     return config
 
 
