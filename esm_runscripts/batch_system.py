@@ -157,7 +157,7 @@ class batch_system:
 
         if config["general"]["jobtype"] == "compute":
             commands = batch_system.get_run_commands(config)
-            tidy_call =  "esm_runscripts " + config["general"]["scriptname"] + " -e " + config["general"]["expid"] + " -t tidy_and_resubmit -p ${process} -j " + config["general"]["jobtype"]
+            tidy_call =  "esm_runscripts " + config["general"]["scriptname"] + " -e " + config["general"]["expid"] + " -t tidy_and_resubmit -p ${process} -j " + config["general"]["jobtype"]  + " -v "
         elif config["general"]["jobtype"] == "post":
             tidy_call = ""
             commands = config["general"]["post_task_list"]
@@ -202,6 +202,7 @@ class batch_system:
                 six.print_("\n", 40 * "+ ")
             print ("Submitting jobscript to batch system...")
             print()
+            print (f"Output written by {config['computer']['batch_system']}:")
             if config["general"]["verbose"]:
                 for command in config["general"]["submit_command"]:
                     print (command)

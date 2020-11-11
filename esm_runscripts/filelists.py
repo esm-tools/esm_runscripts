@@ -368,7 +368,7 @@ def check_for_unknown_files(config):
         unknown_files.append(os.path.realpath(thisfile))
 
         index += 1
-        print ("File is not in list: " + os.path.realpath(thisfile) )
+        print ("Unknown file in work: " + os.path.realpath(thisfile) )
 
     return config
 
@@ -387,32 +387,44 @@ def copy_files(config, filetypes, source, target):
         text_source = "sources"
     elif source == "thisrun":
         text_source = "intermediate"
+    elif source == "work":
+        text_source = "sources"
 
     if target == "thisrun":
         text_target = "intermediate"
     elif target == "work":
         text_target = "targets"
 
-    for filetype in filetypes:
+    for filetype in [filetype for filetype in filetypes if not filetype == "ignore"]:
+        
         for model in config["general"]["valid_model_names"]:
             if filetype + "_" + text_source in config[model]:
                 sourceblock = config[model][filetype + "_" + text_source]
                 targetblock = config[model][filetype + "_" + text_target]
                 for categ in sourceblock:
-                    file_source = sourceblock[categ]
-                    file_target = targetblock[categ]
-                    if filecmp.cmp(file_source, file_target):
+                    file_source = os.path.normpath(sourceblock[categ])
+                    file_target = os.path.normpath(targetblock[categ])
+                    if file_source == file_target:
+                        if config["general"]["verbose"]:
+                            print(f"Source and target paths are identical, skipping {file_source}")
                         continue
                     dest_dir = os.path.dirname(file_target)
                     if not os.path.isdir(file_source):
                         try:
                             if not os.path.isdir(dest_dir):
                                 os.mkdir(dest_dir)
+                            if not os.path.isfile(file_source):
+                                print(f"File not found: {file_source}...")
+                                missing_files.update({file_target: file_source})
+                                continue
+                            if os.path.isfile(file_target) and filecmp.cmp(file_source,file_target):
+                                if config["general"]["verbose"]:
+                                    print(f"Source and target file are identical, skipping {file_source}")
+                                continue
                             shutil.copy2(file_source, file_target)
                             successful_files.append(file_source)
                         except IOError:
-                            print(file_target)
-                            print(file_source)
+                            print(f"Could not copy {file_source} to {file_target} for unknown reasons.")
                             missing_files.update({file_target: file_source})
 
     if missing_files:

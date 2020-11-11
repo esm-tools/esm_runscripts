@@ -1,7 +1,7 @@
 from . import helpers
 
 def run_job(config):
-    config["general"]["relevant_filetypes"] = ["log", "mon", "outdata", "restart_out","bin", "config", "forcing", "input", "restart_in", "ignore"]
+    config["general"]["relevant_filetypes"] = ["log", "mon", "outdata", "restart_out","bin", "config", "forcing", "input", "restart_in", "ignore", "unknown"]
     helpers.evaluate(config, "tidy", "tidy_recipe")
     return config
 
@@ -28,11 +28,12 @@ def get_last_jobid(config):
 
 
 def copy_stuff_back_from_work(config):
-    config = filelists.copy_files(
+    from .filelists import copy_files
+    config = copy_files(
             config, \
             config["general"]["relevant_filetypes"], \
             "work", \
-            "init" \
+            "thisrun" \
             )
     return config
 
@@ -228,8 +229,10 @@ def all_done(config):
 
 
 def maybe_resubmit(config):
+    from .sim_objects import SimulationSetup
     monitor_file = config["general"]["monitor_file"]
     monitor_file.write("resubmitting \n")
+    command_line_config = config["general"]["command_line_config"]
     command_line_config["jobtype"] = "compute"
     command_line_config["original_command"] = command_line_config["original_command"].replace("tidy_and_resubmit", "compute")
 
@@ -255,17 +258,21 @@ def maybe_resubmit(config):
 # implementation might be OK... (DB)
 
 def copy_all_results_to_exp(config):
+    import os
     import filecmp
     monitor_file = config["general"]["monitor_file"]
     monitor_file.write("Copying stuff to main experiment folder \n")
     for root, dirs, files in os.walk(config["general"]["thisrun_dir"], topdown=False):
-        print ("Working on folder: " + root)
+        if config["general"]["verbose"]:
+            print ("Working on folder: " + root)
         if root.startswith(config["general"]["thisrun_work_dir"]) or root.endswith("/work"):
-            print ("Skipping files in work.")
+            if config["general"]["verbose"]:
+                print ("Skipping files in work.")
             continue
         for name in files:
             source = os.path.join(root, name)
-            print ("File: " + source)
+            if config["general"]["verbose"]:
+                print ("File: " + source)
             destination = source.replace(config["general"]["thisrun_dir"], config["general"]["experiment_dir"])
             destination_path = destination.rsplit("/", 1)[0]
             if not os.path.exists(destination_path):
@@ -273,7 +280,8 @@ def copy_all_results_to_exp(config):
             if not os.path.islink(source):
                 if os.path.isfile(destination):
                     if filecmp.cmp(source, destination):
-                        print ("File " + source + " has not changed, skipping.")
+                        if config["general"]["verbose"]:
+                            print ("File " + source + " has not changed, skipping.")
                         continue
                     else:
                         if os.path.isfile(destination + "_" + config["general"]["run_datestamp"]):
@@ -285,13 +293,19 @@ def copy_all_results_to_exp(config):
                             else:
                                 os.rename(destination, destination + "_" + config["general"]["last_run_datestamp"])
                             newdestination = destination + "_" + config["general"]["run_datestamp"]
-                            print ("Moving file " + source + " to " + newdestination)
+                            if config["general"]["verbose"]:
+                                print ("Moving file " + source + " to " + newdestination)
                             os.rename(source, newdestination)
                             os.symlink(newdestination, destination)
                             continue
                 try:
-                    print ("Moving file " + source + " to " + destination)
-                    os.rename(source, destination)
+                    if config["general"]["verbose"]:
+                        print ("Moving file " + source + " to " + destination)
+                    try:
+                        os.rename(source, destination)
+                    except: # Fill is still open... create a hard (!) link instead
+                        os.link(source, destination)
+
                 except:
                     print(">>>>>>>>>  Something went wrong moving " + source + " to " + destination)
             else:

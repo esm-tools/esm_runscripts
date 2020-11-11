@@ -11,7 +11,7 @@ import tqdm
 
 import esm_plugin_manager
 
-def vprint(config, message):
+def vprint(message, config):
     if config["general"]["verbose"]:
         print (message)
 
