@@ -30,7 +30,8 @@ class coupler_class:
     def prepare(self, full_config, destination_dir):
         self.add_couplings(full_config)
         self.finalize(destination_dir)
-        self.print_config_files()
+        if full_config["general"]["verbose"]:
+            self.print_config_files()
         return "namcouple"
 
 

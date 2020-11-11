@@ -37,6 +37,7 @@ def _read_date_file(config):
 
 
 def check_model_lresume(config):
+    import esm_parser
     if config["general"]["run_number"] != 1:
         for model in config["general"]["valid_model_names"]:
             config[model]["lresume"] = True
@@ -318,6 +319,8 @@ def set_parent_info(config):
     # check if parent is defined in esm_tools style
     # (only given for setup)
     setup = config["general"]["setup_name"]
+    if not setup in config:
+        setup = "general"
     if "ini_parent_exp_id" in config[setup]:
         for model in config["general"]["valid_model_names"]:
             if not "ini_parent_exp_id" in config[model]:

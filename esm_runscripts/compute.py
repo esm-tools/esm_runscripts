@@ -36,7 +36,7 @@ def add_batch_hostfile(config):
 
     config = all_files_to_copy_append(
             config,
-            setup_name,
+            "general",
             "config",
             "batchhostfile",
             config["general"]["batch"].bs.path,

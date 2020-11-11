@@ -197,10 +197,12 @@ class Namelist:
             if os.path.isfile(config["general"]["experiment_scripts_dir"]+"/disturb_years.dat"):
                 with open(config["general"]["experiment_scripts_dir"]+"/disturb_years.dat") as f:
                         disturbance_file = [int(line.strip()) for line in f.readlines() if line.strip()]
-                print(disturbance_file)
+                if config["general"]["verbose"]:
+                    print(disturbance_file)
             else:
                 disturbance_file = None
-                print(config["general"]["experiment_scripts_dir"]+"/disturb_years.dat", "was not found")
+                if config["general"]["verbose"]:
+                    print(config["general"]["experiment_scripts_dir"]+"/disturb_years.dat", "was not found")
             disturbance_years = disturbance_file or config["echam"].get("disturbance_years", [])
             current_year = config['general']['current_date'].year
             if current_year in disturbance_years:
@@ -212,8 +214,9 @@ class Namelist:
                 dynctl['enstdif'] = config['echam'].get('disturbance', 1.000001)
                 nml['dynctl'] = dynctl
             else:
-                print("Check failed:")
-                print("Current year", current_year, "disturbance_years", disturbance_years)
+                if config["general"]["verbose"]:
+                    print("Not applying disturbance in echam namelist.")
+                    print("Current year", current_year, "disturbance_years", disturbance_years)
         return config
 
     @staticmethod
