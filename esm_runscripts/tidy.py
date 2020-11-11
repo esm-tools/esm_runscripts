@@ -1,4 +1,14 @@
-from . import helpers
+import filecmp
+import os
+import re
+import time
+
+import psutil
+
+from . import coupler, database_actions, helpers
+from .filelists import copy_files
+from .sim_objects import SimulationSetup
+
 
 def run_job(config):
     config["general"]["relevant_filetypes"] = ["log", "mon", "outdata", "restart_out","bin", "config", "forcing", "input", "restart_in", "ignore", "unknown"]
@@ -28,7 +38,6 @@ def get_last_jobid(config):
 
 
 def copy_stuff_back_from_work(config):
-    from .filelists import copy_files
     config = copy_files(
             config, \
             config["general"]["relevant_filetypes"], \
@@ -39,7 +48,6 @@ def copy_stuff_back_from_work(config):
 
 
 def wait_and_observe(config):
-    import time
     if config["general"]["submitted"]:
         monitor_file = config["general"]["monitor_file"]
         thistime = 0
@@ -57,7 +65,6 @@ def wait_and_observe(config):
 
 
 def tidy_coupler(config):
-    from . import coupler
     if config["general"]["standalone"] == False:
         config["general"]["coupler"].tidy(config)
     return config
@@ -127,8 +134,6 @@ def assemble_error_list(config):
 
 
 def check_for_errors(config):
-    import re
-    import os
     new_list = []
     error_check_list = config["general"]["error_list"]
     monitor_file = config["general"]["monitor_file"]
@@ -151,7 +156,6 @@ def check_for_errors(config):
                                 monitor_file.flush()
                                 print("ERROR: " + message)
                                 print("Will kill the run now...", flush=True)
-                                from . import database_actions
                                 database_actions.database_entry_crashed(config)
                                 os.system(harakiri)
                                 sys.exit(42)
@@ -163,7 +167,6 @@ def check_for_errors(config):
 
 
 def job_is_still_running(config):
-    import psutil
     if psutil.pid_exists(config["general"]["launcher_pid"]):
         return True
     return False
@@ -222,14 +225,12 @@ def all_done(config):
         str(config["general"]["jobid"]),
         "- done"])
 
-    from . import database_actions
     database_actions.database_entry_success(config)
 
     return config
 
 
 def maybe_resubmit(config):
-    from .sim_objects import SimulationSetup
     monitor_file = config["general"]["monitor_file"]
     monitor_file.write("resubmitting \n")
     command_line_config = config["general"]["command_line_config"]
@@ -258,8 +259,6 @@ def maybe_resubmit(config):
 # implementation might be OK... (DB)
 
 def copy_all_results_to_exp(config):
-    import os
-    import filecmp
     monitor_file = config["general"]["monitor_file"]
     monitor_file.write("Copying stuff to main experiment folder \n")
     for root, dirs, files in os.walk(config["general"]["thisrun_dir"], topdown=False):
