@@ -396,7 +396,7 @@ def copy_files(config, filetypes, source, target):
         text_target = "targets"
 
     for filetype in [filetype for filetype in filetypes if not filetype == "ignore"]:
-        
+
         for model in config["general"]["valid_model_names"]:
             if filetype + "_" + text_source in config[model]:
                 sourceblock = config[model][filetype + "_" + text_source]
@@ -445,6 +445,7 @@ def copy_files(config, filetypes, source, target):
 def report_missing_files(config):
     if "files_missing_when_preparing_run" in config["general"]:
         import six
+        config = _check_fesom_missing_files(config)
         if not config["general"]["files_missing_when_preparing_run"] == {}:
             six.print_(80 * "=")
             print ("MISSING FILES:")
@@ -455,6 +456,29 @@ def report_missing_files(config):
             six.print_(80 * "=")
     return config
 
+
+def _check_fesom_missing_files(config):
+     """
+     Checks for missing files in FESOM namelist.config
+
+     Parameters
+     ----------
+     config : dict
+         The experiment configuration
+
+     Returns
+     -------
+     config : dict
+     """
+     if "fesom" in config['general']['valid_model_names']:
+         namelist_config = f90nml.read(os.path.join(config['general']['thisrun_work_dir'], "namelist.config"))
+         for path_key, path in namelist_config['paths'].items():
+             if path:  # Remove empty strings
+                 if not os.path.exists(path):
+                     if 'files_missing_when_preparing_run' not in config['general']:
+                         config['general']['files_missing_when_preparing_run'] = {}
+                     config['general']['files_missing_when_preparing_run'][path_key +" (from namelist.config in FESOM)"] = path
+     return config
 
 
 def assemble(config):
