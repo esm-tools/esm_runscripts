@@ -9,9 +9,7 @@ import logging
 import os
 import sys
 
-
 from .sim_objects import *
-
 
 
 def parse_shargs():
