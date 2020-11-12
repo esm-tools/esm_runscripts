@@ -8,6 +8,7 @@ from esm_calendar import Date
 
 import esm_tools
 
+from .batch_system import batch_system
 from .filelists import copy_files, log_used_files
 from .helpers import end_it_all, evaluate, write_to_log
 from .namelists import Namelist
@@ -269,7 +270,11 @@ def _write_finalized_config(config):
     def date_representer(dumper, date):
         return dumper.represent_str("%s" % date.output())
 
+    def batch_system_representer(dumper, batch_system):
+        return dumper.represent_str(f"{batch_system.name}")
+
     yaml.add_representer(Date, date_representer)
+    yaml.add_representer(batch_system, batch_system_representer)
     with open(
         config["general"]["thisrun_config_dir"]
         + "/"
