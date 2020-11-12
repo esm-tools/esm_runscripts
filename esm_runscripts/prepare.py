@@ -79,7 +79,7 @@ def resolve_some_choose_blocks(config):
     from esm_parser import choose_blocks
     choose_blocks(config, blackdict=config._blackdict)
     return config
-    
+
 
 def _initialize_calendar(config):
     config = set_restart_chunk(config)
@@ -154,7 +154,7 @@ def set_overall_calendar(config):
         config["general"]["calendar"] = Calendar(0)
     return config
 
-    
+
 def set_most_dates(config):
     from esm_calendar import Calendar, Date
 
@@ -208,15 +208,15 @@ def set_most_dates(config):
         )
     )
     return config
-    
+
 
 def _add_all_folders(config):
-    all_filetypes = ["analysis", "config", "log", "mon", "scripts", "ignore",  "unknown"]
-    
+    all_filetypes = ["analysis", "config", "log", "mon", "scripts", "ignore",  "unknown", "src"]
+
     config["general"]["out_filetypes"] = ["analysis", "log", "mon", "scripts", "ignore",  "unknown", "outdata", "restart_out"]
     config["general"]["in_filetypes"] = ["scripts", "input", "forcing", "bin", "config", "restart_in"]
-    config["general"]["reusable_filetypes"] = ["bin"]
-    
+    config["general"]["reusable_filetypes"] = ["bin", "src"]
+
     config["general"]["thisrun_dir"] = config["general"]["experiment_dir"] + "/run_" + config["general"]["run_datestamp"]
 
     for filetype in all_filetypes:
@@ -280,7 +280,7 @@ def set_prev_date(config):
                 and "${" in config[model]["time_step"]):
             config[model]["prev_date"] = config["general"]["current_date"] \
                     - (0, 0, 0, 0, 0, int(config[model]["time_step"]))
-      
+
       # NOTE(PG, MAM): Here we check if the time step still has a variable which might be set in a different model, and resolve this case
         elif "time_step" in config[model] \
                 and (isinstance(config[model]["time_step"], str) \
@@ -290,7 +290,7 @@ def set_prev_date(config):
                     config, [], [])
             config[model]["prev_date"] = config["general"]["current_date"]\
                     - (0, 0, 0, 0, 0, int(dt))
-   
+
         else:
             config[model]["prev_date"] = config["general"]["current_date"]
     return config
@@ -385,7 +385,7 @@ def add_submission_info(config):
 
 
 def initialize_batch_system(config):
-    from . import batch_system    
+    from . import batch_system
     config["general"]["batch"] = \
             batch_system(config, config["computer"]["batch_system"])
     return config
