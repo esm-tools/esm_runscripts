@@ -1,9 +1,13 @@
+import os
 import sys
-known_batch_systems = ["slurm"]
+
+import esm_environment
+import six
 
 from . import helpers
-
 from .slurm import Slurm
+
+known_batch_systems = ["slurm"]
 
 class UnknownBatchSystemError(Exception):
     """Raise this exception when an unknown batch system is encountered"""
@@ -106,7 +110,6 @@ class batch_system:
     @staticmethod
     def get_environment(config):
         environment = []
-        import esm_environment
         env = esm_environment.environment_infos("runtime", config)
         return env.commands
 
@@ -144,8 +147,6 @@ class batch_system:
 
     @staticmethod
     def write_simple_runscript(config):
-        import six
-        import os
         self = config["general"]["batch"]
         sadfilename = batch_system.get_sad_filename(config)
         header = batch_system.get_batch_header(config)
@@ -195,8 +196,6 @@ class batch_system:
 
     @staticmethod
     def submit(config):
-        import six
-        import os
         if not config["general"]["check"]:
             if config["general"]["verbose"]:
                 six.print_("\n", 40 * "+ ")
