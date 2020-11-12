@@ -15,7 +15,7 @@ def rename_sources_to_targets(config):
     # Purpose of this routine is to make sure that filetype_sources and filetype_targets are set correctly,
     # and _in_work is unset
     for filetype in config["general"]["all_model_filetypes"]:
-        for model in config["general"]["valid_model_names"]:
+        for model in config["general"]["valid_model_names"] + ["general"]:
 
             sources = filetype + "_sources" in config[model]
             targets = filetype + "_targets" in config[model]
@@ -117,7 +117,7 @@ def rename_sources_to_targets(config):
 
 def complete_targets(config):
     for filetype in config["general"]["all_model_filetypes"]:
-        for model in config["general"]["valid_model_names"]:
+        for model in config["general"]["valid_model_names"] + ["general"]:
             if filetype + "_sources" in config[model]:
                 for categ in config[model][filetype + "_sources"]:
                     if not categ in config[model][filetype + "_targets"]:
@@ -131,7 +131,7 @@ def complete_sources(config):
     if config["general"]["verbose"]:
         print("Complete sources")
     for filetype in config["general"]["out_filetypes"]:
-        for model in config["general"]["valid_model_names"]:
+        for model in config["general"]["valid_model_names"] + ["general"]:
             if filetype + "_sources" in config[model]:
                 for categ in config[model][filetype + "_sources"]:
                     if not config[model][filetype + "_sources"][categ].startswith("/"):
@@ -149,7 +149,7 @@ def reuse_sources(config):
     print("Reusing files...")
     for filetype in config["general"]["reusable_filetypes"]:
         print(f"    {filetype}")
-        for model in config["general"]["valid_model_names"]:
+        for model in config["general"]["valid_model_names"] + ["general"]:
             print(f"            {model}")
             if filetype + "_sources" in config[model]:
                 for categ in config[model][filetype + "_sources"]:
@@ -167,7 +167,7 @@ def choose_needed_files(config):
     # (if exists), and then remove filetype_files
 
     for filetype in config["general"]["all_model_filetypes"]:
-        for model in config["general"]["valid_model_names"]:
+        for model in config["general"]["valid_model_names"] + ["general"]:
 
             if not filetype + "_files" in config[model]:
                 continue
@@ -203,7 +203,7 @@ def choose_needed_files(config):
 def globbing(config):
 
     for filetype in config["general"]["all_model_filetypes"]:
-        for model in config["general"]["valid_model_names"]:
+        for model in config["general"]["valid_model_names"] + ["general"]:
             if filetype + "_sources" in config[model]:
                 oldconf = copy.deepcopy(config[model])
                 for descr, filename in six.iteritems(
@@ -238,7 +238,7 @@ def globbing(config):
 
 def target_subfolders(config):
     for filetype in config["general"]["all_model_filetypes"]:
-        for model in config["general"]["valid_model_names"]:
+        for model in config["general"]["valid_model_names"] + ["general"]:
             if filetype + "_targets" in config[model]:
                 for descr, filename in six.iteritems(
                     config[model][filetype + "_targets"]
@@ -294,7 +294,7 @@ def complete_restart_in(config):
 
 def assemble_intermediate_files_and_finalize_targets(config):
     for filetype in config["general"]["all_model_filetypes"]:
-        for model in config["general"]["valid_model_names"]:
+        for model in config["general"]["valid_model_names"] + ["general"]:
             if filetype + "_targets" in config[model]:
                 if not filetype + "_intermediate" in config[model]:
                     config[model][filetype + "_intermediate"] = {}
@@ -335,7 +335,7 @@ def assemble_intermediate_files_and_finalize_targets(config):
 
 def replace_year_placeholder(config):
     for filetype in config["general"]["all_model_filetypes"]:
-        for model in config["general"]["valid_model_names"]:
+        for model in config["general"]["valid_model_names"] + ["general"]:
             if filetype + "_targets" in config[model]:
                 if filetype + "_additional_information" in config[model]:
                     for file_category in config[model][
@@ -414,7 +414,7 @@ def replace_year_placeholder(config):
 
 def log_used_files(config):
     filetypes = config["general"]["relevant_filetypes"]
-    for model in config["general"]["valid_model_names"]:
+    for model in config["general"]["valid_model_names"] + ["general"]:
         with open(
             config[model]["thisrun_config_dir"]
             + "/"
@@ -474,7 +474,7 @@ def check_for_unknown_files(config):
     ]
 
     for filetype in config["general"]["all_model_filetypes"]:
-        for model in config["general"]["valid_model_names"]:
+        for model in config["general"]["valid_model_names"] + ["general"]:
             if filetype + "_sources" in config[model]:
                 known_files += list(config[model][filetype + "_sources"].values())
                 known_files += list(config[model][filetype + "_targets"].values())
@@ -534,8 +534,7 @@ def copy_files(config, filetypes, source, target):
         text_target = "targets"
 
     for filetype in [filetype for filetype in filetypes if not filetype == "ignore"]:
-
-        for model in config["general"]["valid_model_names"]:
+        for model in config["general"]["valid_model_names"] + ["general"]:
             if filetype + "_" + text_source in config[model]:
                 sourceblock = config[model][filetype + "_" + text_source]
                 targetblock = config[model][filetype + "_" + text_target]

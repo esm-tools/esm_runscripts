@@ -1,14 +1,15 @@
 from . import helpers
 
+
 def run_job(config):
     helpers.evaluate(config, "prepare", "prepare_recipe")
     return config
 
 
-
 def _read_date_file(config):
     import os
     import logging
+
     date_file = (
         config["general"]["experiment_dir"]
         + "/scripts/"
@@ -38,6 +39,7 @@ def _read_date_file(config):
 
 def check_model_lresume(config):
     import esm_parser
+
     if config["general"]["run_number"] != 1:
         for model in config["general"]["valid_model_names"]:
             config[model]["lresume"] = True
@@ -50,7 +52,9 @@ def check_model_lresume(config):
                 user_lresume = False
 
             if isinstance(user_lresume, str) and "${" in user_lresume:
-                user_lresume = esm_parser.find_variable(model, user_lresume, config, [], [])
+                user_lresume = esm_parser.find_variable(
+                    model, user_lresume, config, [], []
+                )
             if type(user_lresume) == str:
 
                 if user_lresume == "0" or user_lresume.upper() == "FALSE":
@@ -65,18 +69,21 @@ def check_model_lresume(config):
             config[model]["lresume"] = user_lresume
     for model in config["general"]["valid_model_names"]:
         # Check if lresume contains a variable which might be set in a different model, and resolve this case
-        if "lresume" in config[model] \
-                and isinstance(config[model]["lresume"], str) \
-                and "${" in config[model]["lresume"]:
-            lr = esm_parser.find_variable(model, \
-                    config[model]["lresume"], \
-                    config, [], [])
+        if (
+            "lresume" in config[model]
+            and isinstance(config[model]["lresume"], str)
+            and "${" in config[model]["lresume"]
+        ):
+            lr = esm_parser.find_variable(
+                model, config[model]["lresume"], config, [], []
+            )
             config[model]["lresume"] = eval(lr)
     return config
 
 
 def resolve_some_choose_blocks(config):
     from esm_parser import choose_blocks
+
     choose_blocks(config, blackdict=config._blackdict)
     return config
 
@@ -130,8 +137,17 @@ def set_leapyear(config):
             if "leapyear" in config[model]:
                 for other_model in config["general"]["valid_model_names"]:
                     if "leapyear" in config[other_model]:
-                        if not config[other_model]["leapyear"] == config[model]["leapyear"]:
-                            print ("Models " + model + " and " + other_model + " do not agree on leapyear. Stopping.")
+                        if (
+                            not config[other_model]["leapyear"]
+                            == config[model]["leapyear"]
+                        ):
+                            print(
+                                "Models "
+                                + model
+                                + " and "
+                                + other_model
+                                + " do not agree on leapyear. Stopping."
+                            )
                             sys.exit(43)
                     else:
                         config[other_model]["leapyear"] = config[model]["leapyear"]
@@ -147,6 +163,7 @@ def set_leapyear(config):
 
 def set_overall_calendar(config):
     from esm_calendar import Calendar
+
     # set the overall calendar
     if config["general"]["leapyear"]:
         config["general"]["calendar"] = Calendar(1)
@@ -161,18 +178,20 @@ def set_most_dates(config):
     calendar = config["general"]["calendar"]
     current_date = Date(config["general"]["current_date"], calendar)
     delta_date = (
-            config["general"]["nyear"],
-            config["general"]["nmonth"],
-            config["general"]["nday"],
-            config["general"]["nhour"],
-            config["general"]["nminute"],
-            config["general"]["nsecond"],
-            )
+        config["general"]["nyear"],
+        config["general"]["nmonth"],
+        config["general"]["nday"],
+        config["general"]["nhour"],
+        config["general"]["nminute"],
+        config["general"]["nsecond"],
+    )
 
     config["general"]["delta_date"] = delta_date
     config["general"]["current_date"] = current_date
     config["general"]["start_date"] = current_date
-    config["general"]["initial_date"] = Date(config["general"]["initial_date"], calendar)
+    config["general"]["initial_date"] = Date(
+        config["general"]["initial_date"], calendar
+    )
     config["general"]["final_date"] = Date(config["general"]["final_date"], calendar)
     config["general"]["prev_date"] = current_date - (0, 0, 1, 0, 0, 0)
 
@@ -211,28 +230,56 @@ def set_most_dates(config):
 
 
 def _add_all_folders(config):
-    all_filetypes = ["analysis", "config", "log", "mon", "scripts", "ignore",  "unknown", "src"]
-
-    config["general"]["out_filetypes"] = ["analysis", "log", "mon", "scripts", "ignore",  "unknown", "outdata", "restart_out"]
-    config["general"]["in_filetypes"] = ["scripts", "input", "forcing", "bin", "config", "restart_in"]
+    all_filetypes = [
+        "analysis",
+        "config",
+        "log",
+        "mon",
+        "scripts",
+        "ignore",
+        "unknown",
+        "src",
+    ]
+    config["general"]["out_filetypes"] = [
+        "analysis",
+        "log",
+        "mon",
+        "scripts",
+        "ignore",
+        "unknown",
+        "outdata",
+        "restart_out",
+    ]
+    config["general"]["in_filetypes"] = [
+        "scripts",
+        "input",
+        "forcing",
+        "bin",
+        "config",
+        "restart_in",
+    ]
     config["general"]["reusable_filetypes"] = ["bin", "src"]
 
-    config["general"]["thisrun_dir"] = config["general"]["experiment_dir"] + "/run_" + config["general"]["run_datestamp"]
+    config["general"]["thisrun_dir"] = (
+        config["general"]["experiment_dir"]
+        + "/run_"
+        + config["general"]["run_datestamp"]
+    )
 
     for filetype in all_filetypes:
-        config["general"][
-            "experiment_" + filetype + "_dir"
-        ] = config["general"]["experiment_dir"] + "/" + filetype + "/"
+        config["general"]["experiment_" + filetype + "_dir"] = (
+            config["general"]["experiment_dir"] + "/" + filetype + "/"
+        )
 
     all_filetypes.append("work")
     config["general"]["all_filetypes"] = all_filetypes
 
     for filetype in all_filetypes:
-        config["general"][
-            "thisrun_" + filetype + "_dir"
-        ] = config["general"]["thisrun_dir"] + "/" + filetype + "/"
+        config["general"]["thisrun_" + filetype + "_dir"] = (
+            config["general"]["thisrun_dir"] + "/" + filetype + "/"
+        )
 
-    config["general"]["work_dir"] =  config["general"]["thisrun_work_dir"]
+    config["general"]["work_dir"] = config["general"]["thisrun_work_dir"]
 
     all_model_filetypes = [
         "analysis",
@@ -247,49 +294,64 @@ def _add_all_folders(config):
         "restart_in",
         "restart_out",
         "viz",
-        "ignore"
+        "ignore",
     ]
 
     config["general"]["all_model_filetypes"] = all_model_filetypes
 
     for model in config["general"]["valid_model_names"]:
-         for filetype in all_model_filetypes:
+        for filetype in all_model_filetypes:
             if "restart" in filetype:
                 filedir = "restart"
             else:
                 filedir = filetype
-            config[model][
-                "experiment_" + filetype + "_dir"
-            ] = config["general"]["experiment_dir"] + "/" + filedir + "/" + model + "/"
-            config[model][ "thisrun_" + filetype + "_dir"
-            ] = config["general"]["thisrun_dir"] + "/" + filedir  + "/" + model + "/"
+            config[model]["experiment_" + filetype + "_dir"] = (
+                config["general"]["experiment_dir"] + "/" + filedir + "/" + model + "/"
+            )
+            config[model]["thisrun_" + filetype + "_dir"] = (
+                config["general"]["thisrun_dir"] + "/" + filedir + "/" + model + "/"
+            )
             config[model]["all_filetypes"] = all_model_filetypes
 
     return config
 
 
-
 def set_prev_date(config):
     import esm_parser
+
     """Sets several variables relevant for the previous date. Loops over all models in ``valid_model_names``, and sets model variables for:
     * ``prev_date``
     """
     for model in config["general"]["valid_model_names"]:
-        if "time_step" in config[model] \
-                and not (isinstance(config[model]["time_step"], str) \
-                and "${" in config[model]["time_step"]):
-            config[model]["prev_date"] = config["general"]["current_date"] \
-                    - (0, 0, 0, 0, 0, int(config[model]["time_step"]))
+        if "time_step" in config[model] and not (
+            isinstance(config[model]["time_step"], str)
+            and "${" in config[model]["time_step"]
+        ):
+            config[model]["prev_date"] = config["general"]["current_date"] - (
+                0,
+                0,
+                0,
+                0,
+                0,
+                int(config[model]["time_step"]),
+            )
 
-      # NOTE(PG, MAM): Here we check if the time step still has a variable which might be set in a different model, and resolve this case
-        elif "time_step" in config[model] \
-                and (isinstance(config[model]["time_step"], str) \
-                and "${" in config[model]["time_step"]):
-            dt = esm_parser.find_variable(model, \
-                    config[model]["time_step"], \
-                    config, [], [])
-            config[model]["prev_date"] = config["general"]["current_date"]\
-                    - (0, 0, 0, 0, 0, int(dt))
+        # NOTE(PG, MAM): Here we check if the time step still has a variable which might be set in a different model, and resolve this case
+        elif "time_step" in config[model] and (
+            isinstance(config[model]["time_step"], str)
+            and "${" in config[model]["time_step"]
+        ):
+            dt = esm_parser.find_variable(
+                model, config[model]["time_step"], config, [], []
+            )
+            config[model]["prev_date"] = config["general"]["current_date"] - (
+                0,
+                0,
+                0,
+                0,
+                0,
+                int(dt),
+            )
 
         else:
             config[model]["prev_date"] = config["general"]["current_date"]
@@ -298,13 +360,14 @@ def set_prev_date(config):
 
 def set_parent_info(config):
     import esm_parser
+
     """Sets several variables relevant for the previous date. Loops over all models in ``valid_model_names``, and sets model variables for:
     * ``parent_expid``
     * ``parent_date``
     * ``parent_restart_dir``
     """
 
-    #Make sure "ini_parent_dir" and "ini_restart_dir" both work:
+    # Make sure "ini_parent_dir" and "ini_restart_dir" both work:
     for model in config["general"]["valid_model_names"]:
         if not "ini_parent_dir" in config[model]:
             if "ini_restart_dir" in config[model]:
@@ -332,30 +395,21 @@ def set_parent_info(config):
     if "ini_parent_dir" in config[setup]:
         for model in config["general"]["valid_model_names"]:
             if not "ini_parent_dir" in config[model]:
-                config[model]["ini_parent_dir"] = config[setup]["ini_parent_dir"] + "/" + model
+                config[model]["ini_parent_dir"] = (
+                    config[setup]["ini_parent_dir"] + "/" + model
+                )
 
     # Get correct parent info
     for model in config["general"]["valid_model_names"]:
-        if config[model]["lresume"] == True \
-                and config["general"]["run_number"] == 1:
-            config[model]["parent_expid"] = config[model][
-                "ini_parent_exp_id"
-            ]
+        if config[model]["lresume"] == True and config["general"]["run_number"] == 1:
+            config[model]["parent_expid"] = config[model]["ini_parent_exp_id"]
             if "parent_date" not in config[model]:
-                config[model]["parent_date"] = config[model][
-                    "ini_parent_date"
-                ]
-            config[model]["parent_restart_dir"] = config[model][
-                "ini_parent_dir"
-            ]
+                config[model]["parent_date"] = config[model]["ini_parent_date"]
+            config[model]["parent_restart_dir"] = config[model]["ini_parent_dir"]
         else:
-            config[model]["parent_expid"] = config["general"][
-                "expid"
-            ]
+            config[model]["parent_expid"] = config["general"]["expid"]
             if "parent_date" not in config[model]:
-                config[model]["parent_date"] = config[model][
-                    "prev_date"
-                ]
+                config[model]["parent_date"] = config[model]["prev_date"]
             config[model]["parent_restart_dir"] = config[model][
                 "experiment_restart_in_dir"
             ]
@@ -370,6 +424,7 @@ def finalize_config(config):
 def add_submission_info(config):
     import os
     from . import batch_system
+
     bs = batch_system(config, config["computer"]["batch_system"])
 
     submitted = bs.check_if_submitted()
@@ -383,17 +438,19 @@ def add_submission_info(config):
     return config
 
 
-
 def initialize_batch_system(config):
     from . import batch_system
-    config["general"]["batch"] = \
-            batch_system(config, config["computer"]["batch_system"])
+
+    config["general"]["batch"] = batch_system(
+        config, config["computer"]["batch_system"]
+    )
     return config
 
 
 def initialize_coupler(config):
     if config["general"]["standalone"] == False:
         from . import coupler
+
         for model in list(config):
             if model in coupler.known_couplers:
                 config["general"]["coupler_config_dir"] = (
@@ -413,11 +470,13 @@ def initialize_coupler(config):
 
 
 def set_logfile(config):
-    config["general"]["experiment_log_file"] = config["general"].get("experiment_log_file",
-            config["general"]["experiment_log_dir"] + "/"
-            + config["general"]["expid"] + "_"
-            + config["general"]["setup_name"]
-            + ".log"
-            )
+    config["general"]["experiment_log_file"] = config["general"].get(
+        "experiment_log_file",
+        config["general"]["experiment_log_dir"]
+        + "/"
+        + config["general"]["expid"]
+        + "_"
+        + config["general"]["setup_name"]
+        + ".log",
+    )
     return config
-
