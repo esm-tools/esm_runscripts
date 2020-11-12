@@ -1,10 +1,21 @@
+import os
+import shutil
+
+import esm_rcfile
+import six
+import yaml
+from esm_calendar import Date
+
+from .filelists import copy_files, log_used_files
+from .helpers import end_it_all, evaluate, write_to_log
+from .namelists import Namelist
+
 #####################################################################
 #                                   compute jobs                    #
 #####################################################################
 
 
 def run_job(config):
-    from .helpers import evaluate
     config["general"]["relevant_filetypes"] = ["bin", "config", "forcing", "input", "restart_in"]
     config = evaluate(config, "compute", "compute_recipe")
     return config
@@ -51,7 +62,7 @@ def prepare_coupler_files(config):
         coupler_filename = config["general"]["coupler"].prepare(
             config, config["general"]["coupler_config_dir"]
         )
-        coupler_name = config["general"]["coupler"].name 
+        coupler_name = config["general"]["coupler"].name
         all_files_to_copy_append(
                 config,
                 coupler_name,
@@ -102,16 +113,14 @@ def modify_files(config):
 
 
 def modify_namelists(config):
-    from .namelists import Namelist
     # Load and modify namelists:
 
     if config["general"]["verbose"]:
-        import six
         six.print_("\n" "- Setting up namelists for this run...")
         for model in config["general"]["valid_model_names"]:
             six.print_("-" * 80)
             six.print_("* %s" % config[model]["model"], "\n")
-    
+
     for model in config["general"]["valid_model_names"]:
         config[model] = Namelist.nmls_load(config[model])
         config[model] = Namelist.nmls_remove(config[model])
@@ -119,16 +128,14 @@ def modify_namelists(config):
             config = Namelist.apply_echam_disturbance(config)
         config[model] = Namelist.nmls_modify(config[model])
         config[model] = Namelist.nmls_finalize(config[model], config["general"]["verbose"])
-     
+
     if config["general"]["verbose"]:
         print("end of namelist section")
     return config
 
 
 def copy_files_to_thisrun(config):
-    from .filelists import log_used_files, copy_files
     if config["general"]["verbose"]:
-        import six
         six.print_("=" * 80, "\n")
         six.print_("PREPARING EXPERIMENT")
         # Copy files:
@@ -145,9 +152,7 @@ def copy_files_to_thisrun(config):
 
 
 def copy_files_to_work(config):
-    from .filelists import copy_files
     if config["general"]["verbose"]:
-        import six
         six.print_("=" * 80, "\n")
         six.print_("PREPARING WORK FOLDER")
     config = copy_files(
@@ -157,7 +162,6 @@ def copy_files_to_work(config):
 
 
 def _create_folders(config, filetypes):
-    import os
     for filetype in filetypes:
         if not filetype == "ignore":
             if not filetype == "work":
@@ -181,8 +185,6 @@ def _create_component_folders(config):
 
 
 def initialize_experiment_logfile(config):
-    from .helpers import write_to_log
-    import os
     """
     Initializes the log file for the entire experiment.
 
@@ -237,8 +239,6 @@ def initialize_experiment_logfile(config):
 
 
 def _write_finalized_config(config):
-    import yaml
-    from esm_calendar import Date
 
     def date_representer(dumper, date):
        return dumper.represent_str("%s" % date.output())
@@ -255,10 +255,6 @@ def _write_finalized_config(config):
 
 
 def copy_tools_to_thisrun(config):
-    from .helpers import end_it_all
-    import esm_rcfile
-    import shutil
-    import os
     gconfig = config["general"]
 
     fromdir = os.path.realpath(gconfig["started_from"])
@@ -320,8 +316,6 @@ def copy_tools_to_thisrun(config):
 
 
 def _copy_preliminary_files_from_experiment_to_thisrun(config):
-    import shutil
-    import os
     # I don't like this one bit. DB
     filelist = [
         (
@@ -351,7 +345,6 @@ def _copy_preliminary_files_from_experiment_to_thisrun(config):
 
 
 def _show_simulation_info(config):
-    import six
     six.print_()
     six.print_(80 * "=")
     six.print_("STARTING SIMULATION JOB!")
