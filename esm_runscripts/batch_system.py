@@ -120,17 +120,17 @@ class batch_system:
         return env.commands
 
     @staticmethod
-     def get_extra(config):
-         extras = []
-         if config["general"].get("unlimited_stack_size", True):
-             extras.append("# Set stack size to unlimited")
-             extras.append("ulimit -s")
-         if config['general'].get('use_venv', True):
-             extras.append("# Start everything in a venv")
-             extras.append("source "+config["general"]["experiment_dir"]+"/.venv/bin/activate")
-         if config["general"].get("funny_comment", True):
-             extras.append("# 3...2...1...Liftoff!")
-         return extras
+    def get_extra(config):
+        extras = []
+        if config["general"].get("unlimited_stack_size", True):
+            extras.append("# Set stack size to unlimited")
+            extras.append("ulimit -s")
+        if config['general'].get('use_venv', True):
+            extras.append("# Start everything in a venv")
+            extras.append("source "+config["general"]["experiment_dir"]+"/.venv/bin/activate")
+        if config["general"].get("funny_comment", True):
+            extras.append("# 3...2...1...Liftoff!")
+        return extras
 
     @staticmethod
     def get_run_commands(config):  # here or in compute.py?
