@@ -16,12 +16,20 @@ from .namelists import Namelist
 
 
 def run_job(config):
-    config["general"]["relevant_filetypes"] = ["bin", "config", "forcing", "input", "restart_in"]
+    config["general"]["relevant_filetypes"] = [
+        "bin",
+        "config",
+        "forcing",
+        "input",
+        "restart_in",
+    ]
     config = evaluate(config, "compute", "compute_recipe")
     return config
 
 
-def all_files_to_copy_append(config, model, filetype, categ, file_source, file_interm, file_target):
+def all_files_to_copy_append(
+    config, model, filetype, categ, file_source, file_interm, file_target
+):
     if file_source:
         if not filetype + "_sources" in config[model]:
             config[model][filetype + "_sources"] = {}
@@ -46,14 +54,14 @@ def add_batch_hostfile(config):
     setup_name = config["general"]["setup_name"]
 
     config = all_files_to_copy_append(
-            config,
-            "general",
-            "config",
-            "batchhostfile",
-            config["general"]["batch"].bs.path,
-            None,
-            None,
-        )
+        config,
+        "general",
+        "config",
+        "batchhostfile",
+        config["general"]["batch"].bs.path,
+        None,
+        None,
+    )
     return config
 
 
@@ -64,14 +72,14 @@ def prepare_coupler_files(config):
         )
         coupler_name = config["general"]["coupler"].name
         all_files_to_copy_append(
-                config,
-                coupler_name,
-                "config",
-                "namcouple",
-                config["general"]["coupler_config_dir"] + "/" + coupler_filename,
-                None,
-                None,
-            )
+            config,
+            coupler_name,
+            "config",
+            "namcouple",
+            config["general"]["coupler_config_dir"] + "/" + coupler_filename,
+            None,
+            None,
+        )
     return config
 
 
@@ -82,9 +90,7 @@ def create_new_files(config):
                 filenames = config[model]["create_" + filetype].keys()
                 for filename in filenames:
                     with open(
-                        config[model]["thisrun_" + filetype + "_dir"]
-                        + "/"
-                        + filename,
+                        config[model]["thisrun_" + filetype + "_dir"] + "/" + filename,
                         "w",
                     ) as createfile:
                         actionlist = config[model]["create_" + filetype][filename]
@@ -93,14 +99,14 @@ def create_new_files(config):
                                 appendtext = action.replace("<--append--", "")
                                 createfile.write(appendtext.strip() + "\n")
                     all_files_to_copy_append(
-                            config,
-                            model,
-                            filetype,
-                            filename,
-                            config[model]["thisrun_" + filetype + "_dir"] + "/" + filename,
-                            None,
-                            None,
-                        )
+                        config,
+                        model,
+                        filetype,
+                        filename,
+                        config[model]["thisrun_" + filetype + "_dir"] + "/" + filename,
+                        None,
+                        None,
+                    )
     return config
 
 
@@ -127,7 +133,9 @@ def modify_namelists(config):
         if model == "echam":
             config = Namelist.apply_echam_disturbance(config)
         config[model] = Namelist.nmls_modify(config[model])
-        config[model] = Namelist.nmls_finalize(config[model], config["general"]["verbose"])
+        config[model] = Namelist.nmls_finalize(
+            config[model], config["general"]["verbose"]
+        )
 
     if config["general"]["verbose"]:
         print("end of namelist section")
@@ -178,9 +186,7 @@ def _create_setup_folders(config):
 
 def _create_component_folders(config):
     for component in config["general"]["valid_model_names"]:
-        _create_folders(
-            config[component], config["general"]["all_model_filetypes"]
-        )
+        _create_folders(config[component], config["general"]["all_model_filetypes"])
     return config
 
 
@@ -239,9 +245,9 @@ def initialize_experiment_logfile(config):
 
 
 def _write_finalized_config(config):
-
     def date_representer(dumper, date):
-       return dumper.represent_str("%s" % date.output())
+        return dumper.represent_str("%s" % date.output())
+
     yaml.add_representer(Date, date_representer)
     with open(
         config["general"]["thisrun_config_dir"]
@@ -355,7 +361,9 @@ def _show_simulation_info(config):
         for model in config["general"]["valid_model_names"]:
             six.print_("- %s" % model)
     six.print_("Experiment is installed in:")
-    six.print_("       %s" % config["general"]["base_dir"] + "/" + config["general"]["expid"])
+    six.print_(
+        "       %s" % config["general"]["base_dir"] + "/" + config["general"]["expid"]
+    )
     six.print_(80 * "=")
     six.print_()
     return config
