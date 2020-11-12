@@ -211,7 +211,7 @@ def set_most_dates(config):
     
 
 def _add_all_folders(config):
-    all_filetypes = ["analysis", "config", "log", "mon", "scripts", "ignore",  "unknown", "technical"]
+    all_filetypes = ["analysis", "config", "log", "mon", "scripts", "ignore",  "unknown"]
     
     config["general"]["out_filetypes"] = ["analysis", "log", "mon", "scripts", "ignore",  "unknown", "outdata", "restart_out"]
     config["general"]["in_filetypes"] = ["scripts", "input", "forcing", "bin", "config", "restart_in"]
