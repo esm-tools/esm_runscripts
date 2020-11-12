@@ -120,6 +120,16 @@ class batch_system:
         return env.commands
 
     @staticmethod
+     def get_extra(config):
+         extras = []
+         if config["general"].get("unlimited_stack_size", True):
+             extras.append("# Set stack size to unlimited")
+             extras.append("ulimit -s")
+         if config["general"].get("funny_comment", True):
+             extras.append("# 3...2...1...Liftoff!")
+         return extras
+
+    @staticmethod
     def get_run_commands(config):  # here or in compute.py?
         commands = []
         batch_system = config["computer"]
@@ -162,6 +172,7 @@ class batch_system:
         sadfilename = batch_system.get_sad_filename(config)
         header = batch_system.get_batch_header(config)
         environment = batch_system.get_environment(config)
+        extra = esm_batch_system.get_extra(config)
 
         if config["general"]["verbose"]:
             print("still alive")
@@ -187,6 +198,8 @@ class batch_system:
                 sadfile.write(line + "\n")
             sadfile.write("\n")
             for line in environment:
+                sadfile.write(line + "\n")
+            for line in extra:
                 sadfile.write(line + "\n")
             sadfile.write("\n")
             sadfile.write("cd " + config["general"]["thisrun_work_dir"] + "\n")
