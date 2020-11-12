@@ -1,10 +1,16 @@
+import copy
+import filecmp
+import glob
+import os
+import shutil
+import sys
+import time
+
+import esm_parser
+import six
 
 
 def rename_sources_to_targets(config):
-    import copy
-    import sys, os
-    import time
-    import six
 
     # Purpose of this routine is to make sure that filetype_sources and filetype_targets are set correctly,
     # and _in_work is unset
@@ -71,7 +77,6 @@ def rename_sources_to_targets(config):
 
 
 def complete_targets(config):
-    import os
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"]:
             if filetype + "_sources" in config[model]:
@@ -82,7 +87,6 @@ def complete_targets(config):
 
 
 def complete_sources(config):
-    import os
     if config["general"]["verbose"]:
         print("Complete sources")
     for filetype in config["general"]["out_filetypes"]:
@@ -113,8 +117,6 @@ def reuse_sources(config):
 
 
 def choose_needed_files(config):
-    import six
-    import sys
 
     # aim of this function is to only take those files specified in fileytype_files
     # (if exists), and then remove filetype_files
@@ -148,10 +150,6 @@ def choose_needed_files(config):
 
 
 def globbing(config):
-    import six
-    import glob
-    import os
-    import copy
 
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"]:
@@ -180,8 +178,6 @@ def globbing(config):
 
 
 def target_subfolders(config):
-    import six
-    import os
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"]:
             if filetype + "_targets" in config[model]:
@@ -207,7 +203,6 @@ def target_subfolders(config):
 
 
 def complete_restart_in(config):
-    import esm_parser
     for model in config["general"]["valid_model_names"]:
         if not config[model]["lresume"] and config["general"]["run_number"] == 1:
             if "restart_in_sources" in config[model]:
@@ -333,8 +328,6 @@ def log_used_files(config):
 
 
 def check_for_unknown_files(config):
-    import glob
-    import os
     #files = os.listdir(config["general"]["thisrun_work_dir"])
     all_files = glob.iglob(config["general"]["thisrun_work_dir"] + '**/*', recursive = True)
 
@@ -375,10 +368,6 @@ def check_for_unknown_files(config):
 
 
 def copy_files(config, filetypes, source, target):
-    import os
-    import shutil
-    import six
-    import filecmp
 
     successful_files = []
     missing_files = {}
@@ -444,7 +433,6 @@ def copy_files(config, filetypes, source, target):
 
 def report_missing_files(config):
     if "files_missing_when_preparing_run" in config["general"]:
-        import six
         config = _check_fesom_missing_files(config)
         if not config["general"]["files_missing_when_preparing_run"] == {}:
             six.print_(80 * "=")
