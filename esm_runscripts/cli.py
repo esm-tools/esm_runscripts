@@ -28,11 +28,7 @@ def parse_shargs():
     )
 
     parser.add_argument(
-        "-v",
-        "--verbose",
-        help="Be verbose",
-        action="store_true",
-        default=False,
+        "-v", "--verbose", help="Be verbose", action="store_true", default=False,
     )
 
     parser.add_argument(
@@ -70,12 +66,8 @@ def parse_shargs():
     )
 
     parser.add_argument(
-        "-p",
-        "--pid",
-        help="The PID of the task to observe.",
-        default=-666,
+        "-p", "--pid", help="The PID of the task to observe.", default=-666,
     )
-
 
     parser.add_argument("-x", "--exclude", help="e[x]clude this step", default=None)
     parser.add_argument("-o", "--only", help="[o]nly do this step", default=None)
@@ -133,8 +125,7 @@ def main():
     if "verbose" in parsed_args:
         verbose = parsed_args["verbose"]
 
-
-    command_line_config={}
+    command_line_config = {}
     command_line_config["check"] = check
     command_line_config["profile"] = profile
     command_line_config["update"] = update
@@ -149,8 +140,8 @@ def main():
     command_line_config["started_from"] = os.getcwd()
 
     if verbose:
-        print ("Started from: ", command_line_config["started_from"])
-        print ("starting : ", jobtype)
+        print("Started from: ", command_line_config["started_from"])
+        print("starting : ", jobtype)
 
     Setup = SimulationSetup(command_line_config)
     Setup()
