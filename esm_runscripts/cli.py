@@ -10,6 +10,7 @@ import os
 import sys
 
 from .sim_objects import *
+from esm_motd import check_all_esm_packages
 
 
 def parse_shargs():
@@ -88,6 +89,9 @@ def parse_shargs():
 
 
 def main():
+
+    check_all_esm_packages()
+
     ARGS = parse_shargs()
     logger.info("Working here: %s", os.getcwd())
     logger.info("This file is here: %s", os.path.dirname(__file__))
