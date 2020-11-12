@@ -28,13 +28,21 @@ def evaluate(config, job_type, recipe_name):
         print("Your configuration is incorrect, and should include headings for %s as well as general!" % setup_name)
         sys.exit(1)
 
-    recipefile = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/esm_runscripts.yaml"
-    pluginsfile = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/esm_plugins.yaml"
+    if esm_rcfile.FUNCTION_PATH.startswith("NONE_YET"):
+        recipe = esm_tools.read_config_file("esm_software/esm_runscripts/esm_runscripts.yaml")
+        need_to_parse_recipe = False
+        plugins_bare = esm_tools.read_config_file("esm_software/esm_runscripts/esm_plugins.yaml")
+        need_to_parse_plugins = False
+    else:
+        recipe = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/esm_runscripts.yaml"
+        need_to_parse_recipe = True
+        plugins_bare = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/esm_plugins.yaml"
+        need_to_parse_plugins = True
 
-    framework_recipe = esm_plugin_manager.read_recipe(recipefile, {"job_type": job_type})
+    framework_recipe = esm_plugin_manager.read_recipe(recipe, {"job_type": job_type}, need_to_parse_recipe)
     if recipe_steps:
         framework_recipe["recipe"] = recipe_steps
-    framework_plugins = esm_plugin_manager.read_plugin_information(pluginsfile, framework_recipe)
+    framework_plugins = esm_plugin_manager.read_plugin_information(plugins, framework_recipe, need_to_parse_plugins)
     esm_plugin_manager.check_plugin_availability(framework_plugins)
 
     config = esm_plugin_manager.work_through_recipe(framework_recipe, framework_plugins, config)

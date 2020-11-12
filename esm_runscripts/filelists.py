@@ -541,6 +541,15 @@ def copy_files(config, filetypes, source, target):
                 targetblock = config[model][filetype + "_" + text_target]
                 for categ in sourceblock:
                     file_source = os.path.normpath(sourceblock[categ])
+                    # NOTE(PG): This is a really, really, REALLY bad hack and it
+                    # makes me physically ill to look at:
+                    if source == "init":
+                        if ("namelist" in file_source) and (
+                            file_source.startswith("NONE_YET")
+                        ):
+                            file_source = esm_tools.get_namelist_filepath(
+                                file_source.replace("NONE_YET/", "")
+                            )
                     file_target = os.path.normpath(targetblock[categ])
                     if file_source == file_target:
                         if config["general"]["verbose"]:

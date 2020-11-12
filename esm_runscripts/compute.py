@@ -6,6 +6,8 @@ import six
 import yaml
 from esm_calendar import Date
 
+import esm_tools
+
 from .filelists import copy_files, log_used_files
 from .helpers import end_it_all, evaluate, write_to_log
 from .namelists import Namelist
@@ -298,11 +300,21 @@ def copy_tools_to_thisrun(config):
         shutil.rmtree(namelists_dir, ignore_errors=True)
 
     if not os.path.isdir(tools_dir):
-        if config["general"]["verbose"]:
-            print("Copying from: ", esm_rcfile.FUNCTION_PATH)
-        shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir)
+        if esm_rcfile.FUNCTION_PATH.startswith("NONE_YET"):
+            if config["general"]["verbose"]:
+                print("Copying standard yamls from: package interal configs")
+            esm_tools.copy_config_folder(tools_dir)
+        else:
+            if config["general"]["verbose"]:
+                print("Copying from: ", esm_rcfile.FUNCTION_PATH)
+            shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir)
     if not os.path.isdir(namelists_dir):
-        shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir)
+        if esm_rcfile.get_rc_entry("NAMELIST_PATH", "NONE_YET").startswith("NONE_YET"):
+            if config["general"]["verbose"]:
+                print("Copying standard namelists from: package internal namelists")
+            esm_tools.copy_namelist_folder(namelists_dir)
+        else:
+            shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir)
 
     if (fromdir == scriptsdir) and not gconfig["update"]:
         if config["general"]["verbose"]:
