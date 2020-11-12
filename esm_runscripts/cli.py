@@ -9,20 +9,9 @@ import logging
 import os
 import sys
 
-# Import from 3rd Party packages
-import coloredlogs
 
 from .sim_objects import *
 
-# Logger and related constants
-logger = logging.getLogger("root")
-DEBUG_MODE = logger.level == logging.DEBUG
-FORMAT = (
-    "[%(asctime)s,%(msecs)03d:%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s"
-)
-f_handler = logging.FileHandler("file.log")
-f_handler.setFormatter(FORMAT)
-logger.addHandler(f_handler)
 
 
 def parse_shargs():
@@ -110,8 +99,6 @@ def parse_shargs():
 
 def main():
     ARGS = parse_shargs()
-    coloredlogs.install(fmt=FORMAT, level=ARGS.loglevel)
-
     logger.info("Working here: %s", os.getcwd())
     logger.info("This file is here: %s", os.path.dirname(__file__))
     logger.info(
