@@ -1,16 +1,11 @@
-import copy
-import logging
-import os
-import shutil
 import sys
 from datetime import datetime
 
 import esm_rcfile
-import esm_tools
-import six
-import tqdm
 
 import esm_plugin_manager
+import esm_tools
+
 
 def vprint(message, config):
     if config["general"]["verbose"]:
@@ -98,6 +93,7 @@ def write_to_log(config, message, message_sep=None):
         esm_parser.pprint_config(config["general"])
         raise
 
+
 def assemble_log_message(config, message, message_sep=None, timestampStr_from_Unix=False):
     """Assembles message for log file. See doc for write_to_log"""
     message = [str(i) for i in message]
@@ -112,4 +108,3 @@ def assemble_log_message(config, message, message_sep=None, timestampStr_from_Un
     # TODO: Do we want to be able to specify a timestamp seperator as well?
     line = timestampStr + " : " + message_sep.join(message)
     return line
-
