@@ -1,5 +1,6 @@
 import os
 import shutil
+import subprocess
 
 import esm_rcfile
 import six
