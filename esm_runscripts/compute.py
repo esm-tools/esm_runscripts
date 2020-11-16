@@ -287,8 +287,18 @@ def _write_finalized_config(config):
     def batch_system_representer(dumper, batch_system):
         return dumper.represent_str(f"{batch_system.name}")
 
+    def strip_python_tags(s):
+        result = []
+        for line in s.splitlines():
+            idx = line.find("!!python/")
+            if idx > -1:
+                line = line[:idx]
+            result.append(line)
+        return '\n'.join(result)
+
     yaml.add_representer(Date, date_representer)
     yaml.add_representer(batch_system, batch_system_representer)
+
     with open(
         config["general"]["thisrun_config_dir"]
         + "/"
@@ -296,7 +306,9 @@ def _write_finalized_config(config):
         + "_finished_config.yaml",
         "w",
     ) as config_file:
-        yaml.dump(config, config_file)
+        out = yaml.dump(config)
+        out = strip_python_tags(out)
+        config_file.write(out)
     return config
 
 
