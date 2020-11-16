@@ -193,9 +193,8 @@ def copy_files_to_work(config):
 
 def _create_folders(config, filetypes):
     """
-    Generates the experiment file tree. Foldres are createdfor every filetype
-    except for "ignore". This also creates a small marker file at the top of
-    the experiment so that the "root" can be found from inside.
+    Generates the experiment file tree. Foldres are created for every filetype
+    except for "ignore".
     """
     for filetype in filetypes:
         if not filetype == "ignore":
@@ -204,16 +203,19 @@ def _create_folders(config, filetypes):
                     os.makedirs(config["experiment_" + filetype + "_dir"])
             if not os.path.exists(config["thisrun_" + filetype + "_dir"]):
                 os.makedirs(config["thisrun_" + filetype + "_dir"])
-    with open(config["experiment_dir"] + "/.top_of_exp_tree", "w") as top_marker:
-        top_marker.write(f"Top of experiment {config['general']['expid']}")
 
 
 def _create_setup_folders(config):
     """
     Creates all folders for an experiment. This is the plugin function called
     during the recipe. See also ``_create_folders`` for actual creation
+
+    This also creates a small marker file at the top of
+    the experiment so that the "root" can be found from inside.
     """
     _create_folders(config["general"], config["general"]["all_filetypes"])
+    with open(config["general"]["experiment_dir"] + "/.top_of_exp_tree", "w") as top_marker:
+        top_marker.write(f"Top of experiment {config['general']['expid']}")
     return config
 
 
