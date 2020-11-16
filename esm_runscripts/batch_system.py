@@ -175,7 +175,7 @@ class batch_system:
         sadfilename = batch_system.get_sad_filename(config)
         header = batch_system.get_batch_header(config)
         environment = batch_system.get_environment(config)
-        extra = esm_batch_system.get_extra(config)
+        extra = batch_system.get_extra(config)
 
         if config["general"]["verbose"]:
             print("still alive")
