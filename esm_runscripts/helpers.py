@@ -6,6 +6,7 @@ import sys
 from datetime import datetime
 
 import esm_rcfile
+import esm_tools
 import six
 import tqdm
 
@@ -13,7 +14,7 @@ import esm_plugin_manager
 
 def vprint(message, config):
     if config["general"]["verbose"]:
-        print (message)
+        print(message)
 
 
 def evaluate(config, job_type, recipe_name):
@@ -29,10 +30,10 @@ def evaluate(config, job_type, recipe_name):
         sys.exit(1)
 
     if esm_rcfile.FUNCTION_PATH.startswith("NONE_YET"):
-        recipe = esm_tools.read_config_file("esm_software/esm_runscripts/esm_runscripts.yaml")
-        need_to_parse_recipe = False
-        plugins_bare = esm_tools.read_config_file("esm_software/esm_runscripts/esm_plugins.yaml")
-        need_to_parse_plugins = False
+        recipe = esm_tools.get_config_filepath("esm_software/esm_runscripts/esm_runscripts.yaml")
+        need_to_parse_recipe = True
+        plugins_bare = esm_tools.get_config_filepath("esm_software/esm_runscripts/esm_plugins.yaml")
+        need_to_parse_plugins = True
     else:
         recipe = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/esm_runscripts.yaml"
         need_to_parse_recipe = True
@@ -42,7 +43,7 @@ def evaluate(config, job_type, recipe_name):
     framework_recipe = esm_plugin_manager.read_recipe(recipe, {"job_type": job_type}, need_to_parse_recipe)
     if recipe_steps:
         framework_recipe["recipe"] = recipe_steps
-    framework_plugins = esm_plugin_manager.read_plugin_information(plugins, framework_recipe, need_to_parse_plugins)
+    framework_plugins = esm_plugin_manager.read_plugin_information(plugins_bare, framework_recipe, need_to_parse_plugins)
     esm_plugin_manager.check_plugin_availability(framework_plugins)
 
     config = esm_plugin_manager.work_through_recipe(framework_recipe, framework_plugins, config)

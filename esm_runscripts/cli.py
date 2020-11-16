@@ -10,6 +10,7 @@ import os
 import sys
 
 from .sim_objects import *
+from loguru import logger
 from esm_motd import check_all_esm_packages
 
 
