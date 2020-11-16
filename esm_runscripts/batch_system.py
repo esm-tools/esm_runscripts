@@ -125,7 +125,7 @@ class batch_system:
         if config["general"].get("unlimited_stack_size", True):
             extras.append("# Set stack size to unlimited")
             extras.append("ulimit -s")
-        if config['general'].get('use_venv', True):
+        if config['general'].get('use_venv', False):
             extras.append("# Start everything in a venv")
             extras.append("source "+config["general"]["experiment_dir"]+"/.venv/bin/activate")
         if config["general"].get("funny_comment", True):
