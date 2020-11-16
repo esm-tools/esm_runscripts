@@ -4,16 +4,15 @@ import glob
 import os
 import shutil
 import sys
-import time
 
-import esm_parser
+import f90nml
+import esm_tools
 import six
 
 
 def rename_sources_to_targets(config):
-
-    # Purpose of this routine is to make sure that filetype_sources and filetype_targets are set correctly,
-    # and _in_work is unset
+    # Purpose of this routine is to make sure that filetype_sources and
+    # filetype_targets are set correctly, and _in_work is unset
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"] + ["general"]:
 
