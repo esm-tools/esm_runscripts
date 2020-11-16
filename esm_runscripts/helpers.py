@@ -19,29 +19,49 @@ def evaluate(config, job_type, recipe_name):
     # None and the default is used
     try:
         setup_name = config["general"]["setup_name"]
-        recipe_steps = config.get(setup_name, {}).get(recipe_name) or config["general"].get(recipe_name)
+        recipe_steps = config.get(setup_name, {}).get(recipe_name) or config[
+            "general"
+        ].get(recipe_name)
     except KeyError:
-        print("Your configuration is incorrect, and should include headings for %s as well as general!" % setup_name)
+        print(
+            "Your configuration is incorrect, and should include headings for %s as well as general!"
+            % setup_name
+        )
         sys.exit(1)
 
     if esm_rcfile.FUNCTION_PATH.startswith("NONE_YET"):
-        recipe = esm_tools.get_config_filepath("esm_software/esm_runscripts/esm_runscripts.yaml")
+        recipe = esm_tools.get_config_filepath(
+            "esm_software/esm_runscripts/esm_runscripts.yaml"
+        )
         need_to_parse_recipe = True
-        plugins_bare = esm_tools.get_config_filepath("esm_software/esm_runscripts/esm_plugins.yaml")
+        plugins_bare = esm_tools.get_config_filepath(
+            "esm_software/esm_runscripts/esm_plugins.yaml"
+        )
         need_to_parse_plugins = True
     else:
-        recipe = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/esm_runscripts.yaml"
+        recipe = (
+            esm_rcfile.FUNCTION_PATH
+            + "/esm_software/esm_runscripts/esm_runscripts.yaml"
+        )
         need_to_parse_recipe = True
-        plugins_bare = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/esm_plugins.yaml"
+        plugins_bare = (
+            esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/esm_plugins.yaml"
+        )
         need_to_parse_plugins = True
 
-    framework_recipe = esm_plugin_manager.read_recipe(recipe, {"job_type": job_type}, need_to_parse_recipe)
+    framework_recipe = esm_plugin_manager.read_recipe(
+        recipe, {"job_type": job_type}, need_to_parse_recipe
+    )
     if recipe_steps:
         framework_recipe["recipe"] = recipe_steps
-    framework_plugins = esm_plugin_manager.read_plugin_information(plugins_bare, framework_recipe, need_to_parse_plugins)
+    framework_plugins = esm_plugin_manager.read_plugin_information(
+        plugins_bare, framework_recipe, need_to_parse_plugins
+    )
     esm_plugin_manager.check_plugin_availability(framework_plugins)
 
-    config = esm_plugin_manager.work_through_recipe(framework_recipe, framework_plugins, config)
+    config = esm_plugin_manager.work_through_recipe(
+        framework_recipe, framework_plugins, config
+    )
     return config
 
 
@@ -89,12 +109,15 @@ def write_to_log(config, message, message_sep=None):
             logfile.write(line + "\n")
     except KeyError:
         import esm_parser
+
         print("Sorry; couldn't find 'experiment_log_file' in config['general']...")
         esm_parser.pprint_config(config["general"])
         raise
 
 
-def assemble_log_message(config, message, message_sep=None, timestampStr_from_Unix=False):
+def assemble_log_message(
+    config, message, message_sep=None, timestampStr_from_Unix=False
+):
     """Assembles message for log file. See doc for write_to_log"""
     message = [str(i) for i in message]
     dateTimeObj = datetime.now()
@@ -102,7 +125,7 @@ def assemble_log_message(config, message, message_sep=None, timestampStr_from_Un
     if message_sep is None:
         message_sep = config["general"].get("experiment_log_file_message_sep", " ")
     if timestampStr_from_Unix:
-        timestampStr = "$(date +"+strftime_str+")"
+        timestampStr = "$(date +" + strftime_str + ")"
     else:
         timestampStr = dateTimeObj.strftime(strftime_str)
     # TODO: Do we want to be able to specify a timestamp seperator as well?
