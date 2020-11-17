@@ -262,14 +262,30 @@ class Namelist:
             all_nmls[nml_name] = nml_obj  # PG: or a string representation?
         mconfig["namelist_objs"] = all_nmls
         if verbose:
-            six.print_(
-                "\n" "- Namelists modified according to experiment specifications..."
-            )
-            for nml_name, nml in all_nmls.items():
-                six.print_("Final Contents of ", nml_name, ":")
-                nml.write(sys.stdout)
-                six.print_("\n", 40 * "+ ")
+            mconfig = nmls_output(mconfig)
         return mconfig
+
+    @staticmethod
+    def nmls_output(mconfig):
+        all_nmls = {}
+
+        for nml_name, nml_obj in six.iteritems(mconfig.get("namelists", {})):
+            all_nmls[nml_name] = nml_obj  # PG: or a string representation?
+        for nml_name, nml in all_nmls.items():
+            six.print_("Final Contents of ", nml_name, ":")
+            nml.write(sys.stdout)
+            six.print_("\n", 40 * "+ ")
+        return mconfig
+
+    
+    @staticmethod
+    def nmls_output_all(config):
+        six.print_(
+            "\n" "- Namelists modified according to experiment specifications..."
+        )
+        for model in config["general"]["valid_model_names"]:
+            config[model] = nmls_output(config[model], config["general"]["verbose"])
+        return config
 
 
 class namelist(Namelist):
@@ -281,4 +297,6 @@ class namelist(Namelist):
             DeprecationWarning,
             stacklevel=2,
         )
+    
+
         super(namelist, self).__init__(*args, **kwargs)

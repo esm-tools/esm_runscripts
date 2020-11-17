@@ -85,6 +85,8 @@ def _initialize_calendar(config):
     config = set_restart_chunk(config)
     config = set_leapyear(config)
     config = set_overall_calendar(config)
+    if config["general"]["reset_calendar_to_last"]:
+        config = find_last_prepared_run(config)
     config = set_most_dates(config)
     return config
 
@@ -155,11 +157,60 @@ def set_overall_calendar(config):
     return config
 
     
+def find_last_prepared_run(config):
+    from esm_calendar import Date, Calendar
+    import os
+    import sys
+
+    calendar = config["general"]["calendar"]
+    current_date = Date(config["general"]["current_date"], calendar)
+    initial_date = Date(config["general"]["initial_date"], calendar)
+    delta_date = (
+            config["general"]["nyear"],
+            config["general"]["nmonth"],
+            config["general"]["nday"],
+            config["general"]["nhour"],
+            config["general"]["nminute"],
+            config["general"]["nsecond"],
+            )
+
+    while True:
+        if current_date <= initial_date:
+            break
+
+        next_date = current_date.add(delta_date)
+        end_date = next_date - (0, 0, 1, 0, 0, 0)
+        
+        datestamp = ( 
+            current_date.format(
+                form=9, givenph=False, givenpm=False, givenps=False
+            )
+            + "-" +
+            end_date.format(
+                form=9, givenph=False, givenpm=False, givenps=False
+            )
+        )
+
+        if os.path.isdir(config["general"]["base_dir"] + config["general"]["expid"] + "/run_" + datestamp):
+            print("Last prepared run: " + datestamp)
+            config["general"]["current_date"] = current_date
+            return config
+
+        current_date = current_date - delta_date
+
+    print("Could not find a prepared run.")
+    sys.exit(42)
+
+
+
 def set_most_dates(config):
     from esm_calendar import Calendar, Date
 
     calendar = config["general"]["calendar"]
-    current_date = Date(config["general"]["current_date"], calendar)
+    if isinstance(config["general"]["current_date"], Date):
+        current_date = config["general"]["current_date"]
+    else:
+        current_date = Date(config["general"]["current_date"], calendar)
     delta_date = (
             config["general"]["nyear"],
             config["general"]["nmonth"],

@@ -29,14 +29,23 @@ class SimulationSetup(object):
         if not "verbose" in self.config["general"]:
             self.config["general"]["verbose"] = False
         # read the prepare recipe 
+        self.config["general"]["reset_calendar_to_last"] = False
+        if self.config["general"]["inspect"]:
+            self.config["general"]["jobtype"] = "inspect"
+            self.config["general"]["reset_calendar_to_last"] = True
+
         from . import prepare
         self.config = prepare.run_job(self.config)
+    
+
 
 
 
     def __call__(self, *args, **kwargs):
         if self.config["general"]["jobtype"] == "compute":
             self.compute(*args, **kwargs)
+        elif self.config["general"]["jobtype"] == "inspect":
+            self.inspect(*args, **kwargs)
         elif self.config["general"]["jobtype"] == "tidy_and_resubmit":
             self.tidy(*args, **kwargs)
         elif self.config["general"]["jobtype"] == "post":
@@ -46,6 +55,11 @@ class SimulationSetup(object):
             helpers.end_it_all(self.config)
 
 
+###################################     INSPECT      #############################################################
+    def inspect(self):
+        from . import inspect
+        self.config = inspect.run_job(self.config)
+        helpers.end_it_all(self.config)
 
 
 
