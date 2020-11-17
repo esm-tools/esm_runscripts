@@ -91,7 +91,6 @@ def parse_shargs():
 
 def main():
 
-    check_all_esm_packages()
 
     ARGS = parse_shargs()
     logger.debug("Working here: %s", os.getcwd())
@@ -145,8 +144,10 @@ def main():
     command_line_config["started_from"] = os.getcwd()
 
     if verbose:
-        print("Started from: ", command_line_config["started_from"])
-        print("starting : ", jobtype)
+        logger.debug("Started from: ", command_line_config["started_from"])
+        logger.debug("starting : ", jobtype)
 
     Setup = SimulationSetup(command_line_config)
+    if not Setup.config['general']['submitted']:
+        check_all_esm_packages()
     Setup()
