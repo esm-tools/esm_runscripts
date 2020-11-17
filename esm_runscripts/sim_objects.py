@@ -7,7 +7,9 @@ import sys
 import time
 
 import esm_parser
-from . import helpers
+
+from . import batch_system, compute, helpers, prepare, tidy
+
 
 class SimulationSetup(object):
     def __init__(self, command_line_config = None, user_config = None):
@@ -24,12 +26,11 @@ class SimulationSetup(object):
         if user_config["general"].get("debug_obj_init", False):
             import pdb; pdb.set_trace()
         self.get_total_config_from_user_config(user_config)
-         
+
         self.config["general"]["command_line_config"] = self.command_line_config
         if not "verbose" in self.config["general"]:
             self.config["general"]["verbose"] = False
-        # read the prepare recipe 
-        from . import prepare
+        # read the prepare recipe
         self.config = prepare.run_job(self.config)
 
 
@@ -60,7 +61,6 @@ class SimulationSetup(object):
             Default ``True``. If set, the entire Python instance is killed with
             a ``sys.exit()`` as the very last after job submission.
         """
-        from . import compute
         self.config = compute.run_job(self.config)
 
         if kill_after_submit:
@@ -146,7 +146,6 @@ class SimulationSetup(object):
         """
 
 
-        from . import tidy
         with open(
             self.config["general"]["thisrun_scripts_dir"] + "/monitoring_file.out",
             "w",
@@ -163,7 +162,6 @@ class SimulationSetup(object):
 ###############################################       POSTPROCESS ######################################
 
     def postprocess(self):
-        from . import batch_system
         """
         Calls post processing routines for this run.
         """
@@ -182,21 +180,9 @@ class SimulationSetup(object):
 
             self.config["general"]["post_file"] = post_file
             self.config = postprocess.run_job(self.config)
-            
+
 
             #post_task_list = self._assemble_postprocess_tasks(post_file)
             #self.config["general"]["post_task_list"] = post_task_list
             batch_system.write_simple_runscript(self.config)
             self.config = batch_system.submit(self.config)
-
-
-
-
-
-
-
-
-
-
-
-

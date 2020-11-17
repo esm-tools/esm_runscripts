@@ -1,13 +1,14 @@
 import filecmp
 import os
+import sys
 import re
 import time
 
 import psutil
+import shutil
 
 from . import coupler, database_actions, helpers
 from .filelists import copy_files
-from .sim_objects import SimulationSetup
 
 
 def run_job(config):
@@ -474,12 +475,15 @@ def start_post_job(config):
 
     if do_post:
         monitor_file.write("Post processing for this run:\n")
+        command_line_config = config["general"]["command_line_config"]
         command_line_config["jobtype"] = "post"
         command_line_config["original_command"] = command_line_config[
             "original_command"
         ].replace("compute", "post")
         monitor_file.write("Initializing post object with:\n")
         monitor_file.write(str(command_line_config))
+        # NOTE(PG) Non top level import to avoid circular dependency:
+        from .sim_objects import SimulationSetup
         this_post = SimulationSetup(command_line_config)
         monitor_file.write("Post object built; calling post job:\n")
         this_post()
@@ -519,6 +523,8 @@ def maybe_resubmit(config):
         helpers.write_to_log(config, ["# Experiment over"], message_sep="")
     else:
         monitor_file.write("Init for next run:\n")
+        # NOTE(PG) Non top level import to avoid circular dependency:
+        from .sim_objects import SimulationSetup
         next_compute = SimulationSetup(command_line_config)
         next_compute(kill_after_submit=False)
     return config
