@@ -58,6 +58,7 @@ class SimulationSetup(object):
 ###################################     INSPECT      #############################################################
     def inspect(self):
         from . import inspect
+        print(f"Inspecting {self.config['general']['experiment_dir']}")
         self.config = inspect.run_job(self.config)
         helpers.end_it_all(self.config)
 
