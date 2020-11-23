@@ -79,7 +79,8 @@ def _install_tools(venv_context, config):
             url = f"git+{url}"
             if user_wants_branch:
                 url += f"@{user_wants_branch}"
-            _run_bin_in_venv(venv_context, ["pip", "install", '-q', f"--find-links={os.environ.get('HOME')}/.cache/pip/wheels", url])
+            # NOTE(PG): We need the -U flag to ensure the branch is actually installed.
+            _run_bin_in_venv(venv_context, ["pip", "install", '-q', f"--find-links={os.environ.get('HOME')}/.cache/pip/wheels", "-U", url])
             _run_bin_in_venv(venv_context, ["pip", "wheel", '-q', f"--wheel-dir={os.environ.get('HOME')}/.cache/pip/wheels", url])
 
 
