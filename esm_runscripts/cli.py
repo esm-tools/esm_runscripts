@@ -93,12 +93,6 @@ def main():
 
 
     ARGS = parse_shargs()
-    logger.debug("Working here: %s", os.getcwd())
-    logger.debug("This file is here: %s", os.path.dirname(__file__))
-    logger.debug(
-        "The main function directory should be: %s",
-        os.getcwd() + "/" + os.path.dirname(__file__) + "/../",
-    )
 
     check = False
     profile = False
@@ -143,6 +137,10 @@ def main():
     command_line_config["original_command"] = original_command.strip()
     command_line_config["started_from"] = os.getcwd()
 
+    logger.remove()
+    logger.add("verbose.log", level="TRACE")
+
+    logger.add(sys.stdout, level="INFO", format="{message}")
     if verbose:
         logger.debug("Started from: ", command_line_config["started_from"])
         logger.debug("starting : ", jobtype)

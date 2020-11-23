@@ -6,6 +6,8 @@ import pdb
 import sys
 import time
 
+from loguru import logger
+
 import esm_parser
 
 from . import batch_system, compute, helpers, prepare, tidy
@@ -13,7 +15,6 @@ from . import batch_system, compute, helpers, prepare, tidy
 
 class SimulationSetup(object):
     def __init__(self, command_line_config = None, user_config = None):
-
         if not command_line_config and not user_config:
             raise ValueError("SimulationSetup needs to be initialized with either command_line_config or user_config.")
         if command_line_config:
