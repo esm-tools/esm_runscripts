@@ -21,7 +21,8 @@ requirements = ["esm_parser @ git+https://github.com/esm-tools/esm_parser.git",
                 "f90nml",
                 "coloredlogs",
                 "tqdm",
-                "sqlalchemy"
+                "sqlalchemy",
+                "questionary",
                ]
 
 setup_requirements = [ ]
