@@ -380,7 +380,7 @@ def replace_year_placeholder(config):
                                     ][file_category]
                                 ):
                                     all_years.append(
-                                        config["general"]["next_date"].year + 1
+                                        config["general"]["current_date"].year + 1
                                     )
 
                                 all_years = list(

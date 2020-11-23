@@ -127,7 +127,7 @@ class batch_system:
             extras.append("ulimit -s")
         if config['general'].get('use_venv', False):
             extras.append("# Start everything in a venv")
-            extras.append("source "+config["general"]["experiment_dir"]+"/.venv/bin/activate")
+            extras.append("source "+config["general"]["experiment_dir"]+"/.venv_esmtools/bin/activate")
         if config["general"].get("funny_comment", True):
             extras.append("# 3...2...1...Liftoff!")
         return extras

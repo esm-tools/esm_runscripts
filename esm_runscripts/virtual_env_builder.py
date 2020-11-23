@@ -45,46 +45,43 @@ def _venv_create(venv_path):
     venv_builder.create(venv_path)
     return venv_builder.context
 
-def _run_python_in_venv(venv_context, command, stdout):
+def _run_python_in_venv(venv_context, command):
     command = [venv_context.env_exe] + command
-    return subprocess.check_call(command, stdout=stdout)
+    return subprocess.check_call(command)
 
-def _run_bin_in_venv(venv_context, command, stdout):
+def _run_bin_in_venv(venv_context, command):
     command[0] = str(pathlib.Path(venv_context.bin_path).joinpath(command[0]))
-    return subprocess.check_call(command, stdout=stdout)
+    return subprocess.check_call(command)
 
-def _source_and_run_bin_in_venv(venv_context, command, shell, stdout):
+def _source_and_run_bin_in_venv(venv_context, command, shell):
     source_command = " ".join(["source", venv_context.bin_path+"/activate", "&&", " "])
     command = source_command + command
-    return subprocess.check_call(command, shell=shell, stdout=stdout)
+    return subprocess.check_call(command, shell=shell)
 
 def _install_tools(venv_context, config):
     #_run_bin_in_venv(venv_context, ['pip', 'install', 'git+https://github.com/esm-tools/esm_tools'])
-    with open(config['general']['experiment_dir']+"/venv_esmtools_build.log", "a") as venv_build_log:
-        for tool in esm_tools_modules:
-            venv_build_log.write(80*"="+"\n")
-            venv_build_log.write("\n\n")
-            url = f"https://github.com/esm-tools/{tool}"
-            user_wants_editable = config["general"].get(f"install_{tool}_editable", False)
-            user_wants_branch = config["general"].get(f"install_{tool}_branch")
-            if user_wants_editable:
-                # Make sure the directory exists:
-                src_dir = pathlib.Path(config['general']['experiment_dir'] + f"/src/esm-tools/{tool}")
-                src_dir.mkdir(parents=True, exist_ok=True)
-                if user_wants_branch:
-                    branch_command = f" -b {user_wants_branch} "
-                else:
-                    branch_command = ""
-                subprocess.check_call(f"git clone --quiet {branch_command} {url} {src_dir}", shell=True, stdout=venv_build_log)
-                _run_bin_in_venv(venv_context, ["pip", "install", f"--find-links={os.environ.get('HOME')}/.cache/pip/wheels", "-e", src_dir], stdout=venv_build_log)
-                _run_bin_in_venv(venv_context, ["pip", "wheel", f"--wheel-dir={os.environ.get('HOME')}/.cache/pip/wheels", src_dir], stdout=venv_build_log)
+    for tool in esm_tools_modules:
+        url = f"https://github.com/esm-tools/{tool}"
+        user_wants_editable = config["general"].get(f"install_{tool}_editable", False)
+        user_wants_branch = config["general"].get(f"install_{tool}_branch")
+        if user_wants_editable:
+            # Make sure the directory exists:
+            src_dir = pathlib.Path(config['general']['experiment_dir'] + f"/src/esm-tools/{tool}")
+            src_dir.mkdir(parents=True, exist_ok=True)
+            if user_wants_branch:
+                branch_command = f" -b {user_wants_branch} "
             else:
-                url = f"git+{url}"
-                if user_wants_branch:
-                    url += f"@{user_wants_branch}"
-                _run_bin_in_venv(venv_context, ["pip", "install", f"--find-links={os.environ.get('HOME')}/.cache/pip/wheels", url], stdout=venv_build_log)
-                _run_bin_in_venv(venv_context, ["pip", "wheel", f"--wheel-dir={os.environ.get('HOME')}/.cache/pip/wheels", url], stdout=venv_build_log)
-            venv_build_log.write(80*"=")
+                branch_command = ""
+            subprocess.check_call(f"git clone --quiet {branch_command} {url} {src_dir}", shell=True)
+            _run_bin_in_venv(venv_context, ["pip", "install", "-q", f"--find-links={os.environ.get('HOME')}/.cache/pip/wheels", "-e", src_dir])
+            _run_bin_in_venv(venv_context, ["pip", "wheel", "-q", f"--wheel-dir={os.environ.get('HOME')}/.cache/pip/wheels", src_dir])
+        else:
+            url = f"git+{url}"
+            if user_wants_branch:
+                url += f"@{user_wants_branch}"
+            # NOTE(PG): We need the -U flag to ensure the branch is actually installed.
+            _run_bin_in_venv(venv_context, ["pip", "install", '-q', f"--find-links={os.environ.get('HOME')}/.cache/pip/wheels", "-U", url])
+            _run_bin_in_venv(venv_context, ["pip", "wheel", '-q', f"--wheel-dir={os.environ.get('HOME')}/.cache/pip/wheels", url])
 
 
 def _install_required_plugins(venv_context, config):
@@ -94,7 +91,7 @@ def _install_required_plugins(venv_context, config):
             if "required_plugins" in sub_cfg:
                 required_plugins += sub_cfg["required_plugins"]
     for required_plugin in required_plugins:
-        _run_bin_in_venv(venv_context, ["pip", "install", required_plugin])
+        _run_bin_in_venv(venv_context, ["pip", "install", '-q', required_plugin])
 
 
 
@@ -112,16 +109,15 @@ def venv_bootstrap(config):
             start_time = datetime.datetime.now()
             venv_path = pathlib.Path(config['general']['experiment_dir']).joinpath('.venv_esmtools')
             venv_context = _venv_create(venv_path)
-            with open(config["general"]["experiment_dir"]+"/venv_esmtools_build.log", "w") as venv_build_log:
-                _run_python_in_venv(venv_context, ['-m', 'pip', 'install', '-U', 'pip'], stdout=venv_build_log)
-                _run_python_in_venv(venv_context, ['-m', 'pip', 'install', '-U', 'wheel'], stdout=venv_build_log)
+            _run_python_in_venv(venv_context, ['-m', 'pip', '-q', 'install', '-U', 'pip'])
+            _run_python_in_venv(venv_context, ['-m', 'pip', '-q', 'install', '-U', 'wheel'])
             _install_tools(venv_context, config)
             _install_required_plugins(venv_context, config)
             print(f"...finished {datetime.datetime.now() - start_time}, restarting your job in the virtual env")
             sys.argv[0] = pathlib.Path(sys.argv[0]).name
             # NOTE(PG): This next line allows the job to restart itself in the
             # virtual environment.
-            _source_and_run_bin_in_venv(venv_context, " ".join(sys.argv), shell=True, stdout=None)
+            _source_and_run_bin_in_venv(venv_context, " ".join(sys.argv), shell=True)
             sys.exit(0)
     return config
 
