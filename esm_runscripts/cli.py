@@ -68,7 +68,17 @@ def parse_shargs():
     )
 
     parser.add_argument(
-        "-p", "--pid", help="The PID of the task to observe.", default=-666,
+        "-i",
+        "--inspect",
+        help="Show some information, choose a keyword from 'overview', 'namelists'",
+        default=None,
+    )
+
+    parser.add_argument(
+        "-p",
+        "--pid",
+        help="The PID of the task to observe.",
+        default=-666,
     )
 
     parser.add_argument("-x", "--exclude", help="e[x]clude this step", default=None)
@@ -101,6 +111,7 @@ def main():
     pid = -666
     jobtype = "compute"
     verbose = False
+    inspect = None
 
     parsed_args = vars(ARGS)
 
@@ -122,6 +133,8 @@ def main():
         jobtype = parsed_args["task"]
     if "verbose" in parsed_args:
         verbose = parsed_args["verbose"]
+    if "inspect" in parsed_args:
+        inspect = parsed_args["inspect"]
 
     command_line_config = {}
     command_line_config["check"] = check
@@ -133,6 +146,7 @@ def main():
     command_line_config["scriptname"] = ARGS.runscript
     command_line_config["last_jobtype"] = ARGS.last_jobtype
     command_line_config["verbose"] = verbose
+    command_line_config["inspect"] = inspect
 
     command_line_config["original_command"] = original_command.strip()
     command_line_config["started_from"] = os.getcwd()

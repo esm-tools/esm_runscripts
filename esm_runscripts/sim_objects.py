@@ -5,13 +5,13 @@ import collections
 import pdb
 import sys
 import time
+import six
 
 from loguru import logger
 
 import esm_parser
 
 from . import batch_system, compute, helpers, prepare, tidy
-
 
 class SimulationSetup(object):
     def __init__(self, command_line_config = None, user_config = None):
@@ -31,14 +31,24 @@ class SimulationSetup(object):
         self.config["general"]["command_line_config"] = self.command_line_config
         if not "verbose" in self.config["general"]:
             self.config["general"]["verbose"] = False
-        # read the prepare recipe
+        # read the prepare recipe 
+        self.config["general"]["reset_calendar_to_last"] = False
+        if self.config["general"]["inspect"]:
+            self.config["general"]["jobtype"] = "inspect"
+            self.config["general"]["reset_calendar_to_last"] = True
+
+        from . import prepare
         self.config = prepare.run_job(self.config)
+    
+
 
 
 
     def __call__(self, *args, **kwargs):
         if self.config["general"]["jobtype"] == "compute":
             self.compute(*args, **kwargs)
+        elif self.config["general"]["jobtype"] == "inspect":
+            self.inspect(*args, **kwargs)
         elif self.config["general"]["jobtype"] == "tidy_and_resubmit":
             self.tidy(*args, **kwargs)
         elif self.config["general"]["jobtype"] == "post":
@@ -48,6 +58,12 @@ class SimulationSetup(object):
             helpers.end_it_all(self.config)
 
 
+###################################     INSPECT      #############################################################
+    def inspect(self):
+        from . import inspect
+        print(f"Inspecting {self.config['general']['experiment_dir']}")
+        self.config = inspect.run_job(self.config)
+        helpers.end_it_all(self.config)
 
 
 
@@ -105,10 +121,28 @@ class SimulationSetup(object):
                                              version,
                                              user_config)
 
+        self.config = self.add_esm_runscripts_defaults_to_config(self.config)
+
         self.config["computer"]["jobtype"] = self.config["general"]["jobtype"]
         self.config["general"]["experiment_dir"] = self.config["general"]["base_dir"] + "/" + self.config["general"]["expid"]
 
 
+
+    def distribute_per_model_defaults(self, config):
+        default_config = config["general"]["defaults.yaml"]
+        if "per_model_defaults" in default_config:
+            for model in config["general"]["valid_model_names"]:
+                config[model] = esm_parser.new_deep_update(config[model], default_config["per_model_defaults"])
+        return config
+
+
+    def add_esm_runscripts_defaults_to_config(self, config):
+
+        path_to_file = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/defaults.yaml"
+        default_config = esm_parser.yaml_file_to_dict(path_to_file)
+        config["general"]["defaults.yaml"] = default_config
+        config = self.distribute_per_model_defaults(config)
+        return config
 
 
 
