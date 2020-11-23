@@ -100,8 +100,6 @@ def _install_required_plugins(venv_context, config):
 
 def venv_bootstrap(config):
     """Bootstraps your run into a virtual environment"""
-    import pdb
-    pdb.set_trace()
     if "use_venv" not in config["general"] and "open_run" not in config["general"]["original_command"]:
         config = _integorate_user_venv(config)
     if config["general"].get("use_venv", False):
