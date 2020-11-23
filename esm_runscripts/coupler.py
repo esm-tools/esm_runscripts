@@ -234,7 +234,9 @@ class coupler_class:
 
                         self.coupler.add_coupling(lefts, lgrid_info, rights, rgrid_info, direction_info, transf_info, restart_file, full_config[self.name]["coupling_time_step"], full_config[self.name]["lresume"])
 
-                        
+        if "coupling_input_fields" in full_config[self.name]:
+            for field_name, field_config in full_config[self.name]['coupling_input_fields'].items():
+                self.coupler.add_input_coupling(field_name, field_config['freq'], field_config['field_filepath'])
 
 
     def finalize(self, destination_dir):

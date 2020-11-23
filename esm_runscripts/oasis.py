@@ -37,6 +37,13 @@ class oasis:
         self.next_coupling=1
         self.name = "oasis3mct"
 
+    def add_input_coupling(self, field_name, freq, field_filepath):
+        self.namcouple += ["#"]
+        nb = self.next_coupling
+        self.namcouple += [f"{field_name} {field_name} {nb} {freq} 0 {field_filepath} INPUT"]
+        self.namcouple += "#"
+        self.next_coupling += 1
+
     def add_coupling(self, lefts, lgrid, rights, rgrid, direction, transformation, restart_file, time_step, lresume):
         import sys
         self.namcouple += ["#"]
