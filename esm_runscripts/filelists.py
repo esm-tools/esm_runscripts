@@ -1,10 +1,16 @@
+import os
+import sys
+import shutil
+import filecmp
+import copy
+import time
+import six
+import glob
+
+import esm_parser
 
 
 def rename_sources_to_targets(config):
-    import copy
-    import sys, os
-    import time
-    import six
 
     # Purpose of this routine is to make sure that filetype_sources and filetype_targets are set correctly,
     # and _in_work is unset
@@ -71,7 +77,6 @@ def rename_sources_to_targets(config):
 
 
 def complete_targets(config):
-    import os
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"] + ["general"]:
             if filetype + "_sources" in config[model]:
@@ -82,7 +87,6 @@ def complete_targets(config):
 
 
 def complete_sources(config):
-    import os
     if config["general"]["verbose"]:
         print("Complete sources")
     for filetype in config["general"]["out_filetypes"]:
@@ -113,9 +117,6 @@ def reuse_sources(config):
 
 
 def choose_needed_files(config):
-    import six
-    import sys
-
     # aim of this function is to only take those files specified in fileytype_files
     # (if exists), and then remove filetype_files
 
@@ -148,11 +149,6 @@ def choose_needed_files(config):
 
 
 def globbing(config):
-    import six
-    import glob
-    import os
-    import copy
-
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"] + ["general"]:
             if filetype + "_sources" in config[model]:
@@ -173,15 +169,12 @@ def globbing(config):
                             running_index += 1
 
                         del config[model][filetype + "_targets"][descr]
-
     return config
 
 
 
 
 def target_subfolders(config):
-    import six
-    import os
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"] + ["general"]:
             if filetype + "_targets" in config[model]:
@@ -207,7 +200,6 @@ def target_subfolders(config):
 
 
 def complete_restart_in(config):
-    import esm_parser
     for model in config["general"]["valid_model_names"]:
         if not config[model]["lresume"] and config["general"]["run_number"] == 1:
             if "restart_in_sources" in config[model]:
@@ -333,8 +325,6 @@ def log_used_files(config):
 
 
 def check_for_unknown_files(config):
-    import glob
-    import os
     #files = os.listdir(config["general"]["thisrun_work_dir"])
     all_files = glob.iglob(config["general"]["thisrun_work_dir"] + '**/*', recursive = True)
 
@@ -375,10 +365,6 @@ def check_for_unknown_files(config):
 
 
 def copy_files(config, filetypes, source, target):
-    import os
-    import shutil
-    import six
-    import filecmp
 
     successful_files = []
     missing_files = {}
@@ -395,9 +381,11 @@ def copy_files(config, filetypes, source, target):
     elif target == "work":
         text_target = "targets"
 
+
     for filetype in [filetype for filetype in filetypes if not filetype == "ignore"]:
         
         for model in config["general"]["valid_model_names"] + ["general"]:
+            movement_method = get_method(get_movement(config, model, filetype, source, target))
             if filetype + "_" + text_source in config[model]:
                 sourceblock = config[model][filetype + "_" + text_source]
                 targetblock = config[model][filetype + "_" + text_target]
@@ -421,7 +409,8 @@ def copy_files(config, filetypes, source, target):
                                 if config["general"]["verbose"]:
                                     print(f"Source and target file are identical, skipping {file_source}")
                                 continue
-                            shutil.copy2(file_source, file_target)
+                            movement_method(file_source, file_target)
+                            #shutil.copy2(file_source, file_target)
                             successful_files.append(file_source)
                         except IOError:
                             print(f"Could not copy {file_source} to {file_target} for unknown reasons.")
@@ -457,7 +446,85 @@ def report_missing_files(config):
 
 
 
+
+
+
+# FILE MOVEMENT METHOD STUFF
+
+def create_missing_file_movement_entries(config):
+    for model in config["general"]["valid_model_names"] + ["general"]:
+        if not "file_movements" in config[model]:
+            config[model]["file_movements"] = {}
+        for filetype in config["general"]["all_model_filetypes"] + ["scripts"] :
+            if not filetype in config[model]["file_movements"]:
+                config[model]["file_movements"][filetype] = {}
+    return config
+
+
+
+def complete_one_file_movement(config, model, filetype, movement, movetype):
+    if not movement in config[model]["file_movements"][filetype]:
+        config[model]["file_movements"][filetype][movement] = movetype
+    return config
+
+
+
+def get_method(movement):
+    if movement == "copy":
+        return shutil.copy2
+    elif movement == "link":
+        return os.symlink
+    elif movement == "move":
+        return os.rename
+    print ("Unknown file movement type, using copy (safest option).")
+    return shutil.copy2
+
+
+def complete_all_file_movements(config):
+    config = create_missing_file_movement_entries(config)
+
+    for model in config["general"]["valid_model_names"] + ["general"]:
+        mconfig = config[model]
+        if model == "general":
+            if "defaults.yaml" in mconfig:
+                if "per_model_defaults" in mconfig["defaults.yaml"]:
+                    if "file_movements" in mconfig["defaults.yaml"]["per_model_defaults"]:
+                        mconfig["file_movements"] = mconfig["defaults.yaml"]["per_model_defaults"]["file_movements"]
+                        del mconfig["defaults.yaml"]["per_model_defaults"]["file_movements"]
+        if "file_movements" in mconfig:
+            if "default" in mconfig["file_movements"]:
+                if "all_directions" in mconfig["file_movements"]["default"]:
+                    movement_type = mconfig["file_movements"]["default"]["all_directions"]
+                    for movement in ['init_to_exp', 'exp_to_run', 'run_to_work', 'work_to_run']:
+                        config = complete_one_file_movement(config, model, "default", movement, movement_type)
+                    del mconfig["file_movements"]["default"]["all_directions"]
+
+                for movement in mconfig["file_movements"]["default"]:
+                    movement_type =  mconfig["file_movements"]["default"][movement]
+                    for filetype in config["general"]["all_model_filetypes"] + ["scripts"]:
+                        config = complete_one_file_movement(config, model, filetype, movement, movement_type)
+                del mconfig["file_movements"]["default"]
+    return config
+
+
+def get_movement(config, model, filetype, source, target):
+    if source == "init":
+        if config["general"]["run_number"] == 1 or filetype not in config["general"]["reusable_filetypes"]:
+            return config[model]["file_movements"][filetype]["init_to_exp"]
+        else:
+            return config[model]["file_movements"][filetype]["exp_to_run"]
+    elif source == "work":
+        return config[model]["file_movements"][filetype]["work_to_exp"]
+    elif source == "thisrun" and target == "work":
+        return config[model]["file_movements"][filetype]["run_to_work"]
+    else:
+        # This should NOT happen
+        print (f"Error: Unknown file movement from {source} to {target}")
+        sys.exit(42)
+
+
 def assemble(config):
+    config = complete_all_file_movements(config)
     config = rename_sources_to_targets(config)
     config = choose_needed_files(config)
     config = complete_targets(config)

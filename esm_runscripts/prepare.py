@@ -175,7 +175,7 @@ def find_last_prepared_run(config):
             )
 
     while True:
-        if current_date <= initial_date:
+        if current_date < initial_date:
             break
 
         next_date = current_date.add(delta_date)
@@ -191,6 +191,7 @@ def find_last_prepared_run(config):
             )
         )
 
+        print(config["general"]["base_dir"] + config["general"]["expid"] + "/run_" + datestamp)
         if os.path.isdir(config["general"]["base_dir"] + config["general"]["expid"] + "/run_" + datestamp):
             print("Last prepared run: " + datestamp)
             config["general"]["current_date"] = current_date

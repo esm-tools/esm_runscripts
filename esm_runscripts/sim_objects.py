@@ -5,8 +5,10 @@ import collections
 import pdb
 import sys
 import time
+import six
 
 import esm_parser
+import esm_rcfile
 from . import helpers
 
 class SimulationSetup(object):
@@ -119,10 +121,28 @@ class SimulationSetup(object):
                                              version,
                                              user_config)
 
+        self.config = self.add_esm_runscripts_defaults_to_config(self.config)
+
         self.config["computer"]["jobtype"] = self.config["general"]["jobtype"]
         self.config["general"]["experiment_dir"] = self.config["general"]["base_dir"] + "/" + self.config["general"]["expid"]
 
 
+
+    def distribute_per_model_defaults(self, config):
+        default_config = config["general"]["defaults.yaml"]
+        if "per_model_defaults" in default_config:
+            for model in config["general"]["valid_model_names"]:
+                config[model] = esm_parser.new_deep_update(config[model], default_config["per_model_defaults"])
+        return config
+
+
+    def add_esm_runscripts_defaults_to_config(self, config):
+
+        path_to_file = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/defaults.yaml"
+        default_config = esm_parser.yaml_file_to_dict(path_to_file)
+        config["general"]["defaults.yaml"] = default_config
+        config = self.distribute_per_model_defaults(config)
+        return config
 
 
 
