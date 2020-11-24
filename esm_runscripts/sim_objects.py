@@ -35,7 +35,7 @@ class SimulationSetup(object):
             self.config["general"]["verbose"] = False
         # read the prepare recipe 
         self.config["general"]["reset_calendar_to_last"] = False
-        if self.config["general"]["inspect"]:
+        if self.config["general"].get("inspect"):
             self.config["general"]["jobtype"] = "inspect"
             self.config["general"]["reset_calendar_to_last"] = True
 
