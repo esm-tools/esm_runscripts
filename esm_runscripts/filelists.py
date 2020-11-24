@@ -650,7 +650,7 @@ def create_missing_file_movement_entries(config):
     for model in config["general"]["valid_model_names"] + ["general"]:
         if not "file_movements" in config[model]:
             config[model]["file_movements"] = {}
-        for filetype in config["general"]["all_model_filetypes"] + ["scripts"] :
+        for filetype in config["general"]["all_model_filetypes"] + ["scripts", "unknown"] :
             if not filetype in config[model]["file_movements"]:
                 config[model]["file_movements"][filetype] = {}
     return config
@@ -696,7 +696,7 @@ def complete_all_file_movements(config):
 
                 for movement in mconfig["file_movements"]["default"]:
                     movement_type =  mconfig["file_movements"]["default"][movement]
-                    for filetype in config["general"]["all_model_filetypes"] + ["scripts"]:
+                    for filetype in config["general"]["all_model_filetypes"] + ["scripts", "unknown"]:
                         config = complete_one_file_movement(config, model, filetype, movement, movement_type)
                 del mconfig["file_movements"]["default"]
     return config
