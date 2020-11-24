@@ -11,6 +11,8 @@ from loguru import logger
 
 import esm_parser
 
+import esm_rcfile
+
 from . import batch_system, compute, helpers, prepare, tidy
 
 class SimulationSetup(object):
