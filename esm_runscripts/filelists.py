@@ -709,7 +709,7 @@ def get_movement(config, model, filetype, source, target):
         else:
             return config[model]["file_movements"][filetype]["exp_to_run"]
     elif source == "work":
-        return config[model]["file_movements"][filetype]["work_to_exp"]
+        return config[model]["file_movements"][filetype]["work_to_run"]
     elif source == "thisrun" and target == "work":
         return config[model]["file_movements"][filetype]["run_to_work"]
     else:
