@@ -190,7 +190,7 @@ class oasis:
                     print (" a method (GLOBAL, GLBPOS, BASBAL or BASPOS) needs to be defined for postprocessing CONSERV")
                     sys.exit(2)
                 algorithm = transformation["postprocessing"][post].get("algorithm", "")
-                detail_line = method.upper() + " " + algorithm.upper()
+                detail_line = method.upper() + " " + algorithm.lower()
                 trafo_details.append(detail_line.strip())
             elif post.lower() == "checkout":
                 trafo_line += " CHECKOUT"
@@ -215,6 +215,10 @@ class oasis:
                         sys.exit(2)
                     detail_line = " CONSTANT" + str(add_scalar)
                     trafo_details.append(detail_line.strip())
+
+        # Remove the first space in cases such as trafo_line = ' SCRIPR CONSERV'
+        if trafo_line[0]==" ":
+            trafo_line = trafo_line[1:]
 
         self.namcouple += [trafo_line]
         for line in trafo_details:
