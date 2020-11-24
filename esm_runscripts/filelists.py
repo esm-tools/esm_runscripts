@@ -210,7 +210,9 @@ def globbing(config):
                 ):  # * only in targets if denotes subfolder
                     if "*" in filename:
                         del config[model][filetype + "_sources"][descr]
-                        all_filenames = glob.glob(filename)
+                        # skip subdirectories in file list, otherwise they
+                        # will be listed as missing files later on
+                        all_filenames = [f for f in glob.glob(filename) if not os.path.isdir(f)]
                         running_index = 0
 
                         for new_filename in all_filenames:
@@ -435,6 +437,7 @@ def log_used_files(config):
                 if filetype + "_sources" in config[model]:
                     flist.write("\n" + filetype.upper() + ":\n")
                     for category in config[model][filetype + "_sources"]:
+#                        esm_parser.pprint_config(config[model]) 
                         flist.write(
                             "\nSource: "
                             + config[model][filetype + "_sources"][category]

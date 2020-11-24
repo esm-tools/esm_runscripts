@@ -241,7 +241,7 @@ class coupler_class:
                                 export_mode = full_config[self.name]["export_mode"]
                             else:
                                 export_mode = "DEFAULT" 
-                            print("DEBUG: EXPORT_MODE: ",export_mode)
+                            #print("DEBUG: EXPORT_MODE: ",export_mode)
                             self.coupler.add_coupling(lefts, lgrid_info, rights, rgrid_info, direction_info, transf_info, restart_file, full_config[self.name]["coupling_time_step"], full_config[self.name]["lresume"], export_mode=export_mode)
         
             if "coupling_input_fields" in full_config[self.name]:
