@@ -34,7 +34,9 @@ def run_job(config):
 def compile_model(config):
     """Compiles the desired model before the run starts"""
     model = config["general"]["setup_name"]
-    version = config["general"]["version"]
+    version = config["general"].get("version") or config[model].get("version") 
+    if not version:
+        return config
     if config.get("general", {}).get("run_number") == 1:
         print("First year, checking if we need to compile...")
         if not config.get("general", {}).get("use_compiled_model", True):
