@@ -207,7 +207,7 @@ class SimulationSetup(object):
             "/" +
             self.config["general"]["expid"] +
             "_post_" +
-            self.run_datestamp +
+            self.config["general"]["run_datestamp"] +
             "_" +
             str(self.config['general']['jobid']) +
             ".log",

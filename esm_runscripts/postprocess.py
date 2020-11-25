@@ -29,7 +29,7 @@ def _assemble_postprocess_tasks(config):
         post_file.write("Generating post-processing tasks for: %s \n" % component)
 
         post_task_list.append("\n#Postprocessing %s\n" % component)
-        post_task_list.append("cd "+ self.config[component]["experiment_outdata_dir"]+"\n")
+        post_task_list.append("cd "+ config[component]["experiment_outdata_dir"]+"\n")
 
         pconfig_tasks = config[component].get('postprocess_tasks', {})
         post_file.write("Configuration for post processing: %s \n" % pconfig_tasks)
