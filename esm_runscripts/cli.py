@@ -54,6 +54,14 @@ def parse_shargs():
     )
 
     parser.add_argument(
+        "--modify-config",
+        "-m",
+        dest="modify",
+        help="[m]odify configuration", 
+        default="", # kh 15.07.20 "usermods.yaml"
+    )
+
+    parser.add_argument(
         "-j",
         "--last_jobtype",
         help="Write the jobtype this run was called from (esm-tools internal)",
@@ -112,6 +120,7 @@ def main():
     jobtype = "compute"
     verbose = False
     inspect = None
+    modify_config_file = None
 
     parsed_args = vars(ARGS)
 
@@ -135,6 +144,8 @@ def main():
         verbose = parsed_args["verbose"]
     if "inspect" in parsed_args:
         inspect = parsed_args["inspect"]
+    if "modify" in parsed_args: 
+        modify_config_file = parsed_args["modify"]
 
     command_line_config = {}
     command_line_config["check"] = check
@@ -147,6 +158,8 @@ def main():
     command_line_config["last_jobtype"] = ARGS.last_jobtype
     command_line_config["verbose"] = verbose
     command_line_config["inspect"] = inspect
+    if modify_config_file:
+        command_line_config["modify_config_file"] = modify_config_file
 
     command_line_config["original_command"] = original_command.strip()
     command_line_config["started_from"] = os.getcwd()

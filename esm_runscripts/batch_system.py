@@ -192,6 +192,10 @@ class batch_system:
                 + config["general"]["jobtype"]
                 + " -v "
             )
+
+            if config["general"]["modify_config_file_abspath"]:
+                tidy_call += " -m " + config["general"]["modify_config_file_abspath"]
+
         elif config["general"]["jobtype"] == "post":
             tidy_call = ""
             commands = config["general"]["post_task_list"]
