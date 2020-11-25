@@ -4,7 +4,7 @@ import esm_parser
 
 class last_minute_changes:
     def __init__(self, config):
-        self.modify_config_file = config["general"].get("modify_config_file")
+        self.modify_config_file = config["general"]["command_line_config"].get("modify_config_file")
 
         if self.modify_config_file:
             self.modify_config_file_abspath = os.path.abspath(modify_config_file)
@@ -18,8 +18,6 @@ class last_minute_changes:
                     self.modify_config_file_abspath
                     )
 
-            config["general"]["command_line_config"]["original_command"] = config["general"]["original_command"]
-        
         else:
             self.modify_config_file_abspath = self.modify_config = None
 
