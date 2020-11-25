@@ -277,7 +277,7 @@ def target_subfolders(config):
 
 def complete_restart_in(config):
     for model in config["general"]["valid_model_names"]:
-        if not config[model]["lresume"] and config["general"]["run_number"] == 1:
+        if not config[model]["lresume"] and config["general"]["run_number"] == 1: # isn't that redundant? if run_number > 1 then lresume == True?
             if "restart_in_sources" in config[model]:
                 del config[model]["restart_in_sources"]
                 del config[model]["restart_in_targets"]
@@ -727,8 +727,8 @@ def assemble(config):
     config = reuse_sources(config)
     config = replace_year_placeholder(config)
 
+    config = complete_restart_in(config)
     config = globbing(config)
     config = target_subfolders(config)
     config = assemble_intermediate_files_and_finalize_targets(config)
-    config = complete_restart_in(config)
     return config
