@@ -280,7 +280,9 @@ def complete_restart_in(config):
         if not config[model]["lresume"] and config["general"]["run_number"] == 1: # isn't that redundant? if run_number > 1 then lresume == True?
             if "restart_in_sources" in config[model]:
                 del config[model]["restart_in_sources"]
+            if "restart_in_targets" in config[model]:
                 del config[model]["restart_in_targets"]
+            if "restart_in_intermediate" in config[model]:
                 del config[model]["restart_in_intermediate"]
         if "restart_in_sources" in config[model]:
             for categ in list(config[model]["restart_in_sources"].keys()):

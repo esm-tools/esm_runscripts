@@ -278,7 +278,7 @@ class Namelist:
             all_nmls[nml_name] = nml_obj  # PG: or a string representation?
         mconfig["namelist_objs"] = all_nmls
         if verbose:
-            mconfig = nmls_output(mconfig)
+            mconfig = Namelist.nmls_output(mconfig)
         return mconfig
 
     @staticmethod
