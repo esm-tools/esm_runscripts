@@ -1,11 +1,7 @@
 """
 Documentation goes here
 """
-import collections
 import pdb
-import sys
-import time
-import six
 
 from loguru import logger
 
@@ -16,8 +12,9 @@ import esm_rcfile
 
 from . import batch_system, compute, helpers, prepare, tidy
 
+
 class SimulationSetup(object):
-    def __init__(self, command_line_config = None, user_config = None):
+    def __init__(self, command_line_config=None, user_config=None):
         if not command_line_config and not user_config:
             raise ValueError("SimulationSetup needs to be initialized with either command_line_config or user_config.")
         if command_line_config:
@@ -28,11 +25,11 @@ class SimulationSetup(object):
         if not user_config:
             user_config = self.get_user_config_from_command_line(command_line_config)
         if user_config["general"].get("debug_obj_init", False):
-            import pdb; pdb.set_trace()
+            pdb.set_trace()
         self.get_total_config_from_user_config(user_config)
 
         self.config["general"]["command_line_config"] = self.command_line_config
-        if not "verbose" in self.config["general"]:
+        if "verbose" not in self.config["general"]:
             self.config["general"]["verbose"] = False
         # read the prepare recipe
         self.config["general"]["reset_calendar_to_last"] = False
@@ -40,7 +37,6 @@ class SimulationSetup(object):
             self.config["general"]["jobtype"] = "inspect"
             self.config["general"]["reset_calendar_to_last"] = True
 
-        from . import prepare
         self.config = prepare.run_job(self.config)
 
 
@@ -86,25 +82,32 @@ class SimulationSetup(object):
         if kill_after_submit:
             helpers.end_it_all(self.config)
 
-
-
-
-
-
     ##########################    ASSEMBLE ALL THE INFORMATION  ##############################
-
 
     def get_user_config_from_command_line(self, command_line_config):
         try:
             user_config = esm_parser.initialize_from_yaml(command_line_config["scriptname"])
-            if not "additional_files" in user_config["general"]:
+            if "additional_files" not in user_config["general"]:
                 user_config["general"]["additional_files"] = []
         except esm_parser.EsmConfigFileError as error:
             raise error
         except:
             user_config = esm_parser.initialize_from_shell_script(command_line_config["scriptname"])
 
+        # NOTE(PG): I really really don't like this. But I also don't want to
+        # re-introduce black/white lists
+        #
+        # User config wins over command line:
+        # -----------------------------------
+        # Update all **except** for use_venv if it was supplied in the
+        # runscript:
+        deupdate_use_venv = False
+        if "use_venv" in user_config["general"]:
+            user_use_venv = user_config['general']["use_venv"]
+            deupdate_use_venv = True
         user_config["general"].update(command_line_config)
+        if deupdate_use_venv:
+            user_config["general"]["use_venv"] = user_use_venv
         return user_config
 
 
