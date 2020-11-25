@@ -34,6 +34,14 @@ def parse_shargs():
     )
 
     parser.add_argument(
+        "--contained-run", help="Run in a virtual environment", action="store_true", default=None,
+    )
+
+    parser.add_argument(
+        "--open-run", help="Run in default install (not in virtual environment)", action="store_true", default=None,
+    )
+
+    parser.add_argument(
         "-e", "--expid", help="The experiment ID to use", default="test"
     )
 
@@ -112,6 +120,7 @@ def main():
     jobtype = "compute"
     verbose = False
     inspect = None
+    use_venv = None
 
     parsed_args = vars(ARGS)
 
@@ -135,6 +144,18 @@ def main():
         verbose = parsed_args["verbose"]
     if "inspect" in parsed_args:
         inspect = parsed_args["inspect"]
+    if parsed_args["contained_run"] and parsed_args["open_run"]:
+        print("You have set both --contained-run and --open-run, this makes no sense.")
+        print(parsed_args)
+        sys.exit(1)
+    if parsed_args["contained_run"] is not None:
+        use_venv = parsed_args["contained_run"]
+    if parsed_args["open_run"] is not None:
+        use_venv = not parsed_args["open_run"]
+
+
+
+
 
     command_line_config = {}
     command_line_config["check"] = check
@@ -147,6 +168,7 @@ def main():
     command_line_config["last_jobtype"] = ARGS.last_jobtype
     command_line_config["verbose"] = verbose
     command_line_config["inspect"] = inspect
+    command_line_config["use_venv"] = use_venv
 
     command_line_config["original_command"] = original_command.strip()
     command_line_config["started_from"] = os.getcwd()

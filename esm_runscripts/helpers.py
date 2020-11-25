@@ -28,8 +28,14 @@ def evaluate(config, job_type, recipe_name):
             % setup_name
         )
         sys.exit(1)
-
-    if esm_rcfile.FUNCTION_PATH.startswith("NONE_YET"):
+    if config["general"].get("use_venv"):
+        recipe = esm_tools.get_config_filepath("esm_software/esm_runscripts/esm_runscripts.yaml")
+        need_to_parse_recipe = True
+        plugins_bare = esm_tools.get_config_filepath(
+            "esm_software/esm_runscripts/esm_plugins.yaml"
+        )
+        need_to_parse_plugins = True
+    elif esm_rcfile.FUNCTION_PATH.startswith("NONE_YET"):
         recipe = esm_tools.get_config_filepath(
             "esm_software/esm_runscripts/esm_runscripts.yaml"
         )

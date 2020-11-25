@@ -9,6 +9,7 @@ import six
 
 from loguru import logger
 
+import esm_tools
 import esm_parser
 
 import esm_rcfile
@@ -33,7 +34,7 @@ class SimulationSetup(object):
         self.config["general"]["command_line_config"] = self.command_line_config
         if not "verbose" in self.config["general"]:
             self.config["general"]["verbose"] = False
-        # read the prepare recipe 
+        # read the prepare recipe
         self.config["general"]["reset_calendar_to_last"] = False
         if self.config["general"].get("inspect"):
             self.config["general"]["jobtype"] = "inspect"
@@ -41,7 +42,7 @@ class SimulationSetup(object):
 
         from . import prepare
         self.config = prepare.run_job(self.config)
-    
+
 
 
 
@@ -139,8 +140,10 @@ class SimulationSetup(object):
 
 
     def add_esm_runscripts_defaults_to_config(self, config):
-
-        path_to_file = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/defaults.yaml"
+        if config['general'].get("use_venv") or esm_rcfile.FUNCTION_PATH.startswith("NONE_YET"):
+            path_to_file = esm_tools.get_config_filepath("esm_software/esm_runscripts/defaults.yaml")
+        else:
+            path_to_file = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/defaults.yaml"
         default_config = esm_parser.yaml_file_to_dict(path_to_file)
         config["general"]["defaults.yaml"] = default_config
         config = self.distribute_per_model_defaults(config)

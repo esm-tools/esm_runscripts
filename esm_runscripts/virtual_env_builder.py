@@ -98,8 +98,9 @@ def _install_required_plugins(venv_context, config):
 
 def venv_bootstrap(config):
     """Bootstraps your run into a virtual environment"""
-    if "use_venv" not in config["general"] and "open_run" not in config["general"]["original_command"]:
+    if config["general"].get("use_venv") is None and config["general"]["command_line_config"]["use_venv"] is None:
         config = _integorate_user_venv(config)
+        config["general"]["command_line_config"]["use_venv"] = config["general"]["use_venv"]
     if config["general"].get("use_venv", False):
         print(f"Running in venv: {in_virtualenv()}")
         subprocess.check_call("which esm_versions", shell=True)
@@ -117,8 +118,10 @@ def venv_bootstrap(config):
             sys.argv[0] = pathlib.Path(sys.argv[0]).name
             # NOTE(PG): This next line allows the job to restart itself in the
             # virtual environment.
-            _source_and_run_bin_in_venv(venv_context, " ".join(sys.argv), shell=True)
+            _source_and_run_bin_in_venv(venv_context, " ".join(sys.argv)+ " --contained-run", shell=True)
             sys.exit(0)
+    if "--open-run" not in config["general"]["original_command"]:
+        config["general"]["original_command"] += " --open-run"
     return config
 
 

@@ -34,7 +34,7 @@ def run_job(config):
 def compile_model(config):
     """Compiles the desired model before the run starts"""
     model = config["general"]["setup_name"]
-    version = config["general"].get("version") or config[model].get("version") 
+    version = config["general"].get("version") or config[model].get("version")
     if not version:
         return config
     if config.get("general", {}).get("run_number") == 1:
@@ -456,7 +456,7 @@ def copy_tools_to_thisrun(config):
     # In case there is no esm_tools or namelists in the experiment folder,
     # copy from the default esm_tools path
     if not os.path.isdir(tools_dir):
-        if esm_rcfile.FUNCTION_PATH.startswith("NONE_YET"):
+        if config['general'].get("use_venv") or esm_rcfile.FUNCTION_PATH.startswith("NONE_YET"):
             if config["general"]["verbose"]:
                 print("Copying standard yamls from: package interal configs")
             esm_tools.copy_config_folder(tools_dir)
