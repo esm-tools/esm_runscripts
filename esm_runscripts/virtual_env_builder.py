@@ -122,8 +122,9 @@ def venv_bootstrap(config):
             # virtual environment.
             _source_and_run_bin_in_venv(venv_context, " ".join(sys.argv)+ " --contained-run", shell=True)
             sys.exit(0)
-    if "--open-run" not in config["general"]["original_command"]:
-        config["general"]["original_command"] += " --open-run"
+    if not config["general"].get("use_venv"):
+        if "--open-run" not in config["general"]["original_command"]:
+            config["general"]["original_command"] += " --open-run"
     return config
 
 

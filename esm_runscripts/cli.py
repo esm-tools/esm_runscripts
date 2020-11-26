@@ -147,8 +147,6 @@ def main():
     if parsed_args["contained_run"] and parsed_args["open_run"]:
         print("You have set both --contained-run and --open-run, this makes no sense.")
         print(parsed_args)
-        print("Paul is a moron, please reconsider working with him")
-        import pdb; pdb.set_trace()
         sys.exit(1)
     if parsed_args["contained_run"] is not None:
         use_venv = parsed_args["contained_run"]
