@@ -516,6 +516,15 @@ def check_for_unknown_files(config):
     return config
 
 
+
+def resolve_symlinks(file_source):
+    if os.path.islink(file_source):
+        points_to = os.path.realpath(os.readlink(file_source))
+        return resolve_symlinks(points_to)
+    return(file_source)
+
+
+
 def copy_files(config, filetypes, source, target):
 
     successful_files = []
@@ -559,6 +568,7 @@ def copy_files(config, filetypes, source, target):
                             )
                         continue
                     dest_dir = os.path.dirname(file_target)
+                    file_source = resolve_symlinks(file_source)
                     if not os.path.isdir(file_source):
                         try:
                             if not os.path.isdir(dest_dir):
