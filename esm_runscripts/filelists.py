@@ -147,11 +147,8 @@ def complete_sources(config):
 def reuse_sources(config):
     if config["general"]["run_number"] == 1:
         return config
-    print("Reusing files...")
     for filetype in config["general"]["reusable_filetypes"]:
-        print(f"    {filetype}")
         for model in config["general"]["valid_model_names"] + ["general"]:
-            print(f"            {model}")
             if filetype + "_sources" in config[model]:
                 for categ in config[model][filetype + "_sources"]:
                     config[model][filetype + "_sources"][categ] = (
@@ -555,6 +552,9 @@ def copy_files(config, filetypes, source, target):
                                 file_source.replace("NONE_YET/", "")
                             )
                     file_target = os.path.normpath(targetblock[categ])
+                    if config["general"]["verbose"]:
+                        print(f"source: {file_source}")
+                        print(f"   --> target: {file_target}")
                     if file_source == file_target:
                         if config["general"]["verbose"]:
                             print(

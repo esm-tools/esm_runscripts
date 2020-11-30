@@ -208,9 +208,7 @@ def find_last_prepared_run(config):
             )
         )
 
-        print(config["general"]["base_dir"] + config["general"]["expid"] + "/run_" + datestamp)
         if os.path.isdir(config["general"]["base_dir"] + config["general"]["expid"] + "/run_" + datestamp):
-            print("Last prepared run: " + datestamp)
             config["general"]["current_date"] = current_date
             return config
 
