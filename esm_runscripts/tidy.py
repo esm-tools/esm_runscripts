@@ -465,6 +465,41 @@ def _clean_old_runs_size(config):
             os.remove(file_)
 
 
+def start_various_jobtypes_after_compute(config):
+    monitor_file = config["general"]["monitor_file"]
+    # Jobs that should be started directly from the compute job:
+    next_jobs = ["post"]  # Later also: "viz", "couple", ("analysis"...?)
+    for jobtype in next_jobs:
+        do_jobtype = False
+        for model in config:
+            # Allows for both "do_post: True" or "post: True" in config:
+            if (
+                config[model].get(f"do_{jobtype}", False) or
+                config[model].get(jobtype, False)
+            ):
+                do_jobtype = True
+        if do_jobtype:
+            monitor_file.write(f"{jobtype} for this run:\n")
+            command_line_config = config["general"]["command_line_config"]
+            command_line_config["jobtype"] = jobtype
+            command_line_config["original_command"] = command_line_config[
+                "original_command"
+            ].replace("compute", jobtype)
+            monitor_file.write(f"Initializing {jobtype} object with:\n")
+            monitor_file.write(str(command_line_config))
+            # NOTE(PG) Non top level import to avoid circular dependency:
+            from .sim_objects import SimulationSetup
+            jobtype_obj = SimulationSetup(command_line_config)
+            monitor_file.write("f{jobtype} object built....\n")
+            if f"{jobtype}_update_compute_config_before_resubmit" in jobtype_obj.config:
+                monitor_file.write(f"{jobtype} object needs to update the calling job config:\n")
+                # FIXME(PG): This might need to be a deep update...?
+                config.update(jobtype.config[f"{jobtype}_update_compute_config_before_resubmit"])
+            monitor_file.write(f"Calling {jobtype} job:\n")
+            jobtype_obj()
+    return config
+
+
 def start_post_job(config):
     monitor_file = config["general"]["monitor_file"]
     do_post = False
@@ -503,7 +538,19 @@ def all_done(config):
     )
 
     database_actions.database_entry_success(config)
+    return config
 
+def signal_tidy_completion(config):
+    helpers.write_to_log(
+        config,
+        [
+            str(config["general"]["jobtype"]),
+            str(config["general"]["run_number"]),
+            str(config["general"]["current_date"]),
+            str(config["general"]["jobid"]),
+            "- done",
+        ],
+    )
     return config
 
 
