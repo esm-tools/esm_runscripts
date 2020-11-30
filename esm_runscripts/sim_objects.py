@@ -8,6 +8,7 @@ from loguru import logger
 import esm_tools
 import esm_parser
 
+
 import esm_rcfile
 
 from . import batch_system, compute, helpers, prepare, tidy
@@ -52,6 +53,8 @@ class SimulationSetup(object):
             self.tidy(*args, **kwargs)
         elif self.config["general"]["jobtype"] == "post":
             self.postprocess(*args, **kwargs)
+        elif self.config["general"]["jobtype"] == "viz":
+            self.viz(*args, **kwargs)
         else:
             print("Unknown jobtype specified! Goodbye...")
             helpers.end_it_all(self.config)
@@ -81,6 +84,24 @@ class SimulationSetup(object):
 
         if kill_after_submit:
             helpers.end_it_all(self.config)
+
+###################################     VIZ     #############################################################
+
+    def viz(self, kill_after_submit=True):
+        """
+        Starts the Viz job.
+
+        Parameters
+        ----------
+        kill_after_submit: bool
+            Default ``True``. If set, the entire Python instance is killed with ``sys.exit()``.
+        """
+        # NOTE(PG): Local import, not everyone will have viz yet...
+        import esm_viz as viz
+        self.config = viz.run_job(self.config)
+        if kill_after_submit:
+            helpers.end_it_all(self.config)
+
 
     ##########################    ASSEMBLE ALL THE INFORMATION  ##############################
 

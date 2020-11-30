@@ -121,6 +121,8 @@ def venv_bootstrap(config):
     if not config["general"].get("use_venv"):
         if "--open-run" not in config["general"]["original_command"]:
             config["general"]["original_command"] += " --open-run"
+        if "--open-run" not in config["general"]["command_line_config"]["original_command"]:
+            config["general"]["command_line_config"]["original_command"] += " --open_run"
     return config
 
 

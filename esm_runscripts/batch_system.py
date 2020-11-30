@@ -192,6 +192,14 @@ class batch_system:
                 + config["general"]["jobtype"]
                 + " -v "
             )
+            if "--open-run" in config["general"]["original_command"]:
+                tidy_call += " --open-run"
+            elif "--contained-run" in config['general']['original_command']:
+                tidy_call += " --contained-run"
+            else:
+                print("ERROR -- Not sure if you were in a contained or open run!")
+                print("ERROR -- See write_simple_runscript for the code causing this.")
+                sys.exit(1)
         elif config["general"]["jobtype"] == "post":
             tidy_call = ""
             commands = config["general"]["post_task_list"]
