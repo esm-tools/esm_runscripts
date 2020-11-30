@@ -561,6 +561,9 @@ def copy_files(config, filetypes, source, target):
                                 file_source.replace("NONE_YET/", "")
                             )
                     file_target = os.path.normpath(targetblock[categ])
+                    if config["general"]["verbose"]:
+                        print(f"source: {file_source}")
+                        print(f"   --> target: {file_target}")
                     if file_source == file_target:
                         if config["general"]["verbose"]:
                             print(
