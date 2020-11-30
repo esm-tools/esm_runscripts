@@ -8,7 +8,7 @@ import psutil
 import shutil
 
 from . import coupler, database_actions, helpers
-from .filelists import copy_files
+from .filelists import copy_files, resolve_symlinks
 
 
 def run_job(config):
@@ -609,18 +609,22 @@ def copy_all_results_to_exp(config):
                         + destination
                     )
             else:
-                linkdest = os.path.realpath(source)
-                newlinkdest = (
-                    destination.rsplit("/", 1)[0] + "/" + linkdest.rsplit("/", 1)[-1]
-                )
+                linkdest = resolve_symlinks(source)
+                #newlinkdest = (
+                #    destination.rsplit("/", 1)[0] + "/" + linkdest.rsplit("/", 1)[-1]
+                #)
                 if os.path.islink(destination):
-                    os.remove(destination)
+                    destdest = resolve_symlinks(source)
+                    if linkdest == destdest:
+                        # both links are identical, skip
+                        continue
+                    #os.remove(destination)
                 if os.path.isfile(destination):
                     os.rename(
                         destination,
                         destination + "_" + config["general"]["last_run_datestamp"],
                     )
-                os.symlink(newlinkdest, destination)
+                os.symlink(linkdest, destination)
     return config
 
 
