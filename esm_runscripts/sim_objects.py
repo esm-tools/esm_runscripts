@@ -2,6 +2,7 @@
 Documentation goes here
 """
 import pdb
+import os
 
 from loguru import logger
 
@@ -210,13 +211,42 @@ class SimulationSetup(object):
         """
 
 
+        monitor_file_path = (
+            self.config["general"]["experiment_scripts_dir"] +
+            "/monitoring_file_" +
+            self.config["general"]["run_datestamp"] +
+            ".out"
+        )
+        monitor_file_in_run = self.config["general"]["thisrun_scripts_dir"] + "/monitoring_file.out"
+        exp_log_path = (
+            self.config["general"]["experiment_scripts_dir"] +
+            self.config["general"]["expid"] +
+            "_compute_" +
+            self.config["general"]["run_datestamp"] +
+            "_" +
+            str(self.config["general"]["jobid"]) +
+            ".log"
+        )
+        log_in_run = (
+            self.config["general"]["thisrun_scripts_dir"] +
+            self.config["general"]["expid"] +
+            "_compute_" +
+            str(self.config["general"]["jobid"]) +
+            ".log"
+        )
+
+
         with open(
-            self.config["general"]["thisrun_scripts_dir"] + "/monitoring_file.out",
+            monitor_file_path,
             "w",
             buffering=1,
         ) as monitor_file:
 
             self.config["general"]["monitor_file"] = monitor_file
+            if os.path.isfile(monitor_file_path):
+                os.symlink(monitor_file_path, monitor_file_in_run)
+            if os.path.isfile(exp_log_path):
+                os.symlink(exp_log_path, log_in_run)
             self.config = tidy.run_job(self.config)
 
         helpers.end_it_all(self.config)
