@@ -192,9 +192,9 @@ class batch_system:
                 + config["general"]["jobtype"]
                 + " -v "
             )
-            if "--open-run" in config["general"]["original_command"]:
+            if "--open-run" in config["general"]["original_command"] or not config["general"].get("use_venv"):
                 tidy_call += " --open-run"
-            elif "--contained-run" in config['general']['original_command']:
+            elif "--contained-run" in config['general']['original_command'] or config["general"].get("use_venv"):
                 tidy_call += " --contained-run"
             else:
                 print("ERROR -- Not sure if you were in a contained or open run!")
