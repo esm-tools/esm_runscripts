@@ -4,19 +4,21 @@ import esm_parser
 
 class last_minute_changes:
     def __init__(self, config):
-        self.modify_config_file = config["general"]["command_line_config"].get("modify_config_file")
+        self.modify_config_file = config["general"].get("modify_config_file")
 
         if self.modify_config_file:
-            self.modify_config_file_abspath = os.path.abspath(modify_config_file)
-            self.modify_config = esm_parser.yaml_file_to_dict(modify_config_file_abspath)
+            self.modify_config_file_abspath = os.path.abspath(self.modify_config_file)
+            self.modify_config = esm_parser.yaml_file_to_dict(self.modify_config_file_abspath)
             
             config["general"]["modify_config"] = copy.deepcopy(self.modify_config)
             config["general"]["modify_config_file_abspath"] = self.modify_config_file_abspath 
 
-            config["general"]["original_command"] = config["general"]["original_command"].replace(
-                    self.modify_config_file, 
-                    self.modify_config_file_abspath
-                    )
+# kh 27.11.20 "original command" is not available for esm_master (but for esm_runscripts)
+            if "original_command" in "general":
+                config["general"]["original_command"] = config["general"]["original_command"].replace(
+                        self.modify_config_file, 
+                        self.modify_config_file_abspath
+                        )
 
         else:
             self.modify_config_file_abspath = self.modify_config = None
@@ -45,17 +47,18 @@ def apply_last_minute_changes(config):
 
 def restore_protected_last_minute_changes(config):
     if config["general"]["modify_config_memo"]:
-        if config["general"]["modify_config_memo"].config:
-            config["general"]["modify_config"] = config["general"]["modify_config_memo"].config
+        if config["general"]["modify_config_memo"].modify_config:
+            config["general"]["modify_config"] = config["general"]["modify_config_memo"].modify_config
         del  config["general"]["modify_config_memo"]
 
-    if config["general"].has_key("modify_config_memo"): # Entry could exist but be False
+# kh 26.11.20 
+    if "modify_config_memo" in config["general"]: # Entry could exist but be False
         del  config["general"]["modify_config_memo"]
 
     return config
 
 
-def _modify_config_with_settings(self, config, settings):
+def _modify_config_with_settings(config, settings):
     if settings:
         for k, v in settings.items():
             path_to_key = k.split(".")
