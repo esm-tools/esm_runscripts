@@ -519,7 +519,7 @@ def check_for_unknown_files(config):
 
 def resolve_symlinks(file_source):
     if os.path.islink(file_source):
-        points_to = os.path.realpath(os.readlink(file_source))
+        points_to = os.path.realpath(file_source)
         return resolve_symlinks(points_to)
     return(file_source)
 
