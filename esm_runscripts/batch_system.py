@@ -200,6 +200,11 @@ class batch_system:
                 print("ERROR -- Not sure if you were in a contained or open run!")
                 print("ERROR -- See write_simple_runscript for the code causing this.")
                 sys.exit(1)
+
+            if "modify_config_file_abspath" in config["general"]:
+                if config["general"]["modify_config_file_abspath"]:
+                    tidy_call += " -m " + config["general"]["modify_config_file_abspath"]
+
         elif config["general"]["jobtype"] == "post":
             tidy_call = ""
             commands = config["general"]["post_task_list"]

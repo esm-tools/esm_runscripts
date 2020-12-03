@@ -62,6 +62,14 @@ def parse_shargs():
     )
 
     parser.add_argument(
+        "--modify-config",
+        "-m",
+        dest="modify",
+        help="[m]odify configuration", 
+        default="", # kh 15.07.20 "usermods.yaml"
+    )
+
+    parser.add_argument(
         "-j",
         "--last_jobtype",
         help="Write the jobtype this run was called from (esm-tools internal)",
@@ -121,6 +129,7 @@ def main():
     verbose = False
     inspect = None
     use_venv = None
+    modify_config_file = None
 
     parsed_args = vars(ARGS)
 
@@ -152,10 +161,8 @@ def main():
         use_venv = parsed_args["contained_run"]
     if parsed_args["open_run"] is not None:
         use_venv = not parsed_args["open_run"]
-
-
-
-
+    if "modify" in parsed_args: 
+        modify_config_file = parsed_args["modify"]
 
     command_line_config = {}
     command_line_config["check"] = check
@@ -168,7 +175,12 @@ def main():
     command_line_config["last_jobtype"] = ARGS.last_jobtype
     command_line_config["verbose"] = verbose
     command_line_config["inspect"] = inspect
+<<<<<<< HEAD
     command_line_config["use_venv"] = use_venv
+=======
+    if modify_config_file:
+        command_line_config["modify_config_file"] = modify_config_file
+>>>>>>> fixes/more_dyn_conf_merged
 
     command_line_config["original_command"] = original_command.strip()
     command_line_config["started_from"] = os.getcwd()
