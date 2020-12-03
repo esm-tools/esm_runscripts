@@ -585,6 +585,25 @@ def maybe_resubmit(config):
 # implementation might be OK... (DB)
 
 
+
+def throw_away_some_infiles(config):
+    if config["general"]["run_number"] == 1:
+        return config
+    monitor_file = config["general"]["monitor_file"]
+    monitor_file.write("throwing away restart_in files \n")
+    for model in config["general"]["valid_model_names"]:
+        print(f"{model}")
+        if "thisrun_restart_in_dir" in config[model]:
+            if os.path.isdir(config[model]["thisrun_restart_in_dir"]):
+                for root, dirs, files in os.walk(config[model]["thisrun_restart_in_dir"]):
+                    for name in files:
+                        source = os.path.join(root, name)
+                        os.remove(source)
+                        print(f"Removing {source}")
+    return config
+
+
+
 def copy_all_results_to_exp(config):
     monitor_file = config["general"]["monitor_file"]
     monitor_file.write("Copying stuff to main experiment folder \n")
@@ -597,8 +616,13 @@ def copy_all_results_to_exp(config):
             if config["general"]["verbose"]:
                 print("Skipping files in work.")
             continue
+
         for name in files:
             source = os.path.join(root, name)
+           
+            if not os.stat(source).st_size > 0: # skip empty files
+                continue
+
             if config["general"]["verbose"]:
                 print("File: " + source)
             destination = source.replace(
