@@ -84,8 +84,75 @@ def check_model_lresume(config):
 def resolve_some_choose_blocks(config):
     from esm_parser import choose_blocks
 
+    model_env_into_computer(config)
+
     choose_blocks(config, blackdict=config._blackdict)
     return config
+
+def model_env_into_computer(config):
+    import copy
+    from esm_parser import basic_choose_blocks, dict_merge, user_note, user_error, pprint_config
+
+
+    pprint_config(config["general"]["command_line_config"])
+    pprint_config(config["general"]["run_number"])
+
+    run_or_compile = config.get("general", {}).get("run_or_compile", "runtime")
+    thesechanges = run_or_compile + "_environment_changes"
+    models = config.get("general", {}).get("models", [])
+    env_vars = {}
+    for model in models:
+        modelconfig = copy.deepcopy(config[model])
+        modelconfig["environment_changes"] = modelconfig.get("environment_changes", {})
+        if thesechanges in modelconfig:
+            if "environment_changes" in modelconfig:
+                modelconfig["environment_changes"].update(modelconfig[thesechanges])
+            else:
+                modelconfig["environment_changes"] = modelconfig[thesechanges]
+        basic_choose_blocks(modelconfig["environment_changes"], config)
+        overwrite = config[model].get("env_overwrite", False)
+        for key, value in modelconfig["environment_changes"].items():
+            if (
+                key not in ["export_vars", "module_actions"]
+                and "computer" in config
+                and not overwrite
+                #and run_or_compile=="runtime"
+            ):
+                if key in env_vars and config["general"]["run_number"] == 1:
+                    model0 = env_vars[key][1]
+                    while True:
+                        user_note("Environment conflict", f"In '{model0}':")
+                        pprint_config({key: env_vars[key][0]})
+                        print("\nIn '" + model + "':")
+                        pprint_config({key: value})
+                        if not config["general"]["jobtype"]=="tidy_and_resubmit":
+                            user_answer = input(
+                                f"Environment variable '{key}' defined in '{model0}' is "
+                                + "going to be overwritten by the one defined in "
+                                + f"'{model}'. Are you okay with that? (Y/n): "
+                            )
+                        else:
+                            user_answer = "Y"
+                            print("\n\n\n\n\nMake a log here \n\n\n\n\n")
+                        if user_answer == "Y":
+                            config[model]["env_overwrite"] = True
+                            break
+                        elif user_answer == "n":
+                            config[model]["env_overwrite"] = False
+                            user_error(
+                                "Environment conflict",
+                                "You were not happy with the environment variable "
+                                + f"'{key}' in '{model0}' being overwritten by the same "
+                                + f"variable in '{model}'. If you are running a "
+                                + "coupled setup, we recommend that you resolve this "
+                                + "conflict inside the coupled setup file, by "
+                                + "specifying unconflicting environments for each "
+                                + "model, or contact the setup developers.",
+                            )
+                        else:
+                            print("Wrong answer, please choose Y/n.")
+                dict_merge(config["computer"], {key: value})
+                env_vars[key] = [value, model]
 
 
 def _initialize_calendar(config):
