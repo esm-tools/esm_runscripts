@@ -86,9 +86,14 @@ def _install_tools(venv_context, config):
 
 def _install_required_plugins(venv_context, config):
     required_plugins = []
-    for sub_cfg in config.items():
+    for sub_cfg_key, sub_cfg in config.items():
         if isinstance(sub_cfg, dict):
             if "required_plugins" in sub_cfg:
+                try:
+                    assert isinstance(sub_cfg["required_plugins"], list)
+                except AssertionError:
+                    print(f"ERROR -- required plugins in {sub_cfg_key} must be a list!")
+                    sys.exit(1)
                 required_plugins += sub_cfg["required_plugins"]
     for required_plugin in required_plugins:
         _run_bin_in_venv(venv_context, ["pip", "install", '-q', required_plugin])
