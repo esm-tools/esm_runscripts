@@ -36,7 +36,13 @@ class coupler_class:
         self.finalize(destination_dir)
         if full_config["general"]["verbose"]:
             self.print_config_files()
-        return "namcouple"
+
+        coupler_name = self.name
+        if coupler_name == 'yac':                                               
+            couplingfile = "coupling.xml"                                       
+        else:                                                                   
+            couplingfile = "namcouple"  
+        return couplingfile
 
 
     def print_config_files(self):
