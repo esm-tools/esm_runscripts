@@ -471,6 +471,7 @@ def check_for_unknown_files(config):
     known_files = [
         config["general"]["thisrun_work_dir"] + "/" + "hostfile_srun",
         config["general"]["thisrun_work_dir"] + "/" + "namcouple",
+        config["general"]["thisrun_work_dir"] + "/" + "coupling.xml",
     ]
 
     for filetype in config["general"]["all_model_filetypes"]:
