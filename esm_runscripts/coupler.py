@@ -17,7 +17,9 @@ class coupler_class:
                 self.nb_of_couplings += len(list(full_config[self.name]["coupling_target_fields"][restart_file]))
         if name == "oasis3mct":
             from . import oasis
-            
+
+            if "shift_maxtime" in full_config["oasis3mct"]:
+                self.runtime += full_config["oasis3mct"]["shift_maxtime"]           
             # seb-wahl: manual merge from 'oifs' branch as oifs branch contains many whitespace changes
             self.norestart = full_config["oasis3mct"].get("norestart","F")
             self.coupler = oasis.oasis(self.nb_of_couplings,  self.coupled_execs, self.runtime,
