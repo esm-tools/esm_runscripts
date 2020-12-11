@@ -65,7 +65,7 @@ def parse_shargs():
         "--modify-config",
         "-m",
         dest="modify",
-        help="[m]odify configuration", 
+        help="[m]odify configuration",
         default="", # kh 15.07.20 "usermods.yaml"
     )
 
@@ -161,7 +161,7 @@ def main():
         use_venv = parsed_args["contained_run"]
     if parsed_args["open_run"] is not None:
         use_venv = not parsed_args["open_run"]
-    if "modify" in parsed_args: 
+    if "modify" in parsed_args:
         modify_config_file = parsed_args["modify"]
 
     command_line_config = {}
@@ -175,12 +175,9 @@ def main():
     command_line_config["last_jobtype"] = ARGS.last_jobtype
     command_line_config["verbose"] = verbose
     command_line_config["inspect"] = inspect
-<<<<<<< HEAD
     command_line_config["use_venv"] = use_venv
-=======
     if modify_config_file:
         command_line_config["modify_config_file"] = modify_config_file
->>>>>>> fixes/more_dyn_conf_merged
 
     command_line_config["original_command"] = original_command.strip()
     command_line_config["started_from"] = os.getcwd()
