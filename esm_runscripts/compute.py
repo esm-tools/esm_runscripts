@@ -13,6 +13,7 @@ from .batch_system import batch_system
 from .filelists import copy_files, log_used_files
 from .helpers import end_it_all, evaluate, write_to_log
 from .namelists import Namelist
+from loguru import logger
 
 #####################################################################
 #                                   compute jobs                    #
@@ -283,6 +284,18 @@ def initialize_experiment_logfile(config):
             "- submitted",
         ],
     )
+
+    # Write trace-log file now that we know where to do that
+    if "trace_sink" in dir(logger):
+        logger.trace_sink.def_path(
+            config["general"]["experiment_dir"] +
+            "/log/" +
+            config["general"]["expid"] +
+            "_esm_runscripts_" +
+            config["general"]["run_datestamp"] +
+            ".log"
+        )
+
     return config
 
 
