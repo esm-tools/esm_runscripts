@@ -6,6 +6,7 @@ import esm_rcfile
 import six
 import yaml
 from esm_calendar import Date
+from colorama import Fore, Back, Style, init
 
 import esm_tools
 
@@ -317,6 +318,16 @@ def _write_finalized_config(config):
         config_file.write(out)
     return config
 
+def color_diff(diff):
+    for line in diff:
+        if line.startswith('+'):
+            yield Fore.GREEN + line + Fore.RESET
+        elif line.startswith('-'):
+            yield Fore.RED + line + Fore.RESET
+        elif line.startswith('^'):
+            yield Fore.BLUE + line + Fore.RESET
+        else:
+            yield line
 
 def update_runscript(fromdir, scriptsdir, tfile, gconfig, file_type):
     """
@@ -369,7 +380,7 @@ def update_runscript(fromdir, scriptsdir, tfile, gconfig, file_type):
                 f"{fromdir + '/' + tfile} differs from "
                 + f"{scriptsdir + '/' + tfile}:\n"
             )
-            for line in difflib.unified_diff(script_t, script_o):
+            for line in color_diff(difflib.unified_diff(script_t, script_o)):
                 differences += line
 
             # If the --update flag is used, notify that the target script will
