@@ -137,3 +137,71 @@ def assemble_log_message(
     # TODO: Do we want to be able to specify a timestamp seperator as well?
     line = timestampStr + " : " + message_sep.join(message)
     return line
+
+
+############################## SINK CLASS FOR LOGURU.LOGGER ###########################
+
+class SmartSink():
+    '''
+    A class for smart sinks that allow for logging (using ``logger`` from loguru), even
+    if the file path of the log file is not yet defined. The actual sink is not the
+    instanced object itself, but the method ``sink`` of the instance. The log record is
+    saved in ``self.log_record`` and the log file is written using the path specified
+    in ``self.path``. If the path is not specified, the log is stored only in the
+    ``self.log_record``. When the path is finally specified, ``self.log_record`` is
+    dumped into the log file and from that moment, any time ``logger`` logs something it
+    will also be written into the file. To specify the path the method ``def_path``
+    needs to be used.
+    '''
+
+    def __init__(self):
+        # Initialise instance variables
+        self.log_record = []
+        self.path = None
+
+    def sink(self, message):
+        '''
+        The actual sink for loguru's ``logger``. Once you define a logger level a sink
+        needs to be provided. Standard sinks include file paths, methods, etc.
+        Providing this method as a sink (``logger.add(<name_of_the_instance>.sink,
+        level="<your_level>", ...)``) enables the functionality of the SmartSink object.
+
+        Parameters
+        ----------
+        message : str
+            String containing the logging message.
+        '''
+        if self.path:
+            self.write_log(message, "a")
+        self.log_record.append(message)
+
+    def write_log(self, message, wmode):
+        '''
+        Method to write the logs into the disk.
+
+        Parameters
+        ----------
+        message : str, list
+            String containing the logging message or list containing more than one
+            logging message, to be written in the file.
+        wmode : str
+            Writing mode to choose among ``"w"`` or ``"a"``.
+        '''
+        if isinstance(message, str):
+            message = [message]
+        with open(self.path, wmode) as log:
+            for line in message:
+                log.write(line)
+
+    def def_path(self, path):
+        '''
+        Method to define the path of the file. Once the path is defined, the log record
+        is written into the file.
+
+        Parameters
+        ----------
+        path : str
+            Path of the logging file.
+        '''
+        self.path = path
+        self.write_log(self.log_record, "w")

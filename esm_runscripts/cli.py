@@ -10,6 +10,7 @@ import os
 import sys
 
 from .sim_objects import *
+from .helpers import SmartSink
 from loguru import logger
 from esm_motd import check_all_esm_packages
 
@@ -173,8 +174,13 @@ def main():
     command_line_config["original_command"] = original_command.strip()
     command_line_config["started_from"] = os.getcwd()
 
+    # Define a sink object to store the logs. Path of the logs can be later specified
+    # by using <sink_obj>.def_path(<path>)
+    trace_sink = SmartSink()
+    logger.trace_sink = trace_sink
+
     logger.remove()
-    logger.add("verbose.log", level="TRACE")
+    logger.add(trace_sink.sink, level="TRACE")
 
     logger.add(sys.stdout, level="INFO", format="{message}")
     if verbose:
