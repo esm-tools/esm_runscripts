@@ -558,10 +558,11 @@ def copy_files(config, filetypes, source, target):
                     # namelists that have no ``namelist`` in their name. This is a more
                     # general implementation but it enforces the use of the
                     # ``namelists`` list to be defined for each model with namelists.
-                    isnamelist = (
-                        "namelist" in file_source or
-                        any(x in file_source for x in config[model].get("namelists", []))
+                    namelist_candidates = (
+                        [item for item in config[model].get("namelists", [])]
+                        + ["namelist"]
                     )
+                    isnamelist = any(map(file_source.__contains__, namelist_candidates))
                     if source == "init":
                         if isnamelist and file_source.startswith("NONE_YET"):
                             file_source = esm_tools.get_namelist_filepath(
