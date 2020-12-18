@@ -554,10 +554,17 @@ def copy_files(config, filetypes, source, target):
                     file_source = os.path.normpath(sourceblock[categ])
                     # NOTE(PG): This is a really, really, REALLY bad hack and it
                     # makes me physically ill to look at:
+                    # NOTE(MA): The previous implementation was not able to include
+                    # namelists that have no ``namelist`` in their name. This is a more
+                    # general implementation but it enforces the use of the
+                    # ``namelists`` list to be defined for each model with namelists.
+                    namelist_candidates = (
+                        [item for item in config[model].get("namelists", [])]
+                        + ["namelist"]
+                    )
+                    isnamelist = any(map(file_source.__contains__, namelist_candidates))
                     if source == "init":
-                        if ("namelist" in file_source) and (
-                            file_source.startswith("NONE_YET")
-                        ):
+                        if isnamelist and file_source.startswith("NONE_YET"):
                             file_source = esm_tools.get_namelist_filepath(
                                 file_source.replace("NONE_YET/", "")
                             )
