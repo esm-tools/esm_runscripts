@@ -332,81 +332,127 @@ def assemble_intermediate_files_and_finalize_targets(config):
     return config
 
 
+def find_valid_year(config, year):
+    for entry in config:
+        from_info = float(getattr(config[entry], "from", -50000000000))
+        to_info = float(getattr(config[entry], "to", 500000000000))
+        if from_info <= year <= to_info:
+            return entry
+    print(f"Sorry, no entry found for year {year} in config {config}")
+    sys.exit(-1)
+
 def replace_year_placeholder(config):
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"] + ["general"]:
             if filetype + "_targets" in config[model]:
+
                 if filetype + "_additional_information" in config[model]:
                     for file_category in config[model][
                         filetype + "_additional_information"
                     ]:
                         if file_category in config[model][filetype + "_targets"]:
+                            all_years = [config["general"]["current_date"].year]
+                                
                             if (
-                                "@YEAR@"
-                                in config[model][filetype + "_targets"][file_category]
+                                "need_timestep_before"
+                                in config[model][
+                                    filetype + "_additional_information"
+                                ][file_category]
                             ):
-                                all_years = [config["general"]["current_date"].year]
+                                all_years.append(
+                                    config["general"]["prev_date"].year
+                                )
+                            if (
+                                "need_timestep_after"
+                                in config[model][
+                                    filetype + "_additional_information"
+                                ][file_category]
+                            ):
+                                all_years.append(
+                                    config["general"]["next_date"].year
+                                )
+                            if (
+                                "need_year_before"
+                                in config[model][
+                                    filetype + "_additional_information"
+                                ][file_category]
+                            ):
+                                all_years.append(
+                                    config["general"]["current_date"].year - 1
+                                )
+                            if (
+                                "need_year_after"
+                                in config[model][
+                                    filetype + "_additional_information"
+                                ][file_category]
+                            ):
+                                all_years.append(
+                                    config["general"]["current_date"].year + 1
+                                )
 
-                                if (
-                                    "need_timestep_before"
-                                    in config[model][
-                                        filetype + "_additional_information"
-                                    ][file_category]
-                                ):
-                                    all_years.append(
-                                        config["general"]["prev_date"].year
-                                    )
-                                if (
-                                    "need_timestep_after"
-                                    in config[model][
-                                        filetype + "_additional_information"
-                                    ][file_category]
-                                ):
-                                    all_years.append(
-                                        config["general"]["next_date"].year
-                                    )
-                                if (
-                                    "need_year_before"
-                                    in config[model][
-                                        filetype + "_additional_information"
-                                    ][file_category]
-                                ):
-                                    all_years.append(
-                                        config["general"]["current_date"].year - 1
-                                    )
-                                if (
-                                    "need_year_after"
-                                    in config[model][
-                                        filetype + "_additional_information"
-                                    ][file_category]
-                                ):
-                                    all_years.append(
-                                        config["general"]["current_date"].year + 1
-                                    )
+                            all_years = list(
+                                dict.fromkeys(all_years)
+                            )  # removes duplicates
 
-                                all_years = list(
-                                    dict.fromkeys(all_years)
-                                )  # removes duplicates
+                            for year in all_years:
+                                new_category = file_category + "_year_" + str(year)
+                                if type(config[model][filetype + "_sources"][file_category]) == dict:
+                                    config[model][filetype + "_sources"][new_category] = \
+                                            find_valid_year(config[model][filetype + "_sources"][file_category], year)
+                                    config[model][filetype + "_targets"][new_category] = \
+                                            config[model][filetype + "_targets"][file_category]
 
-                                for year in all_years:
+                                    if (
+                                        "@YEAR@"
+                                        in config[model][filetype + "_targets"][new_category]
+                                    ):
+                                        new_target_name = config[model][
+                                            filetype + "_targets"
+                                        ][new_category].replace("@YEAR@", str(year))
+                                        config[model][filetype + "_targets"][
+                                            new_category
+                                        ] = new_target_name
 
-                                    new_category = file_category + "_year_" + str(year)
-                                    new_target_name = config[model][
-                                        filetype + "_targets"
-                                    ][file_category].replace("@YEAR@", str(year))
-                                    new_source_name = config[model][
-                                        filetype + "_sources"
-                                    ][file_category].replace("@YEAR@", str(year))
+                                    if (
+                                        "@YEAR@"
+                                        in config[model][filetype + "_sources"][new_category]
+                                    ):
+                                        new_source_name = config[model][
+                                            filetype + "_sources"
+                                        ][new_category].replace("@YEAR@", str(year))
+                                        config[model][filetype + "_sources"][
+                                            new_category
+                                        ] = new_source_name
 
-                                    config[model][filetype + "_targets"][
-                                        new_category
-                                    ] = new_target_name
-                                    config[model][filetype + "_sources"][
-                                        new_category
-                                    ] = new_source_name
+                            del config[model][filetype + "_sources"][file_category]
+                            del config[model][filetype + "_targets"][file_category]
 
-                                del config[model][filetype + "_targets"][file_category]
-                                del config[model][filetype + "_sources"][file_category]
+                year = config["general"]["current_date"].year
+                for file_category in config[model][filetype + "_targets"]:
+                    if type(config[model][filetype + "_sources"][file_category]) == dict:
+                        config[model][filetype + "_sources"][file_category] = \
+                                find_valid_year(config[model][filetype + "_sources"][file_category], year)
+                    if (
+                        "@YEAR@"
+                        in config[model][filetype + "_targets"][file_category]
+                    ):
+                        new_target_name = config[model][
+                            filetype + "_targets"
+                        ][file_category].replace("@YEAR@", str(year))
+                        config[model][filetype + "_targets"][
+                            file_category
+                        ] = new_target_name
+
+                    if (
+                        "@YEAR@"
+                        in config[model][filetype + "_sources"][file_category]
+                    ):
+                        new_source_name = config[model][
+                            filetype + "_sources"
+                        ][file_category].replace("@YEAR@", str(year))
+                        config[model][filetype + "_sources"][
+                            file_category
+                        ] = new_source_name
 
     return config
 
