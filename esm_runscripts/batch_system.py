@@ -124,7 +124,7 @@ class batch_system:
         extras = []
         if config["general"].get("unlimited_stack_size", True):
             extras.append("# Set stack size to unlimited")
-            extras.append("ulimit -s")
+            extras.append("ulimit -s unlimited")
         if config['general'].get('use_venv', False):
             extras.append("# Start everything in a venv")
             extras.append("source "+config["general"]["experiment_dir"]+"/.venv_esmtools/bin/activate")
