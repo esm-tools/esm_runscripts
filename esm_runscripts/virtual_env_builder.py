@@ -109,15 +109,20 @@ def venv_bootstrap(config):
             config["general"]["command_line_config"]["use_venv"] = config["general"]["use_venv"]
     if config["general"].get("use_venv", False):
         if not in_virtualenv():
-            print(f"Building virtual env, please be patient (this takes about 3 minutes)...")
-            start_time = datetime.datetime.now()
             venv_path = pathlib.Path(config['general']['experiment_dir']).joinpath('.venv_esmtools')
-            venv_context = _venv_create(venv_path)
-            _run_python_in_venv(venv_context, ['-m', 'pip', '-q', 'install', '-U', 'pip'])
-            _run_python_in_venv(venv_context, ['-m', 'pip', '-q', 'install', '-U', 'wheel'])
-            _install_tools(venv_context, config)
-            _install_required_plugins(venv_context, config)
-            print(f"...finished {datetime.datetime.now() - start_time}, restarting your job in the virtual env")
+            if venv_path.exists():
+                print(f"{venv_path} already exists, reusing...")
+                venv_context = _EnvBuilder(with_pip=True).ensure_directories(venv_path)
+            else:
+                print(f"Building virtual env, please be patient (this takes about 3 minutes)...")
+                start_time = datetime.datetime.now()
+                venv_path = pathlib.Path(config['general']['experiment_dir']).joinpath('.venv_esmtools')
+                venv_context = _venv_create(venv_path)
+                _run_python_in_venv(venv_context, ['-m', 'pip', '-q', 'install', '-U', 'pip'])
+                _run_python_in_venv(venv_context, ['-m', 'pip', '-q', 'install', '-U', 'wheel'])
+                _install_tools(venv_context, config)
+                _install_required_plugins(venv_context, config)
+                print(f"...finished {datetime.datetime.now() - start_time}, restarting your job in the virtual env")
             sys.argv[0] = pathlib.Path(sys.argv[0]).name
             # NOTE(PG): This next line allows the job to restart itself in the
             # virtual environment.
