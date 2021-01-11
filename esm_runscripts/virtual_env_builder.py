@@ -185,7 +185,10 @@ def _integorate_user_venv(config):
             choices=[
                 'Run in virtualenv (You may set the flag `--contained-run` during your run call or set `general.use_venv: True`)',
                 'Run using default installation (You may set the flag `--open-run` during your run call or set `general.use_venv: False`)',
+                "Quit right now to adapt your runscript",
             ]).ask()  # returns value of selection
+        if "Quit" in response:
+            sys.exit(0)
         config['general']['use_venv'] = "Run in virtualenv" in response
         user_confirmed = questionary.confirm("Are you sure?").ask()
     if "Run in virtualenv" in response:
