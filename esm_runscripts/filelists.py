@@ -583,7 +583,10 @@ def copy_files(config, filetypes, source, target):
                     if not os.path.isdir(file_source):
                         try:
                             if not os.path.isdir(dest_dir):
-                                os.mkdir(dest_dir)
+                                # MA: ``os.makedirs`` creates the specified directory
+                                # and the parent directories if the last don't exist
+                                # (same as with ``mkdir -p <directory>>``)
+                                os.makedirs(dest_dir)
                             if not os.path.isfile(file_source):
                                 print(f"File not found: {file_source}...")
                                 missing_files.update({file_target: file_source})
