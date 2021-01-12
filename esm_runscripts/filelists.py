@@ -521,8 +521,18 @@ def check_for_unknown_files(config):
 def resolve_symlinks(file_source):
     if os.path.islink(file_source):
         points_to = os.path.realpath(file_source)
+
+        # deniz: check if file links to itself. In UNIX 
+        # ln -s endless_link endless_link is a valid command
+        if os.path.abspath(file_source) == points_to:
+            if config["general"]["verbose"]:
+                print(f"file {file_source} links to itself")
+            return file_source
+        
+        # recursively find the file that the link is pointing to
         return resolve_symlinks(points_to)
-    return(file_source)
+    else: 
+        return(file_source)
 
 
 
