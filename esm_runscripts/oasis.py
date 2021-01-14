@@ -357,8 +357,8 @@ class oasis:
                 print (filelist)
         # MA: -O flag added to overwrite oasis restart files in case oasis creats them
         # before (i.e. when using LOCTRANS)
-        if os.path.isfile(filelist):
-            print(f"{filelist} already exits, overwriting")
+        if os.path.isfile(restart_file) and config["general"]["verbose"]:
+            print(f"{restart_file} already exits, overwriting")
         print("cdo -O merge " + filelist + " " + restart_file )#+ enddate)
         os.system("cdo -O merge " + filelist + " " + restart_file )# + enddate)
         rmlist = glob.glob("notimestep*")
