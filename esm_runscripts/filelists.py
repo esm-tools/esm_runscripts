@@ -121,10 +121,70 @@ def complete_targets(config):
         for model in config["general"]["valid_model_names"] + ["general"]:
             if filetype + "_sources" in config[model]:
                 for categ in config[model][filetype + "_sources"]:
+
+                    #deniz
+                    print("================")
+                    print(categ)
+                    print(config[model][filetype + "_sources"][categ])
+                    print("================")
+                    #end deniz
+                    
+                    
                     if not categ in config[model][filetype + "_targets"]:
+                    
+                        # deniz
+                        if isinstance(config[model][filetype + "_sources"][categ], dict):
+                            # for example
+                            # categ is volcanir
+                            # config[model][filetype + "_sources"][categ] is (file_source_dict for short) 
+                            # {
+                            #   '/pool/data/ECHAM6/input/r0007/T127/volcano_aerosols/strat_aerosol_ir_T127_1850.nc': {'to': 1850}, 
+                            #   '/pool/data/ECHAM6/input/r0007/T127/volcano_aerosols/strat_aerosol_ir_T127_@YEAR@.nc': {'from': 1851, 'to': 2014}, 
+                            #   '/pool/data/ECHAM6/input/r0007/T127/volcano_aerosols/strat_aerosol_ir_T127_2014.nc': {'from': 2015}
+                            # }
+                            # deniz
+                            all_years = [config["general"]["current_date"].year]
+                            all_years = list(dict.fromkeys(all_years))
+                            print(all_years)
+                            print("we are a dictionary")
+
+                            for year in all_years:
+                                # short hand
+                                file_source_dict = copy.deepcopy(config[model][filetype + "_sources"][categ])
+                                
+                                # file_source_dict_new = {}
+                                for key, value in six.iteritems(file_source_dict):
+
+                                    print(key)
+                                    print(value)
+                                    print()
+
+                                    if "@YEAR@" in key:
+                                        key_new = key.replace("@YEAR@", str(year))
+                                    else:
+                                        key_new = key
+                                    # file_source_dict_new[key_new] = value
+
+                                    if isinstance(value, dict):
+                                        min_year = float(value.get("from", "-inf"))
+                                        max_year = float(value.get("to", "inf"))
+                                        print(year)
+                                        
+                                        if min_year <= year and year <= max_year:
+                                            config[model][filetype + "_sources"][categ] = key_new
+                                            print(f">>> using the file {key_new}")
+                                            break
+                                        else:
+                                            continue
+                                        print(f'    sources categ: {config[model][filetype + "_sources"][categ]}')
+                                        print()
+                    
                         config[model][filetype + "_targets"][categ] = os.path.basename(
                             config[model][filetype + "_sources"][categ]
                         )
+                        # if categ == 'volcanir': 
+                            # print("QUITTING FOR DEBUG PURPOSES")
+                            # import sys; sys.exit()
     return config
 
 
@@ -389,15 +449,48 @@ def replace_year_placeholder(config):
                                 )  # removes duplicates
 
                                 for year in all_years:
+                                    print(f"line 452, all_years: {all_years}")
 
                                     new_category = file_category + "_year_" + str(year)
-                                    new_target_name = config[model][
-                                        filetype + "_targets"
-                                    ][file_category].replace("@YEAR@", str(year))
-                                    new_source_name = config[model][
-                                        filetype + "_sources"
-                                    ][file_category].replace("@YEAR@", str(year))
+                                    new_target_name = config[model][filetype + "_targets"][file_category].replace("@YEAR@", str(year))
 
+                                    # deniz
+                                    if isinstance(config[model][filetype + "_sources"][file_category], dict):
+                                        # short hand
+                                        file_source_dict = copy.deepcopy(config[model][filetype + "_sources"][file_category]) 
+                                        
+                                        for key, value in six.iteritems(file_source_dict):
+                                            if "@YEAR@" in key:
+                                                key_new = key.replace("@YEAR@", str(year))
+                                            else: 
+                                                key_new = key
+                                            
+                                            if isinstance(value, dict):
+                                                min_year = float(value.get("from", "-inf"))
+                                                max_year = float(value.get("to", "inf"))
+                                                print(f"year: {year}")
+                                                
+                                                if min_year <= year and year <= max_year:
+                                                    config[model][filetype + "_sources"][file_category] = key_new
+                                                    print(f">>> using the file {key_new}")
+                                                    print(f"  model: {model}")
+                                                    print(f"  filetype: {filetype}")
+                                                    print(f"  file_category: {file_category}")
+                                                    break
+                                                else: 
+                                                    continue
+                                    # normal string
+                                    else:
+                                        new_source_name = config[model][filetype + "_sources"][file_category].replace("@YEAR@", str(year))
+
+                                    print("    " + new_source_name)
+                                    # end deniz
+                                    
+                                    # import pprint
+                                    # pp = pprint.PrettyPrinter()
+                                    # pp.pprint(config[model])
+                                    # import sys; sys.exit()    # deniz
+                                    
                                     config[model][filetype + "_targets"][
                                         new_category
                                     ] = new_target_name
@@ -407,6 +500,51 @@ def replace_year_placeholder(config):
 
                                 del config[model][filetype + "_targets"][file_category]
                                 del config[model][filetype + "_sources"][file_category]
+                                
+    # deniz
+    filetype = "forcing"
+    all_years = [config["general"]["current_date"].year]
+    all_years = list(dict.fromkeys(all_years))
+    for model in config["general"]["valid_model_names"] + ["general"]:
+        if filetype + "_targets" in config[model]:
+            for file_category in config[model][filetype + "_targets"]:
+                print()
+                print("file category " + file_category)
+                print("")
+                for year in all_years:
+                    print(f"current year: {year}")
+                    print(all_years)
+                    
+                    if isinstance(config[model][filetype + "_sources"][file_category], dict):
+                        # deniz: ???
+                        new_category = file_category + "_year_" + str(year)
+                        new_target_name = config[model][filetype + "_targets"][file_category].replace("@YEAR@", str(year))
+
+                        min_year = float(value.get("from", "-inf"))
+                        max_year = float(value.get("to", "inf"))
+                        print(f"    year: {year}")
+                                                
+                        if min_year <= year and year <= max_year:
+                            config[model][filetype + "_sources"][file_category] = key_new
+                            print(f"    >>> using the file {key_new}")
+                            print(f"      model: {model}")
+                            print(f"      filetype: {filetype}")
+                            print(f"      file_category: {file_category}")
+                            break
+                        else: 
+                            continue
+
+                        config[model][filetype + "_targets"][new_category] = new_target_name
+                        config[model][filetype + "_sources"][new_category] = new_source_name
+                        
+                    # normal string
+                    else:
+                        new_source_name = config[model][filetype + "_sources"][file_category].replace("@YEAR@", str(year))
+                    
+                    print(f">>> new category: {new_category}")
+                    print(f">>> new target name: {new_target_name}")
+                    print(f">>> new source name: {new_source_name}")
+                    print()
 
     return config
 
@@ -437,10 +575,13 @@ def log_used_files(config):
                     flist.write("\n" + filetype.upper() + ":\n")
                     for category in config[model][filetype + "_sources"]:
 #                        esm_parser.pprint_config(config[model]) 
-                        flist.write(
-                            "\nSource: "
-                            + config[model][filetype + "_sources"][category]
-                        )
+                        try:
+                            flist.write( "\nSource: " + config[model][filetype + "_sources"][category])
+                        except:
+                            print(config[model][filetype + "_sources"][category])
+                            print("!!!! ERROR, deniz")
+                            import sys; sys.exit()
+                            # deniz
                         flist.write(
                             "\nExp Tree: "
                             + config[model][filetype + "_intermediate"][category]
