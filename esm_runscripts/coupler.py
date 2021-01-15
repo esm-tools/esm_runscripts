@@ -130,6 +130,8 @@ class coupler_class:
             for restart_file in list(full_config[self.name]["coupling_target_fields"]):
                 all_lefts = []
                 all_rights = []
+                all_leftmodels = []
+                all_rightmodels = []
                 for coupling in full_config[self.name]["coupling_target_fields"][restart_file]:
                     coupling = coupling.replace("<--", "%").replace("--", "&")
                     leftside, rest = coupling.split("%")
@@ -162,8 +164,34 @@ class coupler_class:
                                 if found_right and found_left:
                                     break
 
-                self.coupler.prepare_restarts(restart_file, all_rights, rightmodel, full_config)
-                self.coupler.prepare_restarts(restart_file + "_recv", all_lefts, leftmodel, full_config)
+                    # A coupling restart file can contain fields from multiple models,
+                    # therefore, we need to concatenate the left and right models
+                    # corresponding to each field
+                    all_leftmodels += [leftmodel] * len(lefts)
+                    all_rightmodels += [rightmodel] * len(rights)
+                    # Check that the dimensions are correct
+                    dym_issue = False
+                    if len(all_lefts) != len(all_leftmodels):
+                        print(
+                            "Coupling fields and their corresponding models do not" +
+                            "have the same dimensions:"
+                        )
+                        print("all_lefts =", all_lefts)
+                        print("all_leftmodels =", all_leftmodels)
+                        dym_issue = True
+                    if len(all_rights) != len(all_rightmodels):
+                        print(
+                            "Coupling fields and their corresponding models do not" +
+                            "have the same dimensions:"
+                        )
+                        print("all_rights =", all_rights)
+                        print("all_rightmodels =", all_rightmodels)
+                        dym_issue = True
+                    if dym_issue:
+                        sys.exit(0)
+
+                self.coupler.prepare_restarts(restart_file, all_rights, all_rightmodels, full_config)
+                self.coupler.prepare_restarts(restart_file + "_recv", all_lefts, all_leftmodels, full_config)
 
     def add_couplings(self, full_config):
         self.coupler.next_coupling = 1
