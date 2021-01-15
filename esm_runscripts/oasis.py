@@ -324,7 +324,7 @@ class oasis:
 
 
 
-    def prepare_restarts(self, restart_file, all_fields, model, config):
+    def prepare_restarts(self, restart_file, all_fields, models, config):
         enddate = "_" + config["general"]["end_date"].format(
                 form=9, givenph=False, givenpm=False, givenps=False
             )
@@ -333,12 +333,14 @@ class oasis:
         import os
         import subprocess
         print("Preparing oasis restart files from initial run...")
-        exe = config[model]["executable"]
-        print (restart_file, all_fields, model, exe)
+        # Assign an exe per model
+        exes = [config[model]["executable"] for model in models]
+        print (restart_file, all_fields, models, exes)
         cwd = os.getcwd()
         os.chdir(config["general"]["thisrun_work_dir"])
         filelist = ""
-        for field in all_fields:
+        # Loop through the fields and their corresponding models and exes
+        for field, model, exe in zip(all_fields, models, exes):
             print (field + "-" + model)
             thesefiles = glob.glob(field + "_" + exe + "_*.nc")
             print (thesefiles)
@@ -353,8 +355,12 @@ class oasis:
                 os.system("ncwa -O -a time onlyonetimestep.nc notimestep_" + field + ".nc")
                 filelist += "notimestep_" + field + ".nc "
                 print (filelist)
-        print("cdo merge " + filelist + " " + restart_file )#+ enddate)
-        os.system("cdo merge " + filelist + " " + restart_file )# + enddate)
+        # MA: -O flag added to overwrite oasis restart files in case oasis creats them
+        # before (i.e. when using LOCTRANS)
+        if os.path.isfile(restart_file) and config["general"]["verbose"]:
+            print(f"{restart_file} already exits, overwriting")
+        print("cdo -O merge " + filelist + " " + restart_file )#+ enddate)
+        os.system("cdo -O merge " + filelist + " " + restart_file )# + enddate)
         rmlist = glob.glob("notimestep*")
         rmlist.append("onlyonetimestep.nc")
         for rmfile in rmlist:
