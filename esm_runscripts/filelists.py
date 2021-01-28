@@ -260,11 +260,11 @@ def target_subfolders(config):
                         elif "/" in filename:
                             config[model][filetype + "_targets"][
                                 descr
-                            ] = "/".join(filename.split("/")[:-1]) + "/" + source_filename
+                            ] = "/".join(filename.split("/")[:-1]) + "/" + source_filename.split("/")[-1]
                         else:
                             config[model][filetype + "_targets"][
                                 descr
-                            ] = source_filename
+                            ] = source_filename.split("/")[-1]
                     elif filename.endswith("/"):
                         source_filename = os.path.basename(
                             config[model][filetype + "_sources"][descr]
