@@ -53,35 +53,57 @@ class Slurm:
         """
         return os.environ.get("SLURM_JOB_ID")
 
+    def calc_requirements_multi_srun(self, config):
+        print("Paul was here...")
+        for run_type in list(config['general']['multi_srun']):
+            current_hostfile = self.path+"_"+run_type
+            print(f"Writing to: {current_hostfile}")
+            start_proc = 0
+            end_proc = 0
+            with open(current_hostfile, "w") as hostfile:
+                for model in config['general']['multi_srun'][run_type]['models']:
+                    start_proc, end_proc = self.mini_calc_reqs(config, model, hostfile, start_proc, end_proc)
+            config['general']['multi_srun'][run_type]['hostfile'] = os.path.basename(current_hostfile)
+
+
+    @staticmethod
+    def mini_calc_reqs(config, model, hostfile, start_proc, end_proc):
+        if "nproc" in config[model]:
+            end_proc = start_proc + int(config[model]["nproc"]) - 1
+        elif "nproca" in config[model] and "nprocb" in config[model]:
+            end_proc = start_proc + int(config[model]["nproca"])*int(config[model]["nprocb"]) - 1
+
+            # KH 30.04.20: nprocrad is replaced by more flexible
+            # partitioning using nprocar and nprocbr
+            if "nprocar" in config[model] and "nprocbr" in config[model]:
+                if config[model]["nprocar"] != "remove_from_namelist" and config[model]["nprocbr"] != "remove_from_namelist":
+                    end_proc += config[model]["nprocar"] * config[model]["nprocbr"]
+
+        else:
+            return start_proc, end_proc
+        if "execution_command" in config[model]:
+            command = "./" + config[model]["execution_command"]
+        elif "executable" in config[model]:
+            command = "./" + config[model]["executable"]
+        else:
+            return start_proc, end_proc
+        hostfile.write(str(start_proc) + "-" + str(end_proc) + "  " + command + "\n")
+        start_proc = end_proc + 1
+        return start_proc, end_proc
+
+
     def calc_requirements(self, config):
         """
         Calculates requirements and writes them to ``self.path``.
         """
+        if config['general']['multi_srun']:
+            self.calc_requirements_multi_srun(config)
+            return
         start_proc = 0
         end_proc = 0
         with open(self.path, "w") as hostfile:
             for model in config["general"]["valid_model_names"]:
-                if "nproc" in config[model]:
-                    end_proc = start_proc + int(config[model]["nproc"]) - 1
-                elif "nproca" in config[model] and "nprocb" in config[model]:
-                    end_proc = start_proc + int(config[model]["nproca"])*int(config[model]["nprocb"]) - 1
-
-                    # KH 30.04.20: nprocrad is replaced by more flexible
-                    # partitioning using nprocar and nprocbr
-                    if "nprocar" in config[model] and "nprocbr" in config[model]:
-                        if config[model]["nprocar"] != "remove_from_namelist" and config[model]["nprocbr"] != "remove_from_namelist":
-                            end_proc += config[model]["nprocar"] * config[model]["nprocbr"]
-
-                else:
-                    continue
-                if "execution_command" in config[model]:
-                    command = "./" + config[model]["execution_command"]
-                elif "executable" in config[model]:
-                    command = "./" + config[model]["executable"]
-                else:
-                    continue
-                hostfile.write(str(start_proc) + "-" + str(end_proc) + "  " + command + "\n")
-                start_proc = end_proc + 1
+                start_proc, end_proc = self.mini_calc_reqs(config, model, hostfile, start_proc, end_proc)
 
 
     @staticmethod
