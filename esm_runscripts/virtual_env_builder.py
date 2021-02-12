@@ -115,9 +115,9 @@ def _install_tools_general(venv_context, config, deps=True):
     '''
     # Setup the --no-deps flag if necessary
     if not deps:
-        no_deps_flag = "--no-deps"
+        no_deps_flag = ["--no-deps"]
     else:
-        no_deps_flag = ""
+        no_deps_flag = []
     # Loop through the esm_tools packages to be installed
     for tool in esm_tools_modules:
         # Module info (url, editable install, branch...)
@@ -138,7 +138,7 @@ def _install_tools_general(venv_context, config, deps=True):
             # Clone from git
             subprocess.check_call(f"git clone --quiet {branch_command} {url} {src_dir}", shell=True)
             # Carry out the editable installation (with or without dependencies)
-            _run_bin_in_venv(venv_context, ["pip", "install", "-q", f"--find-links={os.environ.get('HOME')}/.cache/pip/wheels", "-e", src_dir, no_deps_flag])
+            _run_bin_in_venv(venv_context, ["pip", "install", "-q", f"--find-links={os.environ.get('HOME')}/.cache/pip/wheels", "-e", src_dir] + no_deps_flag)
             _run_bin_in_venv(venv_context, ["pip", "wheel", "-q", f"--wheel-dir={os.environ.get('HOME')}/.cache/pip/wheels", src_dir])
         # If the package is not editable then do a standard installation.
         # Note: this step only runs with the `--no-deps` flag if the user has specified
@@ -150,7 +150,7 @@ def _install_tools_general(venv_context, config, deps=True):
             if user_wants_branch:
                 url += f"@{user_wants_branch}"
             # NOTE(PG): We need the -U flag to ensure the branch is actually installed.
-            _run_bin_in_venv(venv_context, ["pip", "install", '-q', f"--find-links={os.environ.get('HOME')}/.cache/pip/wheels", "-U", url, no_deps_flag])
+            _run_bin_in_venv(venv_context, ["pip", "install", '-q', f"--find-links={os.environ.get('HOME')}/.cache/pip/wheels", "-U", url] + no_deps_flag)
             _run_bin_in_venv(venv_context, ["pip", "wheel", '-q', f"--wheel-dir={os.environ.get('HOME')}/.cache/pip/wheels", url])
 
 def _install_required_plugins(venv_context, config):
