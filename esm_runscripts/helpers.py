@@ -28,32 +28,12 @@ def evaluate(config, job_type, recipe_name):
             % setup_name
         )
         sys.exit(1)
-    if config["general"].get("use_venv"):
-        recipe = esm_tools.get_config_filepath("esm_software/esm_runscripts/esm_runscripts.yaml")
-        need_to_parse_recipe = True
-        plugins_bare = esm_tools.get_config_filepath(
-            "esm_software/esm_runscripts/esm_plugins.yaml"
-        )
-        need_to_parse_plugins = True
-    elif esm_rcfile.FUNCTION_PATH.startswith("NONE_YET"):
-        recipe = esm_tools.get_config_filepath(
-            "esm_software/esm_runscripts/esm_runscripts.yaml"
-        )
-        need_to_parse_recipe = True
-        plugins_bare = esm_tools.get_config_filepath(
-            "esm_software/esm_runscripts/esm_plugins.yaml"
-        )
-        need_to_parse_plugins = True
-    else:
-        recipe = (
-            esm_rcfile.FUNCTION_PATH
-            + "/esm_software/esm_runscripts/esm_runscripts.yaml"
-        )
-        need_to_parse_recipe = True
-        plugins_bare = (
-            esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/esm_plugins.yaml"
-        )
-        need_to_parse_plugins = True
+
+    FUNCTION_PATH = esm_rcfile.EsmToolsDir("FUNCTION_PATH")
+    recipe = FUNCTION_PATH + "esm_software/esm_runscripts/esm_runscripts.yaml"
+    need_to_parse_recipe = True
+    plugins_bare = FUNCTION_PATH + "/esm_software/esm_runscripts/esm_plugins.yaml"
+    need_to_parse_plugins = True
 
     framework_recipe = esm_plugin_manager.read_recipe(
         recipe, {"job_type": job_type}, need_to_parse_recipe
