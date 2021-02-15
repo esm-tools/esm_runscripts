@@ -150,7 +150,7 @@ class batch_system:
                     else:
                         continue
                 config['general']['multi_srun'][run_type]['total_tasks'] = total_tasks
-        print(config['general']['multi_srun'])
+            print(config['general']['multi_srun'])
 
 
     @staticmethod
@@ -185,7 +185,7 @@ class batch_system:
             commands.append(
                 "echo " + line + " >> " + config["general"]["experiment_log_file"]
             )
-            if config['general']['multi_srun']:
+            if config['general'].get('multi_srun'):
                 return get_run_commands_multisrun(config, commands)
             commands.append("time " + batch_system["execution_command"] + " &")
         return commands
