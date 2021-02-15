@@ -96,7 +96,7 @@ class Slurm:
         """
         Calculates requirements and writes them to ``self.path``.
         """
-        if config['general']['multi_srun']:
+        if config['general'].get('multi_srun'):
             self.calc_requirements_multi_srun(config)
             return
         start_proc = 0
