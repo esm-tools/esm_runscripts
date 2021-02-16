@@ -566,22 +566,6 @@ def copy_files(config, filetypes, source, target):
                 targetblock = config[model][filetype + "_" + text_target]
                 for categ in sourceblock:
                     file_source = os.path.normpath(sourceblock[categ])
-                    # NOTE(PG): This is a really, really, REALLY bad hack and it
-                    # makes me physically ill to look at:
-                    # NOTE(MA): The previous implementation was not able to include
-                    # namelists that have no ``namelist`` in their name. This is a more
-                    # general implementation but it enforces the use of the
-                    # ``namelists`` list to be defined for each model with namelists.
-                    namelist_candidates = (
-                        [item for item in config[model].get("namelists", [])]
-                        + ["namelist"]
-                    )
-                    isnamelist = any(map(file_source.__contains__, namelist_candidates))
-                    if source == "init":
-                        if isnamelist and file_source.startswith("NONE_YET"):
-                            file_source = esm_tools.get_namelist_filepath(
-                                file_source.replace("NONE_YET/", "")
-                            )
                     file_target = os.path.normpath(targetblock[categ])
                     if config["general"]["verbose"]:
                         print(f"source: {file_source}")

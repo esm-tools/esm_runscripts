@@ -165,10 +165,8 @@ class SimulationSetup(object):
 
 
     def add_esm_runscripts_defaults_to_config(self, config):
-        if config['general'].get("use_venv") or esm_rcfile.FUNCTION_PATH.startswith("NONE_YET"):
-            path_to_file = esm_tools.get_config_filepath("esm_software/esm_runscripts/defaults.yaml")
-        else:
-            path_to_file = esm_rcfile.FUNCTION_PATH + "/esm_software/esm_runscripts/defaults.yaml"
+        FUNCTION_PATH = esm_rcfile.EsmToolsDir("FUNCTION_PATH")
+        path_to_file = FUNCTION_PATH + "/esm_software/esm_runscripts/defaults.yaml"
         default_config = esm_parser.yaml_file_to_dict(path_to_file)
         config["general"]["defaults.yaml"] = default_config
         config = self.distribute_per_model_defaults(config)

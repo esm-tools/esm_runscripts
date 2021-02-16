@@ -485,21 +485,14 @@ def copy_tools_to_thisrun(config):
     # In case there is no esm_tools or namelists in the experiment folder,
     # copy from the default esm_tools path
     if not os.path.isdir(tools_dir):
-        if config['general'].get("use_venv") or esm_rcfile.FUNCTION_PATH.startswith("NONE_YET"):
-            if config["general"]["verbose"]:
-                print("Copying standard yamls from: package interal configs")
-            esm_tools.copy_config_folder(tools_dir)
-        else:
-            if config["general"]["verbose"]:
-                print("Copying from: ", esm_rcfile.FUNCTION_PATH)
-            shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir)
+        print("Copying standard yamls from: ", esm_rcfile.EsmToolsDir("FUNCTION_PATH"))
+        esm_tools.copy_config_folder(tools_dir)
     if not os.path.isdir(namelists_dir):
-        if esm_rcfile.get_rc_entry("NAMELIST_PATH", "NONE_YET").startswith("NONE_YET"):
-            if config["general"]["verbose"]:
-                print("Copying standard namelists from: package internal namelists")
-            esm_tools.copy_namelist_folder(namelists_dir)
-        else:
-            shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir)
+        print(
+            "Copying standard namelists from: ",
+            esm_rcfile.EsmToolsDir("NAMELIST_PATH"),
+        )
+        esm_tools.copy_namelist_folder(namelists_dir)
 
     # If ``fromdir`` and ``scriptsdir`` are the same, this is already a computing
     # simulation which means we want to use the script in the experiment folder,
