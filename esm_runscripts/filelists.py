@@ -440,7 +440,7 @@ def log_used_files(config):
                 if filetype + "_sources" in config[model]:
                     flist.write("\n" + filetype.upper() + ":\n")
                     for category in config[model][filetype + "_sources"]:
-#                        esm_parser.pprint_config(config[model]) 
+#                        esm_parser.pprint_config(config[model])
                         flist.write(
                             "\nSource: "
                             + config[model][filetype + "_sources"][category]
@@ -477,6 +477,15 @@ def check_for_unknown_files(config):
         config["general"]["thisrun_work_dir"] + "/" + "namcouple",
         config["general"]["thisrun_work_dir"] + "/" + "coupling.xml",
     ]
+    if config['general'].get('multi_srun'):
+        print(">>>>>>>>>>>> PG")
+        for run_type in list(config['general']['multi_srun']):
+            known_files.append(config['general']['thisrun_work_dir'] + "/hostfile_srun_" + run_type)
+        know_files.remove(config["general"]["thisrun_work_dir"] + "/" + "hostfile_srun")
+        for f in known_files:
+            print(f)
+        import sys
+        sys.exit()
 
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"] + ["general"]:
@@ -526,16 +535,16 @@ def resolve_symlinks(file_source):
     if os.path.islink(file_source):
         points_to = os.path.realpath(file_source)
 
-        # deniz: check if file links to itself. In UNIX 
+        # deniz: check if file links to itself. In UNIX
         # ln -s endless_link endless_link is a valid command
         if os.path.abspath(file_source) == points_to:
             if config["general"]["verbose"]:
                 print(f"file {file_source} links to itself")
             return file_source
-        
+
         # recursively find the file that the link is pointing to
         return resolve_symlinks(points_to)
-    else: 
+    else:
         return(file_source)
 
 
@@ -731,7 +740,7 @@ def complete_all_file_movements(config):
                         for movement in ['init_to_exp', 'exp_to_run', 'run_to_work', 'work_to_run']:
                             config = complete_one_file_movement(config, model, filetype, movement, movement_type)
                         del mconfig["file_movements"][filetype]["all_directions"]
-            
+
             if "default" in mconfig["file_movements"]:
                 if "all_directions" in mconfig["file_movements"]["default"]:
                     movement_type = mconfig["file_movements"]["default"]["all_directions"]

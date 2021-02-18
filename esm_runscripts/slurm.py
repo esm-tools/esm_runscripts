@@ -54,7 +54,7 @@ class Slurm:
         return os.environ.get("SLURM_JOB_ID")
 
     def calc_requirements_multi_srun(self, config):
-        print("Paul was here...")
+        self.multi_paths = []
         for run_type in list(config['general']['multi_srun']):
             current_hostfile = self.path+"_"+run_type
             print(f"Writing to: {current_hostfile}")
@@ -64,7 +64,7 @@ class Slurm:
                 for model in config['general']['multi_srun'][run_type]['models']:
                     start_proc, end_proc = self.mini_calc_reqs(config, model, hostfile, start_proc, end_proc)
             config['general']['multi_srun'][run_type]['hostfile'] = os.path.basename(current_hostfile)
-
+            self.multi_paths.append(current_hostfile)
 
     @staticmethod
     def mini_calc_reqs(config, model, hostfile, start_proc, end_proc):

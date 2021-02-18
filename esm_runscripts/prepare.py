@@ -308,7 +308,7 @@ def set_overall_calendar(config):
         config["general"]["calendar"] = Calendar(0)
     return config
 
-    
+
 def find_last_prepared_run(config):
     from esm_calendar import Date, Calendar
     import os
@@ -332,8 +332,8 @@ def find_last_prepared_run(config):
 
         next_date = current_date.add(delta_date)
         end_date = next_date - (0, 0, 1, 0, 0, 0)
-        
-        datestamp = ( 
+
+        datestamp = (
             current_date.format(
                 form=9, givenph=False, givenpm=False, givenps=False
             )

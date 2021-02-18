@@ -79,15 +79,27 @@ def all_files_to_copy_append(
 def add_batch_hostfile(config):
     config["general"]["batch"].calc_requirements(config)
 
-    config = all_files_to_copy_append(
-        config,
-        "general",
-        "config",
-        "batchhostfile",
-        config["general"]["batch"].bs.path,
-        None,
-        None,
-    )
+    if not config['general'].get('multi_srun'):
+        config = all_files_to_copy_append(
+            config,
+            "general",
+            "config",
+            "batchhostfile",
+            config["general"]["batch"].bs.path,
+            None,
+            None,
+        )
+    else:
+        for idx, batch_hostfile in enumerate(config['general']['batch'].bs.multi_paths):
+            config = all_files_to_copy_append(
+                config,
+                "general",
+                "config",
+                "batchhostfile_" + str(idx),
+                batch_hostfile,
+                None,
+                None,
+            )
     return config
 
 
