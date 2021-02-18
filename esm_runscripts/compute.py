@@ -14,6 +14,7 @@ from .filelists import copy_files, log_used_files
 from .helpers import end_it_all, evaluate, write_to_log
 from .namelists import Namelist
 from loguru import logger
+import pathlib
 
 #####################################################################
 #                                   compute jobs                    #
@@ -493,7 +494,20 @@ def copy_tools_to_thisrun(config):
     # If ``fromdir`` and ``scriptsdir`` are the same, this is already a computing
     # simulation which means we want to use the script in the experiment folder,
     # so no copying is needed
-    if (fromdir == scriptsdir) and not gconfig["update"]:
+
+    # deniz: this fixes the infinite recursion bug. If this is not checked 
+    # below then esm_runscripts create a directory tree inside the scripts
+    # directory over and over again
+    scriptsdir_inside_fromdir = pathlib.Path(fromdir) in pathlib.Path(scriptsdir).parents
+    if scriptsdir_inside_fromdir and config["general"]["verbose"]:
+        print("scriptsdir is inside fromdir")
+        print(f"  - scriptsdir: {scriptsdir}")
+        print(f"  - fromdir:    {fromdir}")
+    
+    # deniz: avoid infinite recursion if the scripts directory is inside the
+    # from directory
+    # if (fromdir == scriptsdir) and not gconfig["update"]:     # deniz: comment out
+    if (fromdir == scriptsdir) or scriptsdir_inside_fromdir and not gconfig["update"]:
         if config["general"]["verbose"]:
             print("Started from the experiment folder, continuing...")
         return config
