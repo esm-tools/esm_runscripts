@@ -460,7 +460,10 @@ def get_run_commands_multisrun(config, commands):
                     model_command = "./" + config[model]["execution_command"]
                 elif "executable" in config[model]:
                     model_command = "./" + config[model]["executable"]
-                new_exec_command += f" {add_pack_group} --nodelist ${model}_nodes -n {model_tasks} {model_command} {end_character}"
+                if config['general']['multi_srun'].get('include_nodelist', False):
+                    new_exec_command += f" {add_pack_group} --nodelist ${model}_nodes -n {model_tasks} {model_command} {end_character}"
+                else:
+                    new_exec_command += f" {add_pack_group} -n {model_tasks} {model_command} {end_character}"
         commands.append("time " + new_exec_command)
     commands.append("wait")
     return commands
