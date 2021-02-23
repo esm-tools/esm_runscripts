@@ -147,9 +147,28 @@ def complete_sources(config):
 def reuse_sources(config):
     if config["general"]["run_number"] == 1:
         return config
-    for filetype in config["general"]["reusable_filetypes"]:
+
+    # MA: the changes belowe are to be able to specify model specific reusable_filetypes
+    # without changing the looping order (a model loop nested inside a file-type loop)
+
+    # Put together all the possible reusable file types
+    all_reusable_filetypes = []
+    for model in config["general"]["valid_model_names"] + ["general"]:
+         all_reusable_filetypes = list(
+            set(all_reusable_filetypes) | set(config[model].get("reusable_filetypes", []))
+        )
+    # Loop through all the reusable file types
+    for filetype in all_reusable_filetypes:
         for model in config["general"]["valid_model_names"] + ["general"]:
-            if filetype + "_sources" in config[model]:
+            # Get the model-specific reusable_filetypes, if not existing, get the
+            # general ones
+            model_reusable_filetypes = config[model].get(
+                "reusable_filetypes",
+                config["general"]["reusable_filetypes"]
+            )
+            # If <filetype>_sources dictionary exists and filetype is in the
+            # model-specific filetype list then add the sources
+            if filetype + "_sources" in config[model] and filetype in model_reusable_filetypes:
                 for categ in config[model][filetype + "_sources"]:
                     config[model][filetype + "_sources"][categ] = (
                         config[model]["experiment_" + filetype + "_dir"]
@@ -733,7 +752,13 @@ def complete_all_file_movements(config):
 
 def get_movement(config, model, filetype, source, target):
     if source == "init":
-        if config["general"]["run_number"] == 1 or filetype not in config["general"]["reusable_filetypes"]:
+        # Get the model-specific reusable_filetypes, if not existing, get the
+        # general ones
+        model_reusable_filetypes = config[model].get(
+            "reusable_filetypes",
+            config["general"]["reusable_filetypes"]
+        )
+        if config["general"]["run_number"] == 1 or filetype not in model_reusable_filetypes:
             return config[model]["file_movements"][filetype]["init_to_exp"]
         else:
             return config[model]["file_movements"][filetype]["exp_to_run"]
