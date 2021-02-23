@@ -713,17 +713,18 @@ def get_method(movement):
 
 
 def complete_all_file_movements(config):
+
+    mconfig = config["general"]
+    if "defaults.yaml" in mconfig:
+        if "per_model_defaults" in mconfig["defaults.yaml"]:
+            if "file_movements" in mconfig["defaults.yaml"]["per_model_defaults"]:
+                mconfig["file_movements"] = copy.deepcopy(mconfig["defaults.yaml"]["per_model_defaults"]["file_movements"])
+                del mconfig["defaults.yaml"]["per_model_defaults"]["file_movements"]
+
     config = create_missing_file_movement_entries(config)
 
     for model in config["general"]["valid_model_names"] + ["general"]:
-        print(f"Iterating model: {model}")
         mconfig = config[model]
-        if model == "general":
-            if "defaults.yaml" in mconfig:
-                if "per_model_defaults" in mconfig["defaults.yaml"]:
-                    if "file_movements" in mconfig["defaults.yaml"]["per_model_defaults"]:
-                        mconfig["file_movements"] = mconfig["defaults.yaml"]["per_model_defaults"]["file_movements"]
-                        del mconfig["defaults.yaml"]["per_model_defaults"]["file_movements"]
         if "file_movements" in mconfig:
             for filetype in config["general"]["all_model_filetypes"] + ["scripts", "unknown"]:
                 if filetype in mconfig["file_movements"]:
@@ -734,8 +735,6 @@ def complete_all_file_movements(config):
                         del mconfig["file_movements"][filetype]["all_directions"]
             
             if "default" in mconfig["file_movements"]:
-                if model == "hdmodel":
-                    esm_parser.pprint_config(mconfig)
                 if "all_directions" in mconfig["file_movements"]["default"]:
                     movement_type = mconfig["file_movements"]["default"]["all_directions"]
                     for movement in ['init_to_exp', 'exp_to_run', 'run_to_work', 'work_to_run']:
