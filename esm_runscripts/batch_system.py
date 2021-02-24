@@ -62,7 +62,8 @@ class batch_system:
         if "sh_interpreter" in this_batch_system:
             header.append("#!" + this_batch_system["sh_interpreter"])
         tasks = batch_system.calculate_requirements(config)
-        replacement_tags = [("@tasks@", tasks)]
+        qos = this_batch_system.get("qos", "")
+        replacement_tags = [("@tasks@", tasks), ("@qos@", qos)]
         all_flags = [
             "partition_flag",
             "time_flag",
@@ -74,13 +75,20 @@ class batch_system:
             "accounting_flag",
             "notification_flag",
             "hyperthreading_flag",
+            "qos_flag",
             "additional_flags",
         ]
         if config["general"]["jobtype"] in ["compute", "tidy_and_resume"]:
             conditional_flags.append("exclusive_flag")
         for flag in conditional_flags:
             if flag in this_batch_system and not this_batch_system[flag].strip() == "":
-                all_flags.append(flag)
+                if "qos" in flag:
+                    print(flag)
+                    print(qos)
+                    if qos:
+                        all_flags.append(flag)
+                else:
+                    all_flags.append(flag)
         for flag in all_flags:
             for (tag, repl) in replacement_tags:
                 this_batch_system[flag] = this_batch_system[flag].replace(
