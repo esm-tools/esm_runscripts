@@ -60,28 +60,36 @@ class batch_system:
         all_headers = [headers_so_far[0]]
         for idx, run_type in enumerate(config["general"]["multi_srun"]):
             idx += 1
-            if config["general"]["verbose"]:
-                print(f"Assigning SBATCH headers for ({idx}): {run_type}")
-                print("Going through headers:")
+            import pprint
+            pprint.pprint(config['general']['multi_srun'][run_type])
+            for model_idx, model in enumerate(config["general"]["multi_srun"][run_type]['models']):
+                if config["general"]["verbose"]:
+                    print(f"Assigning SBATCH headers for ({idx}): {run_type}")
+                    print("Going through headers:")
+                    for header in headers_so_far[1:]:
+                        print(header)
                 for header in headers_so_far[1:]:
-                    print(header)
-            for header in headers_so_far[1:]:
-                if "--ntasks=" in header:
-                    if config["general"]["verbose"]:
-                        print("In --ntasks block")
-                        print('all_headers.append("#SBATCH --ntasks="+str(config["general"]["multi_srun"][run_type]["header_tasks"]))')
-                    all_headers.append("#SBATCH --ntasks="+str(config["general"]["multi_srun"][run_type]["header_tasks"]))
-                elif "--output=" in header:
-                    if config["general"]["verbose"]:
-                        print("In --output block")
-                        print('all_headers.append(header.replace("%j", "%j_"+run_type))')
-                    all_headers.append(header.replace("%j", "%j_"+run_type))
-                else:
-                    if config["general"]["verbose"]:
-                        print("In else block")
-                        print('all_headers.append(header)')
-                    all_headers.append(header)
-            all_headers.append("#SBATCH --comment="+run_type)
+                    if "--ntasks=" in header:
+                        if config["general"]["verbose"]:
+                            print("In --ntasks block")
+                            print('all_headers.append("#SBATCH --ntasks="+str(config["general"]["multi_srun"][run_type]["model_tasks"]))')
+                        all_headers.append("#SBATCH --ntasks="+str(config["general"]["multi_srun"][run_type][model+"_tasks"]))
+                    elif "--output=" in header:
+                        if config["general"]["verbose"]:
+                            print("In --output block")
+                            print('all_headers.append(header.replace("%j", "%j_"+run_type))')
+                        all_headers.append(header.replace("%j", "%j_"+run_type+"_"+model))
+                    else:
+                        if config["general"]["verbose"]:
+                            print("In else block")
+                            print('all_headers.append(header)')
+                        all_headers.append(header)
+                all_headers.append("#SBATCH --propagate=STACK,CORE")
+                all_headers.append("#SBATCH --comment="+run_type+"_"+model)
+                print(f"model_index={model_idx}")
+                print(config["general"]["multi_srun"][run_type]["models"])
+                if model_idx != (len(config["general"]["multi_srun"][run_type]["models"]) - 1):
+                    all_headers.append("#SBATCH packjob")
             if idx != len(config["general"]["multi_srun"]):
                 all_headers.append("#SBATCH packjob")
         for header in all_headers:
@@ -96,7 +104,8 @@ class batch_system:
         if "sh_interpreter" in this_batch_system:
             header.append("#!" + this_batch_system["sh_interpreter"])
         tasks = batch_system.calculate_requirements(config)
-        replacement_tags = [("@tasks@", tasks)]
+        qos = this_batch_system.get("qos", "")
+        replacement_tags = [("@tasks@", tasks), ("@qos@", qos)]
         all_flags = [
             "partition_flag",
             "time_flag",
@@ -108,13 +117,20 @@ class batch_system:
             "accounting_flag",
             "notification_flag",
             "hyperthreading_flag",
+            "qos_flag",
             "additional_flags",
         ]
         if config["general"]["jobtype"] in ["compute", "tidy_and_resume"]:
             conditional_flags.append("exclusive_flag")
         for flag in conditional_flags:
             if flag in this_batch_system and not this_batch_system[flag].strip() == "":
-                all_flags.append(flag)
+                if "qos" in flag:
+                    print(flag)
+                    print(qos)
+                    if qos:
+                        all_flags.append(flag)
+                else:
+                    all_flags.append(flag)
         for flag in all_flags:
             for (tag, repl) in replacement_tags:
                 this_batch_system[flag] = this_batch_system[flag].replace(
@@ -260,10 +276,10 @@ class batch_system:
     def write_simple_runscript(config):
         self = config["general"]["batch"]
         sadfilename = batch_system.get_sad_filename(config)
-        header = batch_system.get_batch_header(config)
-        environment = batch_system.get_environment(config)
         # NOTE(PG): This next line allows for multi-srun simulations:
         batch_system.determine_nodelist(config)
+        header = batch_system.get_batch_header(config)
+        environment = batch_system.get_environment(config)
         extra = batch_system.get_extra(config)
 
         if config["general"]["verbose"]:
@@ -449,13 +465,18 @@ def get_run_commands_multisrun(config, commands):
             nodes = assign_nodes(model+"_nodes", total_nodes_so_far, total_nodes_so_far + num_nodes_for_this_srun - 1)
             total_nodes_so_far += num_nodes_for_this_srun
             commands.append(nodes)
+    pack_group_counter = 0
     for idx, run_type in enumerate(config['general']['multi_srun']):
         new_exec_command = default_exec_command.replace("hostfile_srun", "") # config['general']['multi_srun'][run_type]['hostfile'])
         new_exec_command = new_exec_command.replace("--multi-prog", "")
+        new_exec_command = new_exec_command.replace(config["computer"]["launcher_flags"], "")
         for idx_mod, model in enumerate(config['general']['multi_srun'][run_type]['models']):
                 model_tasks = config["general"]["multi_srun"][run_type][model+"_tasks"]
-                end_character = ":" if idx_mod < (len(config['general']['multi_srun'][run_type]['models']) - 1) else "&"
-                add_pack_group = f"--pack-group={idx}" if idx_mod < (len(config['general']['multi_srun'][run_type]['models']) - 1) else ""
+                end_character = ": " if idx_mod < (len(config['general']['multi_srun'][run_type]['models']) - 1) else ">>LOG_PLACEHOLDER<< &"
+                add_pack_group = f"--pack-group={pack_group_counter}" # if idx_mod < (len(config['general']['multi_srun'][run_type]['models']) - 1) else ""
+                pack_group_counter += 1
+                new_exec_command += config["computer"]["launcher_flags"] + " --mpi=pmi2 --cpu_bind=cores --distribution=block:block"
+                log_for_this_srun = config["general"]["experiment_scripts_dir"]+"/"+config["general"]["expid"]+"_"+run_type+"_compute_"+config["general"]["run_datestamp"]+".log"
                 if "execution_command" in config[model]:
                     model_command = "./" + config[model]["execution_command"]
                 elif "executable" in config[model]:
@@ -464,6 +485,6 @@ def get_run_commands_multisrun(config, commands):
                     new_exec_command += f" {add_pack_group} --nodelist ${model}_nodes -n {model_tasks} {model_command} {end_character}"
                 else:
                     new_exec_command += f" {add_pack_group} -n {model_tasks} {model_command} {end_character}"
-        commands.append("time " + new_exec_command)
+        commands.append("time " + new_exec_command.replace(">>LOG_PLACEHOLDER<<", f">{log_for_this_srun} 2>&1"))
     commands.append("wait")
     return commands

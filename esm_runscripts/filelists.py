@@ -481,7 +481,7 @@ def check_for_unknown_files(config):
         print(">>>>>>>>>>>> PG")
         for run_type in list(config['general']['multi_srun']):
             known_files.append(config['general']['thisrun_work_dir'] + "/hostfile_srun_" + run_type)
-        know_files.remove(config["general"]["thisrun_work_dir"] + "/" + "hostfile_srun")
+        known_files.remove(config["general"]["thisrun_work_dir"] + "/" + "hostfile_srun")
         for f in known_files:
             print(f)
         import sys
