@@ -1,4 +1,5 @@
 from . import helpers
+import sys
 
 
 def run_job(config):
@@ -22,6 +23,7 @@ def mini_resolve_variable_date_file(date_file, config):
                     except AssertionError:
                         print("The date file contains a variable which is not in the >>env<< or >>general<< section. This is not allowed!")
                         print(f"date_file = {date_file}")
+                        sys.exit(1)
         date_file = pre + answer + post
     return date_file
 
