@@ -148,7 +148,7 @@ def reuse_sources(config):
     if config["general"]["run_number"] == 1:
         return config
 
-    # MA: the changes belowe are to be able to specify model specific reusable_filetypes
+    # MA: the changes below are to be able to specify model specific reusable_filetypes
     # without changing the looping order (a model loop nested inside a file-type loop)
 
     # Put together all the possible reusable file types
