@@ -155,7 +155,7 @@ def reuse_sources(config):
     all_reusable_filetypes = []
     for model in config["general"]["valid_model_names"] + ["general"]:
          all_reusable_filetypes = list(
-            set(all_reusable_filetypes) | set(config[model].get("reusable_filetypes", []))
+            set(all_reusable_filetypes + config[model].get("reusable_filetypes", []))
         )
     # Loop through all the reusable file types
     for filetype in all_reusable_filetypes:
