@@ -16,6 +16,8 @@ class Slurm:
     ----------
     filename : str
         The filename for srun commands, defaults to ``hostfile_srun``
+    hostlist : str
+        The hostlist for srun commands, defaults to ``hostlist``
     path : str
         Full path to this file, defaults to ``thisrun_scripts_dir / filename``
 
@@ -28,6 +30,7 @@ class Slurm:
     def __init__(self, config):
         folder = config["general"]["thisrun_scripts_dir"]
         self.filename = "hostfile_srun"
+        self.hostlist = "hostlist"
         self.path = folder + "/" + self.filename
 
     @staticmethod
@@ -69,7 +72,10 @@ class Slurm:
     @staticmethod
     def mini_calc_reqs(config, model, hostfile, start_proc, end_proc):
         if "nproc" in config[model]:
-            end_proc = start_proc + int(config[model]["nproc"]) - 1
+            if "OMP_NUM_PROC" in config[model]:
+                end_proc = start_proc + int(config[model]["nproc"])*int(config[model]["OMP_NUM_PROC"]) - 1
+            else:
+                end_proc = start_proc + int(config[model]["nproc"]) - 1
         elif "nproca" in config[model] and "nprocb" in config[model]:
             end_proc = start_proc + int(config[model]["nproca"])*int(config[model]["nprocb"]) - 1
 
@@ -87,6 +93,19 @@ class Slurm:
             command = "./" + config[model]["executable"]
         else:
             return start_proc, end_proc
+        print("Jan was here")
+        if "OMP_NUM_PROC" in config[model]:
+            print("And here")
+            cores_per_node = int(config["computer"]["cores_per_node"])
+            state_command = ["scontrol show hostnames $((SLURM_JOB_NODELIST))"] #$SLURM_JOB_NODELIST"]
+            scontrol_output = subprocess.Popen(state_command, stdout = subprocess.PIPE, stderr = subprocess.PIPE).communicate()[0]
+            for index_proc in range(0, nproc):
+                index_host = index_proc+end_proc / cores_per_node
+                host_value = scontrol_output[index_host]
+                #slot = iproc+end_proc // cores_per_node
+                with open(hostlist, "a") as file_object:
+                    file_object.write(host_value)
+            
         hostfile.write(str(start_proc) + "-" + str(end_proc) + "  " + command + "\n")
         start_proc = end_proc + 1
         return start_proc, end_proc
