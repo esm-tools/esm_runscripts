@@ -30,7 +30,6 @@ class Slurm:
     def __init__(self, config):
         folder = config["general"]["thisrun_scripts_dir"]
         self.filename = "hostfile_srun"
-        self.hostlist = "hostlist"
         self.path = folder + "/" + self.filename
 
     @staticmethod
@@ -70,10 +69,10 @@ class Slurm:
 
 
     @staticmethod
-    def mini_calc_reqs(config, model, hostfile, start_proc, end_proc):
+    def mini_calc_reqs(self,config, model, hostfile, start_proc, end_proc):
         if "nproc" in config[model]:
-            if "OMP_NUM_PROC" in config[model]:
-                end_proc = start_proc + int(config[model]["nproc"])*int(config[model]["OMP_NUM_PROC"]) - 1
+            if "omp_num_proc" in config[model]:
+                end_proc = start_proc + int(config[model]["nproc"])*int(config[model]["omp_num_proc"]) - 1
             else:
                 end_proc = start_proc + int(config[model]["nproc"]) - 1
         elif "nproca" in config[model] and "nprocb" in config[model]:
@@ -93,18 +92,27 @@ class Slurm:
             command = "./" + config[model]["executable"]
         else:
             return start_proc, end_proc
-        print("Jan was here")
-        if "OMP_NUM_PROC" in config[model]:
-            print("And here")
-            cores_per_node = int(config["computer"]["cores_per_node"])
-            state_command = ["scontrol show hostnames $((SLURM_JOB_NODELIST))"] #$SLURM_JOB_NODELIST"]
-            scontrol_output = subprocess.Popen(state_command, stdout = subprocess.PIPE, stderr = subprocess.PIPE).communicate()[0]
-            for index_proc in range(0, nproc):
-                index_host = index_proc+end_proc / cores_per_node
-                host_value = scontrol_output[index_host]
-                #slot = iproc+end_proc // cores_per_node
-                with open(hostlist, "a") as file_object:
-                    file_object.write(host_value)
+
+        if "taskset" in config["general"]:
+            scriptname="script_"+model+".ksh"
+            with open(self.path, "w") as scriptname:
+                scriptname.write("#!/bin/ksh"+"\n")
+                scriptname.write("export OMP_NUM_THREADS=$(("+str(config[model]["omp_num_proc"])+"))"+"n")
+                scriptname.write(command+"\n")
+
+            progname="prog_"+model+".sh"
+            print(progname)
+            with open(self.path, "w") as progname:
+                progname.write("#!/bin/sh"+"\n")
+                progname.write("(( init = "+str(end_proc)+" + \$1 ))"+"\n")
+                progname.write("(( index = init * "+str(config[model]["omp_num_proc"])+")) ))"+"\n")
+                #import pdb
+                #pdb.set_trace()
+                progname.write("(( slot = index % "+str(config("computer"["cores_per_node"]))+"))"+"\n")
+                progname.write("(( echo "+model+" taskset -c \$slot\"-\"\$((slot + "+str(config[model]["omp_num_proc"])+" - 1 ))"+"\n")
+                progname.write("taskset -c \$slot\"-\"\$((slot + "+str(config[model]["omp_num_proc"])+")) - 1)) ./script_${model}.ksh"+"\n")
+
+
             
         hostfile.write(str(start_proc) + "-" + str(end_proc) + "  " + command + "\n")
         start_proc = end_proc + 1
@@ -122,7 +130,7 @@ class Slurm:
         end_proc = 0
         with open(self.path, "w") as hostfile:
             for model in config["general"]["valid_model_names"]:
-                start_proc, end_proc = self.mini_calc_reqs(config, model, hostfile, start_proc, end_proc)
+                start_proc, end_proc = self.mini_calc_reqs(self,config, model, hostfile, start_proc, end_proc)
 
 
     @staticmethod
