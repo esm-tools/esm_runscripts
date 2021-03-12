@@ -72,10 +72,10 @@ class Slurm:
     @staticmethod
     def mini_calc_reqs(self,config, model, start_proc, end_proc):
         if "nproc" in config[model]:
-            if "omp_num_proc" in config[model]:
-                end_proc = start_proc + int(config[model]["nproc"])*int(config[model]["omp_num_proc"]) - 1
-            else:
-                end_proc = start_proc + int(config[model]["nproc"]) - 1
+            #if "omp_num_proc" in config[model]:
+            #    end_proc = start_proc + int(config[model]["nproc"])*int(config[model]["omp_num_proc"]) - 1
+            #else:
+            end_proc = start_proc + int(config[model]["nproc"]) - 1
         elif "nproca" in config[model] and "nprocb" in config[model]:
             end_proc = start_proc + int(config[model]["nproca"])*int(config[model]["nprocb"]) - 1
 
@@ -87,34 +87,30 @@ class Slurm:
 
         else:
             return start_proc, end_proc
+
+        if "taskset" in config["general"]:
+            command = "./" + config[model]["execution_command_script"]
+            scriptname="script_"+model+".ksh"
+            with open(self.folder+scriptname, "w") as f:
+                f.write("#!/bin/ksh"+"\n")
+                f.write("export OMP_NUM_THREADS="+str(config[model]["omp_num_proc"])+"\n")
+                f.write(command+"\n")
+
+            progname="prog_"+model+".sh"
+            with open(self.folder+progname, "w") as f:
+                f.write("#!/bin/sh"+"\n")
+                f.write("(( init = "+str(start_proc)+" + $1 ))"+"\n")
+                f.write("(( index = init * "+str(config[model]["omp_num_proc"])+" ))"+"\n")
+                f.write("(( slot = index % "+str(config["computer"]["cores_per_node"])+" ))"+"\n")
+                f.write("echo "+model+" taskset -c $slot-$((slot + "+str(config[model]["omp_num_proc"])+" - 1"+"))"+"\n")
+                f.write("taskset -c $slot-$((slot + "+str(config[model]["omp_num_proc"])+" - 1)) ./script_"+model+".ksh"+"\n")
+
         if "execution_command" in config[model]:
             command = "./" + config[model]["execution_command"]
         elif "executable" in config[model]:
             command = "./" + config[model]["executable"]
         else:
             return start_proc, end_proc
-
-        if "taskset" in config["general"]:
-            scriptname="script_"+model+".ksh"
-            with open(self.folder+scriptname, "w") as f:
-                f.write("#!/bin/ksh"+"\n")
-                f.write("export OMP_NUM_THREADS=$(("+str(config[model]["omp_num_proc"])+"))"+"n")
-                f.write(command+"\n")
-
-            progname="prog_"+model+".sh"
-            print(progname)
-            import pdb
-            pdb.set_trace()
-            with open(self.folder+progname, "w") as f:
-                f.write("#!/bin/sh"+"\n")
-                f.write("(( init = "+str(end_proc)+" + \$1 ))"+"\n")
-                f.write("(( index = init * "+str(config[model]["omp_num_proc"])+")) ))"+"\n")
-                #import pdb
-                #pdb.set_trace()
-                f.write("(( slot = index % "+str(config["computer"]["cores_per_node"])+"))"+"\n")  #TODO: We need this line, no the one below. But this line fails
-                f.write("echo "+model+" taskset -c \$slot\"-\"\$((slot + "+str(config[model]["omp_num_proc"])+" - 1"+"\n")
-                f.write("taskset -c \$slot\"-\"\$((slot + "+str(config[model]["omp_num_proc"])+")) - 1)) ./script_"+model+".ksh"+"\n")
-
 
         with open(self.path, "a") as hostfile:
             hostfile.write(str(start_proc) + "-" + str(end_proc) + "  " + command + "\n")
