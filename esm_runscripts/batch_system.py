@@ -260,7 +260,8 @@ class batch_system:
                 sadfile.write(line + "\n")
             sadfile.write("\n")
             sadfile.write("cd " + config["general"]["thisrun_work_dir"] + "\n")
-            if "taskset" in config["general"] and name == "slurm":
+            #if "taskset" in config["general"] and name == "slurm": TODO this line fails
+            if "taskset" in config["general"]:
                 sadfile.write("\n"+"#Creating hostlist for MPI + MPI&OMP heterogeneous parallel job" + "\n")
                 sadfile.write("export SLURM_HOSTFILE=./hostlist" + "\n")
                 sadfile.write("IFS=$\'\n\'; set -f" + "\n")                                                         

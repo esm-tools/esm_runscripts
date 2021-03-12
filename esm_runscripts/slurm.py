@@ -31,6 +31,7 @@ class Slurm:
         folder = config["general"]["thisrun_scripts_dir"]
         self.filename = "hostfile_srun"
         self.path = folder + "/" + self.filename
+        self.folder = folder + "/" 
 
     @staticmethod
     def check_if_submitted():
@@ -95,28 +96,30 @@ class Slurm:
 
         if "taskset" in config["general"]:
             scriptname="script_"+model+".ksh"
-            with open(self.path, "w") as scriptname:
-                scriptname.write("#!/bin/ksh"+"\n")
-                scriptname.write("export OMP_NUM_THREADS=$(("+str(config[model]["omp_num_proc"])+"))"+"n")
-                scriptname.write(command+"\n")
+            with open(self.folder+scriptname, "w") as f:
+                f.write("#!/bin/ksh"+"\n")
+                f.write("export OMP_NUM_THREADS=$(("+str(config[model]["omp_num_proc"])+"))"+"n")
+                f.write(command+"\n")
 
             progname="prog_"+model+".sh"
             print(progname)
-            with open(self.path, "w") as progname:
-                progname.write("#!/bin/sh"+"\n")
-                progname.write("(( init = "+str(end_proc)+" + \$1 ))"+"\n")
-                progname.write("(( index = init * "+str(config[model]["omp_num_proc"])+")) ))"+"\n")
+            import pdb
+            pdb.set_trace()
+            with open(self.folder+progname, "w") as f:
+                f.write("#!/bin/sh"+"\n")
+                f.write("(( init = "+str(end_proc)+" + \$1 ))"+"\n")
+                f.write("(( index = init * "+str(config[model]["omp_num_proc"])+")) ))"+"\n")
                 #import pdb
                 #pdb.set_trace()
-                progname.write("(( slot = index % "+str(config("computer"["cores_per_node"]))+"))"+"\n")
-                progname.write("(( echo "+model+" taskset -c \$slot\"-\"\$((slot + "+str(config[model]["omp_num_proc"])+" - 1 ))"+"\n")
-                progname.write("taskset -c \$slot\"-\"\$((slot + "+str(config[model]["omp_num_proc"])+")) - 1)) ./script_${model}.ksh"+"\n")
+                f.write("(( slot = index % "+str(config["computer"]["cores_per_node"])+"))"+"\n")  #TODO: We need this line, no the one below. But this line fails
+                f.write("echo "+model+" taskset -c \$slot\"-\"\$((slot + "+str(config[model]["omp_num_proc"])+" - 1"+"\n")
+                f.write("taskset -c \$slot\"-\"\$((slot + "+str(config[model]["omp_num_proc"])+")) - 1)) ./script_"+model+".ksh"+"\n")
 
 
         with open(self.path, "a") as hostfile:
             hostfile.write(str(start_proc) + "-" + str(end_proc) + "  " + command + "\n")
             start_proc = end_proc + 1
-            return start_proc, end_proc
+        return start_proc, end_proc
 
 
     def calc_requirements(self, config):
