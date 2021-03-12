@@ -69,7 +69,7 @@ class Slurm:
 
 
     @staticmethod
-    def mini_calc_reqs(self,config, model, hostfile, start_proc, end_proc):
+    def mini_calc_reqs(self,config, model, start_proc, end_proc):
         if "nproc" in config[model]:
             if "omp_num_proc" in config[model]:
                 end_proc = start_proc + int(config[model]["nproc"])*int(config[model]["omp_num_proc"]) - 1
@@ -113,10 +113,10 @@ class Slurm:
                 progname.write("taskset -c \$slot\"-\"\$((slot + "+str(config[model]["omp_num_proc"])+")) - 1)) ./script_${model}.ksh"+"\n")
 
 
-            
-        hostfile.write(str(start_proc) + "-" + str(end_proc) + "  " + command + "\n")
-        start_proc = end_proc + 1
-        return start_proc, end_proc
+        with open(self.path, "a") as hostfile:
+            hostfile.write(str(start_proc) + "-" + str(end_proc) + "  " + command + "\n")
+            start_proc = end_proc + 1
+            return start_proc, end_proc
 
 
     def calc_requirements(self, config):
@@ -127,10 +127,9 @@ class Slurm:
             self.calc_requirements_multi_srun(config)
             return
         start_proc = 0
-        end_proc = 0
-        with open(self.path, "w") as hostfile:
-            for model in config["general"]["valid_model_names"]:
-                start_proc, end_proc = self.mini_calc_reqs(self,config, model, hostfile, start_proc, end_proc)
+        end_proc = 0 
+        for model in config["general"]["valid_model_names"]:
+            start_proc, end_proc = self.mini_calc_reqs(self,config, model, start_proc, end_proc)
 
 
     @staticmethod
