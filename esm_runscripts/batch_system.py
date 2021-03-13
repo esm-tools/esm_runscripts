@@ -61,15 +61,25 @@ class batch_system:
         this_batch_system = config["computer"]
         if "sh_interpreter" in this_batch_system:
             header.append("#!" + this_batch_system["sh_interpreter"])
-        tasks = batch_system.calculate_requirements(config)
+        tasks, nodes = batch_system.calculate_requirements(config)
         replacement_tags = [("@tasks@", tasks)]
-        all_flags = [
-            "partition_flag",
-            "time_flag",
-            "tasks_flag",
-            "output_flags",
-            "name_flag",
-        ]
+        if "taskset" in config["general"]:
+            replacement_tags = [("@nodes@", nodes)]
+            all_flags = [
+                "partition_flag",
+                "time_flag",
+                "nodes_flag",
+                "output_flags",
+                "name_flag",
+            ]
+        else:
+            all_flags = [
+                "partition_flag",
+                "time_flag",
+                "tasks_flag",
+                "output_flags",
+                "name_flag",
+            ]
         conditional_flags = [
             "accounting_flag",
             "notification_flag",
@@ -94,10 +104,13 @@ class batch_system:
     @staticmethod
     def calculate_requirements(config):
         tasks = 0
+        nodes = 0
         if config["general"]["jobtype"] == "compute":
             for model in config["general"]["valid_model_names"]:
                 if "nproc" in config[model]:
                     tasks += config[model]["nproc"]
+                    if "taskset" in config["general"]:
+                        nodes +=int((config[model]["nproc"]*config[model]["omp_num_threads"])/config['computer']['cores_per_node'])
                 elif "nproca" in config[model] and "nprocb" in config[model]:
                     tasks += config[model]["nproca"] * config[model]["nprocb"]
 
@@ -112,7 +125,7 @@ class batch_system:
 
         elif config["general"]["jobtype"] == "post":
             tasks = 1
-        return tasks
+        return tasks, nodes
 
     @staticmethod
     def get_environment(config):
@@ -260,27 +273,32 @@ class batch_system:
                 sadfile.write(line + "\n")
             sadfile.write("\n")
             sadfile.write("cd " + config["general"]["thisrun_work_dir"] + "\n")
-            #if "taskset" in config["general"] and name == "slurm": TODO this line fails
             if "taskset" in config["general"]:
                 sadfile.write("\n"+"#Creating hostlist for MPI + MPI&OMP heterogeneous parallel job" + "\n")
+                sadfile.write("rm -f ./hostlist" + "\n")
                 sadfile.write("export SLURM_HOSTFILE=./hostlist" + "\n")
                 sadfile.write("IFS=$'\\n'; set -f" + "\n")                                                         
                 sadfile.write("listnodes=($(< <( scontrol show hostnames $SLURM_JOB_NODELIST )))"+"\n")
                 sadfile.write("unset IFS; set +f" + "\n")
-                sadfile.write("rank = 0" + "\n")
-                sadfile.write("current_core = 0" + "\n")
-                sadfile.write("current_core_mpi = 0" + "\n")
-                sadfile.write("for model in " + str(config["general"]["valid_model_names"]) + "\n")               # TODO: Does this even work? I kind of need it as a list, but that can not be concatenated, also this contains oasis, which is wrong. But maybe it doesn't matter because it has no cores or tasks.
-                sadfile.write("do" + "\n")
-                sadfile.write("    eval nb_of_cores=\${tasks_${model}}" + "\n")                                   # TODO: find equivalent to ${tasks_${model}}. Note: this has to be available after entering queueu. So in env.
+                sadfile.write("rank=0" + "\n")
+                sadfile.write("current_core=0" + "\n")
+                sadfile.write("current_core_mpi=0" + "\n")
+                for model in config["general"]["valid_model_names"]:
+                    if model != "oasis3mct":
+                        sadfile.write("mpi_tasks_"+model+"="+str(config[model]["nproc"])+ "\n")
+                        sadfile.write("omp_threads_"+model+"="+str(config[model]["omp_num_threads"])+ "\n")
+                import pdb
+                #pdb.set_trace()
+                sadfile.write("for model in " + str(config["general"]["valid_model_names"])[1:-1].replace(',', '').replace('\'', '') +" ;do"+ "\n")
+                sadfile.write("    eval nb_of_cores=\${mpi_tasks_${model}}" + "\n")
                 sadfile.write("    eval nb_of_cores=$((${nb_of_cores}-1))" + "\n")
                 sadfile.write("    for nb_proc_mpi in `seq 0 ${nb_of_cores}`; do" + "\n")
-                sadfile.write("    (( index_host = current_core / " + str(config["computer"]["cores_per_node"]) +" ))" + "\n")
-                sadfile.write("    host_value=${listnodes[${index_host}]}" + "\n")
-                sadfile.write("    (( slot =  current_core % cores_per_compute_node ))" + "\n")
-                sadfile.write("    echo '$host_value' >> hostlist" + "\n")
-                #sadfile.write("    (( current_core = current_core + " + config[model]["OMP_NUM_PROC"] +" ))" + "\n")  # TODO config[model] does not work here since we are only calling this once. 
-                sadfile.write("    (( current_core = current_core + omp_num_threads_compute_${model} ))" + "\n")       # TODO find equivalent to ${tasks_${model}}. Note: this has to be available after entering queueu. So in env. 
+                sadfile.write("        (( index_host = current_core / " + str(config["computer"]["cores_per_node"]) +" ))" + "\n")
+                sadfile.write("        host_value=${listnodes[${index_host}]}" + "\n")
+                sadfile.write("        (( slot =  current_core % " + str(config["computer"]["cores_per_node"]) +" ))" + "\n")
+                sadfile.write("        echo $host_value >> hostlist" + "\n")
+                sadfile.write("        (( current_core = current_core + omp_threads_${model} ))" + "\n") 
+                sadfile.write("    done" + "\n") 
                 sadfile.write("done" + "\n\n")
             for line in commands:
                 sadfile.write(line + "\n")
