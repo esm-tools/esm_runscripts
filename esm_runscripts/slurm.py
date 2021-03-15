@@ -16,8 +16,6 @@ class Slurm:
     ----------
     filename : str
         The filename for srun commands, defaults to ``hostfile_srun``
-    hostlist : str
-        The hostlist for srun commands, defaults to ``hostlist``
     path : str
         Full path to this file, defaults to ``thisrun_scripts_dir / filename``
 
