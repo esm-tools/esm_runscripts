@@ -87,7 +87,7 @@ class Slurm:
         else:
             return start_proc, start_core, end_proc, end_core
 
-        if "taskset" in config["general"]:
+        if "taskset" in config["general"] == "true":
             command = "./" + config[model]["execution_command_script"]
             scriptname="script_"+model+".ksh"
             with open(self.folder+scriptname, "w") as f:
