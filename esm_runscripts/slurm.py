@@ -129,9 +129,8 @@ class Slurm:
         start_core = 0
         end_proc = 0 
         end_core = 0
-        path=self.path
         for model in config["general"]["valid_model_names"]:
-            start_proc, start_core, end_proc, end_core = self.mini_calc_reqs(path ,config, model, start_proc, start_core, end_proc, end_core)
+            start_proc, start_core, end_proc, end_core = self.mini_calc_reqs(self.path ,config, model, start_proc, start_core, end_proc, end_core)
 
 
     @staticmethod
