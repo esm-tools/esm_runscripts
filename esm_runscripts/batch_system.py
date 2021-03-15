@@ -63,7 +63,7 @@ class batch_system:
             header.append("#!" + this_batch_system["sh_interpreter"])
         tasks, nodes = batch_system.calculate_requirements(config)
         replacement_tags = [("@tasks@", tasks)]
-        if "taskset" in config["general"] == "true":
+        if config["general"].get("taskset", False):
             replacement_tags = [("@nodes@", nodes)]
             all_flags = [
                 "partition_flag",
@@ -109,7 +109,7 @@ class batch_system:
             for model in config["general"]["valid_model_names"]:
                 if "nproc" in config[model]:
                     tasks += config[model]["nproc"]
-                    if "taskset" in config["general"] == "true":
+                    if config["general"].get("taskset", False):
                         nodes +=int((config[model]["nproc"]*config[model]["omp_num_threads"])/config['computer']['cores_per_node'])
                 elif "nproca" in config[model] and "nprocb" in config[model]:
                     tasks += config[model]["nproca"] * config[model]["nprocb"]
@@ -273,7 +273,7 @@ class batch_system:
                 sadfile.write(line + "\n")
             sadfile.write("\n")
             sadfile.write("cd " + config["general"]["thisrun_work_dir"] + "\n")
-            if "taskset" in config["general"] == "true":
+            if config["general"].get("taskset", False):
                 sadfile.write("\n"+"#Creating hostlist for MPI + MPI&OMP heterogeneous parallel job" + "\n")
                 sadfile.write("rm -f ./hostlist" + "\n")
                 sadfile.write("export SLURM_HOSTFILE=./hostlist" + "\n")

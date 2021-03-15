@@ -87,24 +87,25 @@ class Slurm:
         else:
             return start_proc, start_core, end_proc, end_core
 
-        if "taskset" in config["general"] == "true":
-            command = "./" + config[model]["execution_command_script"]
-            scriptname="script_"+model+".ksh"
-            with open(self.folder+scriptname, "w") as f:
-                f.write("#!/bin/ksh"+"\n")
-                f.write("export OMP_NUM_THREADS="+str(config[model]["omp_num_threads"])+"\n")
-                f.write(command+"\n")
-            os.chmod(self.folder+scriptname, 0o755)
+        if config["general"].get("taskset", False): 
+            if "taskset" in config["general"]:
+                command = "./" + config[model]["execution_command_script"]
+                scriptname="script_"+model+".ksh"
+                with open(self.folder+scriptname, "w") as f:
+                    f.write("#!/bin/ksh"+"\n")
+                    f.write("export OMP_NUM_THREADS="+str(config[model]["omp_num_threads"])+"\n")
+                    f.write(command+"\n")
+                os.chmod(self.folder+scriptname, 0o755)
 
-            progname="prog_"+model+".sh"
-            with open(self.folder+progname, "w") as f:
-                f.write("#!/bin/sh"+"\n")
-                f.write("(( init = "+str(start_core)+" + $1 ))"+"\n")
-                f.write("(( index = init * "+str(config[model]["omp_num_threads"])+" ))"+"\n")
-                f.write("(( slot = index % "+str(config["computer"]["cores_per_node"])+" ))"+"\n")
-                f.write("echo "+model+" taskset -c $slot-$((slot + "+str(config[model]["omp_num_threads"])+" - 1"+"))"+"\n")
-                f.write("taskset -c $slot-$((slot + "+str(config[model]["omp_num_threads"])+" - 1)) ./script_"+model+".ksh"+"\n")
-            os.chmod(self.folder+progname, 0o755)
+                progname="prog_"+model+".sh"
+                with open(self.folder+progname, "w") as f:
+                    f.write("#!/bin/sh"+"\n")
+                    f.write("(( init = "+str(start_core)+" + $1 ))"+"\n")
+                    f.write("(( index = init * "+str(config[model]["omp_num_threads"])+" ))"+"\n")
+                    f.write("(( slot = index % "+str(config["computer"]["cores_per_node"])+" ))"+"\n")
+                    f.write("echo "+model+" taskset -c $slot-$((slot + "+str(config[model]["omp_num_threads"])+" - 1"+"))"+"\n")
+                    f.write("taskset -c $slot-$((slot + "+str(config[model]["omp_num_threads"])+" - 1)) ./script_"+model+".ksh"+"\n")
+                os.chmod(self.folder+progname, 0o755)
 
         if "execution_command" in config[model]:
             command = "./" + config[model]["execution_command"]
