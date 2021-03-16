@@ -3,6 +3,7 @@ Documentation goes here
 """
 import pdb
 import os
+import copy
 
 from loguru import logger
 
@@ -29,6 +30,18 @@ class SimulationSetup(object):
         if user_config["general"].get("debug_obj_init", False):
             pdb.set_trace()
         self.get_total_config_from_user_config(user_config)
+
+        multi_cluster_job = self.config["general"].get("multi_cluster_job")
+        if multi_cluster_job:
+            for cluster_name, cluster_setup in multi_cluster_job.items():
+                self.get_subconfig_for_multi_cluster_job(user_config, cluster_name, cluster_setup.split("-")[0], "-".join(cluster_setup.split("-")[1:]))
+                self.config[cluster_setup.replace(".", "p")] = copy.deepcopy(self.config['general']['multi_cluster_configs'][cluster_setup]['general'])
+                for inner_model in self.config['general']['multi_cluster_configs'][cluster_setup]['general']['models']:
+                    if inner_model in self.config:
+                        self.config[inner_model] = esm_parser.priority_merge_dicts(self.config[inner_model], self.config['general']['multi_cluster_configs'][cluster_setup][inner_model])
+                    else:
+                        self.config[inner_model] = copy.deepcopy(self.config['general']['multi_cluster_configs'][cluster_setup][inner_model])
+            del self.config['general']['multi_cluster_configs']
 
         self.config["general"]["command_line_config"] = self.command_line_config
         if "verbose" not in self.config["general"]:
@@ -131,6 +144,22 @@ class SimulationSetup(object):
         if deupdate_use_venv:
             user_config["general"]["use_venv"] = user_use_venv
         return user_config
+
+
+    def get_subconfig_for_multi_cluster_job(self, user_config, cluster_name, setup_name, setup_version):
+        print(f"Setting up {cluster_name} as {setup_name}-{setup_version}")
+        import copy
+        local_user_config = copy.deepcopy(user_config)
+        local_user_config['general']['setup_name'] = setup_name
+        local_user_config['general']['version'] = setup_version
+        if "multi_cluster_configs" not in self.config["general"]:
+            self.config["general"]["multi_cluster_configs"] = {}
+        self.config["general"]["multi_cluster_configs"][f"{setup_name}-{setup_version}"] = esm_parser.ConfigSetup(setup_name, setup_version, local_user_config)
+        lconfig = self.config["general"]["multi_cluster_configs"][f"{setup_name}-{setup_version}"]
+        save_keys = ['general', 'computer', 'debug_info', 'defaults'] + lconfig['general']['models']
+        for key in list(lconfig):
+            if key not in save_keys:
+                del lconfig[key]
 
 
 

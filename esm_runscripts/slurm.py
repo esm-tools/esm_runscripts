@@ -55,15 +55,16 @@ class Slurm:
 
     def calc_requirements_multi_srun(self, config):
         self.multi_paths = []
-        for run_type in list(config['general']['multi_srun']):
-            current_hostfile = self.path+"_"+run_type
+        for run_type, sub_setup in config['general']['multi_cluster_job'].items():
+            sub_setup = sub_setup.replace(".", "p")
+            current_hostfile = self.path+"_"+sub_setup
             print(f"Writing to: {current_hostfile}")
             start_proc = 0
             end_proc = 0
             with open(current_hostfile, "w") as hostfile:
-                for model in config['general']['multi_srun'][run_type]['models']:
+                for model in config[sub_setup]['models']:
                     start_proc, end_proc = self.mini_calc_reqs(config, model, hostfile, start_proc, end_proc)
-            config['general']['multi_srun'][run_type]['hostfile'] = os.path.basename(current_hostfile)
+            config[sub_setup]['hostfile'] = os.path.basename(current_hostfile)
             self.multi_paths.append(current_hostfile)
 
     @staticmethod
@@ -96,7 +97,7 @@ class Slurm:
         """
         Calculates requirements and writes them to ``self.path``.
         """
-        if config['general']['multi_srun']:
+        if config['general'].get('multi_cluster_job'):
             self.calc_requirements_multi_srun(config)
             return
         start_proc = 0

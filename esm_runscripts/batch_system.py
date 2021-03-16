@@ -58,11 +58,17 @@ class batch_system:
     @staticmethod
     def get_batch_header_multisrun(config, headers_so_far):
         all_headers = [headers_so_far[0]]
-        for idx, run_type in enumerate(config["general"]["multi_srun"]):
+        for idx, (run_type, lsetup) in enumerate(config["general"]["multi_cluster_job"].items()):
+            lsetup = lsetup.replace(".", "p")
             idx += 1
-            import pprint
-            pprint.pprint(config['general']['multi_srun'][run_type])
-            for model_idx, model in enumerate(config["general"]["multi_srun"][run_type]['models']):
+            lsetup_config = config[lsetup]
+            lsetup_config['header_models'] = []
+            total_execs_this_lsetup = 0
+            for model in lsetup_config['models']:
+                if "execution_command" in config[model] or "executable" in config[model]:
+                    total_execs_this_lsetup += 1
+                    lsetup_config['header_models'].append(model)
+            for model_idx, model in enumerate(lsetup_config['header_models']):
                 if config["general"]["verbose"]:
                     print(f"Assigning SBATCH headers for ({idx}): {run_type}")
                     print("Going through headers:")
@@ -70,10 +76,7 @@ class batch_system:
                         print(header)
                 for header in headers_so_far[1:]:
                     if "--ntasks=" in header:
-                        if config["general"]["verbose"]:
-                            print("In --ntasks block")
-                            print('all_headers.append("#SBATCH --ntasks="+str(config["general"]["multi_srun"][run_type]["model_tasks"]))')
-                        all_headers.append("#SBATCH --ntasks="+str(config["general"]["multi_srun"][run_type][model+"_tasks"]))
+                        all_headers.append("#SBATCH --ntasks="+str(config[model]["tasks"]))
                     elif "--output=" in header:
                         if config["general"]["verbose"]:
                             print("In --output block")
@@ -86,11 +89,10 @@ class batch_system:
                         all_headers.append(header)
                 all_headers.append("#SBATCH --propagate=STACK,CORE")
                 all_headers.append("#SBATCH --comment="+run_type+"_"+model)
-                print(f"model_index={model_idx}")
-                print(config["general"]["multi_srun"][run_type]["models"])
-                if model_idx != (len(config["general"]["multi_srun"][run_type]["models"]) - 1):
+
+                if model_idx != (total_execs_this_lsetup - 1):
                     all_headers.append("#SBATCH packjob")
-            if idx != len(config["general"]["multi_srun"]):
+            if idx != len(config["general"]["multi_cluster_job"]):
                 all_headers.append("#SBATCH packjob")
         for header in all_headers:
             if config["general"]["verbose"]:
@@ -139,7 +141,7 @@ class batch_system:
             header.append(
                 this_batch_system["header_start"] + " " + this_batch_system[flag]
             )
-        if "multi_srun" in config["general"]:
+        if "multi_cluster_job" in config["general"]:
             return batch_system.get_batch_header_multisrun(config, header)
         return header
 
@@ -162,15 +164,18 @@ class batch_system:
                         ):
                             tasks += config[model]["nprocar"] * config[model]["nprocbr"]
 
-            if "multi_srun" in config["general"]:
-                for run_type in list(config["general"]["multi_srun"]):
+            if "multi_cluster_job" in config["general"]:
+                for run_type, lsetup in config["general"]["multi_cluster_job"].items():
+                    lsetup = lsetup.replace(".", "p")
                     header_tasks = 0
-                    for model in config["general"]["multi_srun"][run_type]["models"]:
+                    for model in config[lsetup]["models"]:
+                        model_tasks = 0
                         if "nproc" in config[model]:
                             header_tasks += config[model]["nproc"]
+                            config[model]['tasks'] = config[model]["nproc"]
                         elif "nproca" in config[model] and "nprocb" in config[model]:
                             header_tasks += config[model]["nproca"] * config[model]["nprocb"]
-
+                            config[model]['tasks'] = config[model]["nproca"] * config[model]["nprocb"]
                             # KH 30.04.20: nprocrad is replaced by more flexible
                             # partitioning using nprocar and nprocbr
                             if "nprocar" in config[model] and "nprocbr" in config[model]:
@@ -179,7 +184,8 @@ class batch_system:
                                     and config[model]["nprocbr"] != "remove_from_namelist"
                                 ):
                                     header_tasks += config[model]["nprocar"] * config[model]["nprocbr"]
-                    config["general"]["multi_srun"][run_type]["header_tasks"] = header_tasks
+                                    config[model]['tasks'] += config[model]["nprocar"] * config[model]["nprocbr"]
+                    config[lsetup]["header_tasks"] = header_tasks
         elif config["general"]["jobtype"] == "post":
             tasks = 1
         return tasks
@@ -193,10 +199,11 @@ class batch_system:
     @staticmethod
     def determine_nodelist(config):
         setup_name = config['general']['setup_name']
-        if config['general'].get('multi_srun'):
-            for run_type in config['general']['multi_srun']:
+        if config['general'].get('multi_cluster_job'):
+            for run_type, lsetup in config['general']['multi_cluster_job'].items():
+                lsetup = lsetup.replace(".", "p")
                 total_tasks = 0
-                for model in config['general']['multi_srun'][run_type]['models']:
+                for model in config[lsetup]['models']:
                     model_tasks = 0
                     # determine how many nodes that component needs
                     if "nproc" in config[model]:
@@ -211,10 +218,9 @@ class batch_system:
                                 model_tasks += config[model]["nprocar"] * config[model]["nprocbr"]
                     else:
                         continue
-                    config['general']['multi_srun'][run_type][model+"_tasks"] = model_tasks
+                    config['general'][model] = model_tasks
                     total_tasks += model_tasks
-                config['general']['multi_srun'][run_type]['total_tasks'] = total_tasks
-        print(config['general']['multi_srun'])
+                config[lsetup]['total_tasks'] = total_tasks
 
 
     @staticmethod
@@ -249,7 +255,7 @@ class batch_system:
             commands.append(
                 "echo " + line + " >> " + config["general"]["experiment_log_file"]
             )
-            if config['general']['multi_srun']:
+            if config['general'].get('multi_cluster_job'):
                 return get_run_commands_multisrun(config, commands)
             commands.append("time " + batch_system["execution_command"] + " &")
         return commands
@@ -258,7 +264,6 @@ class batch_system:
 
     @staticmethod
     def get_submit_command(config, sadfilename):
-        # FIXME(PG): Here we need to include a multi-srun thing
         commands = []
         batch_system = config["computer"]
         if "submit" in batch_system:
@@ -279,7 +284,8 @@ class batch_system:
         # NOTE(PG): This next line allows for multi-srun simulations:
         batch_system.determine_nodelist(config)
         header = batch_system.get_batch_header(config)
-        environment = batch_system.get_environment(config)
+        if "multi_cluster_job" not in config["general"]:
+            environment = batch_system.get_environment(config)
         extra = batch_system.get_extra(config)
 
         if config["general"]["verbose"]:
@@ -318,8 +324,9 @@ class batch_system:
             for line in header:
                 sadfile.write(line + "\n")
             sadfile.write("\n")
-            for line in environment:
-                sadfile.write(line + "\n")
+            if "multi_cluster_job" not in config["general"]:
+                for line in environment:
+                    sadfile.write(line + "\n")
             for line in extra:
                 sadfile.write(line + "\n")
             sadfile.write("\n")
@@ -388,103 +395,37 @@ def get_run_commands_multisrun(config, commands):
     # Not sure if this is specific to Mistral as a HPC, Slurm as a batch
     # system, or whatever else might pop up...
     # @Dirk, please move this where you see it best (I guess slurm.py)
-    job_node_extraction = r"""
-    # Job nodes extraction
-    nodeslurm=$SLURM_JOB_NODELIST
-    echo "nodeslurm = ${nodeslurm}"
-    # Get rid of the hostname and surrounding brackets:
-    tmp=${nodeslurm#*[}
-    echo "tmp=$tmp"
-    nodes=${tmp%]*}
-    echo "nodes=$nodes"
-    # Turn it into an array seperated by newlines:
-    myarray=(`echo ${nodes} | sed 's/,/\n/g'`)
-    #
-    idx=0
-    for element in "${myarray[@]}"; do
-        if [[ "$element" == *"-"* ]]; then
-            array=(`echo $element | sed 's/-/\n/g'`)
-            for node in $(seq ${array[0]} ${array[1]}); do
-               nodelist[$idx]=${node}
-               idx=${idx}+1
-            done
-        else
-            nodelist[$idx]=${element}
-            idx=${idx}+1
-        fi
-    done
-
-    for element in "${nodelist[@]}"; do
-        echo "${element}"
-    done
-    """
-
-    def assign_nodes(run_type, start_node, end_node):
-        template = f"""
-        # Assign nodes for {run_type}
-        {run_type}=""
-        for idx in $srbseq %%START_NODE%% %%END_NODE%%erb; do
-            if ssbssb $idx == %%END_NODE%% esbesb; then
-                {run_type}="$scb{run_type}ecb$scbnodelist[$idx]ecb"
-            else
-                {run_type}="$scb{run_type}ecb$scbnodelistssb$idxesbecb,"
-            fi
-        done
-        echo "{run_type} nodes: $scb{run_type}ecb"
-        """
-        # Since Python f-strings and other braces don't play nicely together,
-        # we replace some stuff:
-        #
-        # For the confused:
-        # scb = start curly brace {
-        # ecb = end curly brace }
-        # ssb = start square brace [
-        # esb = end square brace ]
-        # srb = start round brace (
-        # erb = end round brace )
-        template = template.replace("scb", "{")
-        template = template.replace("ecb", "}")
-        template = template.replace("ssb", "[")
-        template = template.replace("esb", "]")
-        template = template.replace("srb", "(")
-        template = template.replace("erb", ")")
-        # Get rid of the starting spaces (they come from Python as the string
-        # is defined inside of this function which is indented (facepalm))
-        template = textwrap.dedent(template)
-        # TODO: Some replacements
-        template = template.replace("%%START_NODE%%", str(start_node))
-        template = template.replace("%%END_NODE%%", str(end_node))
-        return template
-
-
-    commands.append(textwrap.dedent(job_node_extraction))
-    total_nodes_so_far = 0
-    for idx, run_type in enumerate(config['general']['multi_srun']):
-        for model in config['general']['multi_srun'][run_type]['models']:
-            num_nodes_for_this_srun = int(config['general']['multi_srun'][run_type][model+'_tasks'] / config['computer']['cores_per_node'])
-            nodes = assign_nodes(model+"_nodes", total_nodes_so_far, total_nodes_so_far + num_nodes_for_this_srun - 1)
-            total_nodes_so_far += num_nodes_for_this_srun
-            commands.append(nodes)
     pack_group_counter = 0
-    for idx, run_type in enumerate(config['general']['multi_srun']):
+    for idx, (run_type, lsetup) in enumerate(config['general']['multi_cluster_job'].items()):
+        commands.append("\n#\n#")
+        commands.append(80*"#")
+        commands.append("\n#\n#")
+        commands.append("# "+run_type)
+        commands.append("\n#\n#")
+        lsetup = lsetup.replace(".", "p")
+        send_env_dict = {"general": config[lsetup], "computer": config["computer"]}
+        for model in config[lsetup]["models"]:
+            send_env_dict[model] = config[model]
+
+        environment = batch_system.get_environment(send_env_dict)
+        commands += environment
         new_exec_command = default_exec_command.replace("hostfile_srun", "") # config['general']['multi_srun'][run_type]['hostfile'])
         new_exec_command = new_exec_command.replace("--multi-prog", "")
         new_exec_command = new_exec_command.replace(config["computer"]["launcher_flags"], "")
-        for idx_mod, model in enumerate(config['general']['multi_srun'][run_type]['models']):
-                model_tasks = config["general"]["multi_srun"][run_type][model+"_tasks"]
-                end_character = ": " if idx_mod < (len(config['general']['multi_srun'][run_type]['models']) - 1) else ">>LOG_PLACEHOLDER<< &"
+        for idx_mod, model in enumerate(config[lsetup]['models']):
+            model_command = None
+            if "execution_command" in config[model]:
+                model_command = "./" + config[model]["execution_command"]
+            elif "executable" in config[model]:
+                model_command = "./" + config[model]["executable"]
+            if model_command:
+                model_tasks = config[model]["tasks"]
+                end_character = ": " if idx_mod < (len(config[lsetup]['models']) - 1) else ">>LOG_PLACEHOLDER<< &"
                 add_pack_group = f"--pack-group={pack_group_counter}" # if idx_mod < (len(config['general']['multi_srun'][run_type]['models']) - 1) else ""
                 pack_group_counter += 1
                 new_exec_command += config["computer"]["launcher_flags"] + " --mpi=pmi2 --cpu_bind=cores --distribution=block:block"
                 log_for_this_srun = config["general"]["experiment_scripts_dir"]+"/"+config["general"]["expid"]+"_"+run_type+"_compute_"+config["general"]["run_datestamp"]+".log"
-                if "execution_command" in config[model]:
-                    model_command = "./" + config[model]["execution_command"]
-                elif "executable" in config[model]:
-                    model_command = "./" + config[model]["executable"]
-                if config['general']['multi_srun'].get('include_nodelist', False):
-                    new_exec_command += f" {add_pack_group} --nodelist ${model}_nodes -n {model_tasks} {model_command} {end_character}"
-                else:
-                    new_exec_command += f" {add_pack_group} -n {model_tasks} {model_command} {end_character}"
+                new_exec_command += f" {add_pack_group} -n {model_tasks} {model_command} {end_character}"
         commands.append("time " + new_exec_command.replace(">>LOG_PLACEHOLDER<<", f">{log_for_this_srun} 2>&1"))
     commands.append("wait")
     return commands
