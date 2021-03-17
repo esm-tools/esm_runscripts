@@ -544,7 +544,7 @@ def set_prev_date(config):
                 0,
                 int(config[model]["time_step"]),
             )
-            config[model]["last_parent_date"] = config[model]["parent_date"] - (
+            config[model]["last_parent_date"] = config[model]["prev_date"] - (
                 0,
                 0,
                 0,
@@ -569,7 +569,7 @@ def set_prev_date(config):
                 0,
                 int(dt),
             )
-            config[model]["last_parent_date"] = config[model]["parent_date"] - (
+            config[model]["last_parent_date"] = config[model]["prev_date"] - (
                 0,
                 0,
                 0,
