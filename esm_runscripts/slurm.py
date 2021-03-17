@@ -62,12 +62,15 @@ class Slurm:
             end_proc = 0
             with open(current_hostfile, "w") as hostfile:
                 for model in config['general']['multi_srun'][run_type]['models']:
-                    start_proc, end_proc = self.mini_calc_reqs(config, model, hostfile, start_proc, end_proc)
+                    start_proc, start_core, end_proc, end_core = self.mini_calc_reqs(
+                        config, model, hostfile,
+                        start_proc, start_core, end_proc, end_core
+                    )
             config['general']['multi_srun'][run_type]['hostfile'] = os.path.basename(current_hostfile)
 
 
     @staticmethod
-    def mini_calc_reqs(path, config, model, start_proc, start_core, end_proc, end_core):
+    def mini_calc_reqs(config, model, hostfile, start_proc, start_core, end_proc, end_core):
         if "nproc" in config[model]:
             end_proc = start_proc + int(config[model]["nproc"]) - 1
             if "omp_num_threads" in config[model]:
@@ -110,11 +113,9 @@ class Slurm:
             command = "./" + config[model]["executable"]
         else:
             return start_proc, start_core, end_proc, end_core
-
-        with open(path, "a") as hostfile:
-            hostfile.write(str(start_proc) + "-" + str(end_proc) + "  " + command + "\n")
-            start_proc = end_proc + 1
-            start_core = end_core + 1
+        hostfile.write(str(start_proc) + "-" + str(end_proc) + "  " + command + "\n")
+        start_proc = end_proc + 1
+        start_core = end_core + 1
         return start_proc, start_core, end_proc, end_core
 
 
@@ -127,10 +128,11 @@ class Slurm:
             return
         start_proc = 0
         start_core = 0
-        end_proc = 0 
+        end_proc = 0
         end_core = 0
-        for model in config["general"]["valid_model_names"]:
-            start_proc, start_core, end_proc, end_core = self.mini_calc_reqs(self.path ,config, model, start_proc, start_core, end_proc, end_core)
+        with open(self.path, "w") as hostfile:
+            for model in config["general"]["valid_model_names"]:
+                start_proc, start_core, end_proc, end_core = self.mini_calc_reqs(config, model, hostfile, start_proc, start_core, end_proc, end_core)
 
 
     @staticmethod
