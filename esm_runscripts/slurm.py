@@ -62,14 +62,19 @@ class Slurm:
             end_proc = 0
             with open(current_hostfile, "w") as hostfile:
                 for model in config['general']['multi_srun'][run_type]['models']:
-                    start_proc, end_proc = self.mini_calc_reqs(config, model, hostfile, start_proc, end_proc)
+                    start_proc, start_core, end_proc, end_core = self.mini_calc_reqs(
+                        config, model, hostfile,
+                        start_proc, start_core, end_proc, end_core
+                    )
             config['general']['multi_srun'][run_type]['hostfile'] = os.path.basename(current_hostfile)
 
 
     @staticmethod
-    def mini_calc_reqs(config, model, hostfile, start_proc, end_proc):
+    def mini_calc_reqs(config, model, hostfile, start_proc, start_core, end_proc, end_core):
         if "nproc" in config[model]:
             end_proc = start_proc + int(config[model]["nproc"]) - 1
+            if "omp_num_threads" in config[model]:
+                end_core = start_core + int(config[model]["nproc"])*int(config[model]["omp_num_threads"]) - 1
         elif "nproca" in config[model] and "nprocb" in config[model]:
             end_proc = start_proc + int(config[model]["nproca"])*int(config[model]["nprocb"]) - 1
 
@@ -80,16 +85,38 @@ class Slurm:
                     end_proc += config[model]["nprocar"] * config[model]["nprocbr"]
 
         else:
-            return start_proc, end_proc
+            return start_proc, start_core, end_proc, end_core
+
+        scriptfolder = config["general"]["thisrun_scripts_dir"] + "../work/"
+        if config["general"].get("taskset", False): 
+            command = "./" + config[model]["execution_command_script"]
+            scriptname="script_"+model+".ksh"
+            with open(scriptfolder+scriptname, "w") as f:
+                f.write("#!/bin/ksh"+"\n")
+                f.write("export OMP_NUM_THREADS="+str(config[model]["omp_num_threads"])+"\n")
+                f.write(command+"\n")
+            os.chmod(scriptfolder+scriptname, 0o755)
+
+            progname="prog_"+model+".sh"
+            with open(scriptfolder+progname, "w") as f:
+                f.write("#!/bin/sh"+"\n")
+                f.write("(( init = "+str(start_core)+" + $1 ))"+"\n")
+                f.write("(( index = init * "+str(config[model]["omp_num_threads"])+" ))"+"\n")
+                f.write("(( slot = index % "+str(config["computer"]["cores_per_node"])+" ))"+"\n")
+                f.write("echo "+model+" taskset -c $slot-$((slot + "+str(config[model]["omp_num_threads"])+" - 1"+"))"+"\n")
+                f.write("taskset -c $slot-$((slot + "+str(config[model]["omp_num_threads"])+" - 1)) ./script_"+model+".ksh"+"\n")
+            os.chmod(scriptfolder+progname, 0o755)
+
         if "execution_command" in config[model]:
             command = "./" + config[model]["execution_command"]
         elif "executable" in config[model]:
             command = "./" + config[model]["executable"]
         else:
-            return start_proc, end_proc
+            return start_proc, start_core, end_proc, end_core
         hostfile.write(str(start_proc) + "-" + str(end_proc) + "  " + command + "\n")
         start_proc = end_proc + 1
-        return start_proc, end_proc
+        start_core = end_core + 1
+        return start_proc, start_core, end_proc, end_core
 
 
     def calc_requirements(self, config):
@@ -100,10 +127,12 @@ class Slurm:
             self.calc_requirements_multi_srun(config)
             return
         start_proc = 0
+        start_core = 0
         end_proc = 0
+        end_core = 0
         with open(self.path, "w") as hostfile:
             for model in config["general"]["valid_model_names"]:
-                start_proc, end_proc = self.mini_calc_reqs(config, model, hostfile, start_proc, end_proc)
+                start_proc, start_core, end_proc, end_core = self.mini_calc_reqs(config, model, hostfile, start_proc, start_core, end_proc, end_core)
 
 
     @staticmethod
