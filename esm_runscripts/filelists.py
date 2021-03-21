@@ -435,6 +435,8 @@ def replace_year_placeholder(config):
 
 
 def log_used_files(config):
+    if config["general"]["verbose"]:
+        print("\n::: Logging used files")
     filetypes = config["general"]["relevant_filetypes"]
     for model in config["general"]["valid_model_names"] + ["general"]:
         with open(
@@ -473,12 +475,11 @@ def log_used_files(config):
                             + config[model][filetype + "_targets"][category]
                         )
                         if config["general"]["verbose"]:
-                            print(
-                                "-  "
-                                + config[model][filetype + "_targets"][category]
-                                + " : "
-                                + config[model][filetype + "_sources"][category]
-                            )
+                            print()
+                            print((f'- source: '
+                                f'{config[model][filetype + "_sources"][category]}'))
+                            print((f'- target: '
+                                f'{config[model][filetype + "_targets"][category]}'))
                         flist.write("\n")
                 flist.write("\n")
                 flist.write(80 * "-")
@@ -560,6 +561,8 @@ def resolve_symlinks(file_source):
 
 
 def copy_files(config, filetypes, source, target):
+    if config["general"]["verbose"]:
+        print("\n::: Copying files")
 
     successful_files = []
     missing_files = {}
@@ -587,8 +590,9 @@ def copy_files(config, filetypes, source, target):
                     file_source = os.path.normpath(sourceblock[categ])
                     file_target = os.path.normpath(targetblock[categ])
                     if config["general"]["verbose"]:
-                        print(f"source: {file_source}")
-                        print(f"   --> target: {file_target}")
+                        print()
+                        print(f"- source: {file_source}")
+                        print(f"- target: {file_target}")
                     if file_source == file_target:
                         if config["general"]["verbose"]:
                             print(
@@ -605,7 +609,7 @@ def copy_files(config, filetypes, source, target):
                                 # (same as with ``mkdir -p <directory>>``)
                                 os.makedirs(dest_dir)
                             if not os.path.isfile(file_source):
-                                print(f"File not found: {file_source}...")
+                                print(f"WARNING: File not found: {file_source}")
                                 missing_files.update({file_target: file_source})
                                 continue
                             if os.path.isfile(file_target) and filecmp.cmp(
@@ -629,27 +633,28 @@ def copy_files(config, filetypes, source, target):
         if not "files_missing_when_preparing_run" in config["general"]:
             config["general"]["files_missing_when_preparing_run"] = {}
         if config["general"]["verbose"]:
-            six.print_("--- WARNING: These files were missing:")
+            six.print_("\n\nWARNING: These files were missing:")
             for missing_file in missing_files:
-                print("  - " + missing_file + ": " + missing_files[missing_file])
+                print(f'- missing source: {missing_files[missing_file]}')
+                print(f'- missing target: {missing_file}') 
+                print()
         config["general"]["files_missing_when_preparing_run"].update(missing_files)
     return config
 
 
 def report_missing_files(config):
+    # this list is populated by the ``copy_files`` function in filelists.py
     if "files_missing_when_preparing_run" in config["general"]:
         config = _check_fesom_missing_files(config)
         if not config["general"]["files_missing_when_preparing_run"] == {}:
-            six.print_(80 * "=")
             print("MISSING FILES:")
         for missing_file in config["general"]["files_missing_when_preparing_run"]:
-            print("--  " + missing_file + ": ")
-            print(
-                "        --> "
-                + config["general"]["files_missing_when_preparing_run"][missing_file]
-            )
+            print()
+            print(f'- missing source: {config["general"]["files_missing_when_preparing_run"][missing_file]}')
+            print(f'- missing target: {missing_file}')
         if not config["general"]["files_missing_when_preparing_run"] == {}:
             six.print_(80 * "=")
+        print()
     return config
 
 

@@ -154,9 +154,9 @@ def modify_namelists(config):
 
     if config["general"]["verbose"]:
         six.print_("\n" "- Setting up namelists for this run...")
-        for model in config["general"]["valid_model_names"]:
-            six.print_("-" * 80)
-            six.print_("* %s" % config[model]["model"], "\n")
+        for index, model in enumerate(config["general"]["valid_model_names"]):
+            print(f'{index+1}) {config[model]["model"]}')
+        print()
 
     for model in config["general"]["valid_model_names"]:
         config[model] = Namelist.nmls_load(config[model])
@@ -169,13 +169,12 @@ def modify_namelists(config):
         )
 
     if config["general"]["verbose"]:
-        print("end of namelist section")
+        print("::: end of namelist section\n")
     return config
 
 
 def copy_files_to_thisrun(config):
     if config["general"]["verbose"]:
-        six.print_("=" * 80, "\n")
         six.print_("PREPARING EXPERIMENT")
         # Copy files:
         six.print_("\n" "- File lists populated, proceeding with copy...")
@@ -192,7 +191,6 @@ def copy_files_to_thisrun(config):
 
 def copy_files_to_work(config):
     if config["general"]["verbose"]:
-        six.print_("=" * 80, "\n")
         six.print_("PREPARING WORK FOLDER")
     config = copy_files(
         config, config["general"]["in_filetypes"], source="thisrun", target="work"
