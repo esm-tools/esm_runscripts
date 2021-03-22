@@ -32,6 +32,8 @@ def _assemble_postprocess_tasks(config):
         post_task_list.append("cd "+ config[component]["experiment_outdata_dir"]+"\n")
 
         pconfig_tasks = config[component].get('postprocess_tasks', {})
+        pconfig_scripts = config[component].get('postprocessing_scripts', {})
+
         post_file.write("Configuration for post processing: %s \n" % pconfig_tasks)
         for outfile in pconfig_tasks:
             post_file.write("Generating task to create: %s \n" % outfile)
@@ -76,9 +78,50 @@ def _assemble_postprocess_tasks(config):
                     raise TypeError("Something straaaange happened. Consider starting the debugger.")
             post_file.write(" ".join(call)+"\n")
             post_task_list.append(" ".join(call))
+
+
+
+        for script in pconfig_scripts:
+            postscript_name = pconfig_scripts.get("postprocessing_script_name", None)
+            postscript_dir = pconfig_scripts.get("postprocessing_dir", None)
+
+            envscript_name = pconfig_scripts.get("postprocessing_envscript_name", None)
+
+            postscript_name = assemble_filename(postscript_name, postscript_dir, config)
+            envscript_name = assemble_filename(envscript_name, postscript_dir, config)
+
+            if envscript_name:
+                environment_dict = envscript_name(config)
+                post_task_list += export_string(environment_dict)
+
+            if postscript_name:
+                post_task_list.append(postscript_name)
+
         post_task_list.append("cd -\n")
         config["general"]["post_task_list"] = post_task_list
     return config
+
+
+
+def assemble_filename(filename, dirname, config):
+    if filename.startswith("/"):
+        return filename
+    if filename.startswith(".") or dirname == "." or dirname == "./":
+        return os.path.join(["general"]["started_from"], filename)
+    if dirname:
+        return os.path.join(dirname, filename)
+    return os.path.join(["general"]["started_from"], filename)
+
+
+
+
+
+def export_string(environment_dict):
+    export_string = []
+    for entry in environment_dict:
+        value = environment_dict[entry]
+        export_string.append([f"export {entry}={value}"])
+    return export_string
 
 #?????
 #def write_simple_postscript(config):

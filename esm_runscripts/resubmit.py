@@ -1,0 +1,150 @@
+def resubmit_batch_system(config, cluster = None):
+    config = batch_system.write_simple_runscript(config, "batch", cluster)
+    config = batch_system.submit(config)
+    return config
+
+
+
+
+def resubmit_shell(config, cluster = None):
+    config = batch_system.write_simple_runscript(config, "shell", cluster)
+    # - os.system that (or subprocess)
+    return config
+
+
+
+
+
+def resubmit_SimulationSetup(config, cluster = None):
+    monitor_file = config["general"]["monitor_file"]
+    # Jobs that should be started directly from the compute job:
+    next_jobs = ["post"]  # Later also: "viz", "couple", ("analysis"...?)
+    for jobtype in next_jobs:
+        do_jobtype = False
+        for model in config:
+            # Allows for both "do_post: True" or "post: True" in config:
+            if (
+                config[model].get(f"do_{jobtype}", False) or
+                config[model].get(jobtype, False)
+            ):
+                do_jobtype = True
+        if do_jobtype:
+            monitor_file.write(f"{jobtype} for this run:\n")
+            command_line_config = config["general"]["command_line_config"]
+            command_line_config["jobtype"] = jobtype
+
+            # not necessarily from compute...
+            command_line_config["original_command"] = command_line_config[
+                "original_command"
+            ].replace("compute", jobtype)
+            monitor_file.write(f"Initializing {jobtype} object with:\n")
+            monitor_file.write(str(command_line_config))
+            # NOTE(PG) Non top level import to avoid circular dependency:
+            from .sim_objects import SimulationSetup
+            jobtype_obj = SimulationSetup(command_line_config)
+            monitor_file.write("f{jobtype} object built....\n")
+            if f"{jobtype}_update_compute_config_before_resubmit" in jobtype_obj.config:
+                monitor_file.write(f"{jobtype} object needs to update the calling job config:\n")
+                # FIXME(PG): This might need to be a deep update...?
+                config.update(jobtype.config[f"{jobtype}_update_compute_config_before_resubmit"])
+            monitor_file.write(f"Calling {jobtype} job:\n")
+            jobtype_obj()
+    return config
+
+
+
+def submission_type(config):
+    # Figure out if next job is resubmitted to batch system,
+    # just executed in shell or invoked as new SimulationSetup 
+    # object
+
+    submission_type = "batch_system"
+
+    submission_type = "SimulationSetup"
+
+    submission_type = "script"
+
+
+    return submission_type
+
+
+
+
+
+def end_of_experiment(config):
+    if config["general"]["next_date"] >= config["general"]["final_date"]:
+        monitor_file.write("Reached the end of the simulation, quitting...\n")
+        helpers.write_to_log(config, ["# Experiment over"], message_sep="")
+        return True
+    return False
+
+
+
+
+
+def maybe_resubmit(config):
+    for cluster in ...
+        if cluster == config["general"]["first_task_in_workflow"]:
+            # count up the calendar here
+            if end_of_experiment(config):
+                continue
+        submission_type = submission_type(cluster, config)
+        if submission_type == "SimulationSetup":
+            resubmit_SimulationSetup(cluster, config)
+        elif submission_type == "shell":
+            resubmit_shell(cluster, config)
+        elif submission_type == "batch_system":
+            resubmit_batch_system(cluster, config)
+    return config
+
+
+#def resubmit_SimulationSetup(config):
+#    # this is restarting the whole workflow
+#    monitor_file = config["general"]["monitor_file"]
+#    monitor_file.write("resubmitting \n")
+#    command_line_config = config["general"]["command_line_config"]
+#    command_line_config["jobtype"] = "compute"
+#
+#    # not necessarily from tidy, and not nec. to compute
+#    command_line_config["original_command"] = command_line_config[
+##        "original_command"
+#        ].replace("tidy", "compute")
+#
+#    # seb-wahl: end_date is by definition (search for 'end_date') smaller than final_date
+#    # hence we have to use next_date = current_date + increment
+#    monitor_file.write("Init for next run:\n")
+#    # NOTE(PG) Non top level import to avoid circular dependency:
+#    from .sim_objects import SimulationSetup
+#
+#    next_compute = SimulationSetup(command_line_config)
+#    next_compute(kill_after_submit=False)
+#    return config
+
+
+
+
+##def start_post_job(config):
+#    monitor_file = config["general"]["monitor_file"]
+#    do_post = False
+##    for model in config:,
+#        if "post_processing" in config[model]:
+#            if config[model]["post_processing"]:
+#                do_post = True
+#
+#    if do_post:
+#        monitor_file.write("Post processing for this run:\n")
+#        command_line_config = config["general"]["command_line_config"]
+#        command_line_config["jobtype"] = "post"
+#        command_line_config["original_command"] = command_line_config[
+#            "original_command"
+#        ].replace("compute", "post")
+#        monitor_file.write ("Initializing post object with:\n")
+#        monitor_file.write(str(command_line_config))
+#        # NOTE(PG) Non top level import to avoid circular dependency:
+#        from .sim_objects import SimulationSetup
+#        this_post = SimulationSetup(command_line_config)
+#        monitor_file.write("Post object built; calling post job:\n")
+#        this_post()
+#    return config
+#
+#

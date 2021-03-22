@@ -11,7 +11,6 @@ import shutil
 from . import coupler, database_actions, helpers
 from .filelists import copy_files, resolve_symlinks
 
-
 def run_job(config):
     config["general"]["relevant_filetypes"] = [
         "log",
@@ -30,52 +29,10 @@ def run_job(config):
     return config
 
 
-def init_monitor_file(config):
-    called_from = config["general"]["last_jobtype"]
-    monitor_file = config["general"]["monitor_file"]
-
-    monitor_file.write("tidy job initialized \n")
-    monitor_file.write(
-        "attaching to process " + str(config["general"]["launcher_pid"]) + " \n"
-    )
-    monitor_file.write("Called from a " + called_from + "job \n")
-    return config
-
-
-def get_last_jobid(config):
-    called_from = config["general"]["last_jobtype"]
-    last_jobid = "UNKNOWN"
-    if called_from == "compute":
-        with open(config["general"]["experiment_log_file"], "r") as logfile:
-            lastline = [
-                l for l in logfile.readlines() if "compute" in l and "start" in l
-            ][-1]
-            last_jobid = lastline.split(" - ")[0].split()[-1]
-    config["general"]["last_jobid"] = last_jobid
-    return config
-
-
 def copy_stuff_back_from_work(config):
     config = copy_files(
         config, config["general"]["relevant_filetypes"], "work", "thisrun"
     )
-    return config
-
-
-def wait_and_observe(config):
-    if config["general"]["submitted"]:
-        monitor_file = config["general"]["monitor_file"]
-        thistime = 0
-        error_check_list = assemble_error_list(config)
-        while job_is_still_running(config):
-            monitor_file.write("still running \n")
-            config["general"]["next_test_time"] = thistime
-            config = check_for_errors(config)
-            thistime = thistime + 10
-            time.sleep(10)
-        thistime = thistime + 100000000
-        config["general"]["next_test_time"] = thistime
-        config = check_for_errors(config)
     return config
 
 
@@ -85,138 +42,6 @@ def tidy_coupler(config):
     return config
 
 
-def wake_up_call(config):
-    called_from = config["general"]["last_jobtype"]
-    monitor_file = config["general"]["monitor_file"]
-    last_jobid = config["general"]["last_jobid"]
-    monitor_file.write("job ended, starting to tidy up now \n")
-    # Log job completion
-    if called_from != "command_line":
-        helpers.write_to_log(
-            config,
-            [
-                called_from,
-                str(config["general"]["run_number"]),
-                str(config["general"]["current_date"]),
-                last_jobid,
-                "- done",
-            ],
-        )
-    # Tell the world you're cleaning up:
-    helpers.write_to_log(
-        config,
-        [
-            str(config["general"]["jobtype"]),
-            str(config["general"]["run_number"]),
-            str(config["general"]["current_date"]),
-            str(config["general"]["jobid"]),
-            "- start",
-        ],
-    )
-    return config
-
-
-def assemble_error_list(config):
-    gconfig = config["general"]
-    known_methods = ["warn", "kill"]
-    stdout = (
-        gconfig["thisrun_scripts_dir"]
-        + "/"
-        + gconfig["expid"]
-        + "_compute_"
-        + gconfig["run_datestamp"]
-        + "_"
-        + gconfig["jobid"]
-        + ".log"
-    )
-
-    error_list = [
-        ("error", stdout, "warn", 60, 60, "keyword error detected, watch out")
-    ]
-
-    for model in config:
-        if "check_error" in config[model]:
-            for trigger in config[model]["check_error"]:
-                search_file = stdout
-                method = "warn"
-                frequency = 60
-                message = "keyword " + trigger + " detected, watch out"
-                if isinstance(config[model]["check_error"][trigger], dict):
-                    if "file" in config[model]["check_error"][trigger]:
-                        search_file = config[model]["check_error"][trigger]["file"]
-                        if search_file == "stdout" or search_file == "stderr":
-                            search_file = stdout
-                    if "method" in config[model]["check_error"][trigger]:
-                        method = config[model]["check_error"][trigger]["method"]
-                        if method not in known_methods:
-                            method = "warn"
-                    if "message" in config[model]["check_error"][trigger]:
-                        message = config[model]["check_error"][trigger]["message"]
-                    if "frequency" in config[model]["check_error"][trigger]:
-                        frequency = config[model]["check_error"][trigger]["frequency"]
-                        try:
-                            frequency = int(frequency)
-                        except:
-                            frequency = 60
-                elif isinstance(config[model]["check_error"][trigger], str):
-                    pass
-                else:
-                    continue
-                error_list.append(
-                    (trigger, search_file, method, frequency, frequency, message)
-                )
-    config["general"]["error_list"] = error_list
-    return config
-
-
-def check_for_errors(config):
-    new_list = []
-    error_check_list = config["general"]["error_list"]
-    monitor_file = config["general"]["monitor_file"]
-    time = config["general"]["next_test_time"]
-    for (
-        trigger,
-        search_file,
-        method,
-        next_check,
-        frequency,
-        message,
-    ) in error_check_list:
-        warned = 0
-        if next_check <= time:
-            if os.path.isfile(search_file):
-                with open(search_file) as origin_file:
-                    for line in origin_file:
-                        if trigger.upper() in line.upper():
-                            if method == "warn":
-                                warned = 1
-                                monitor_file.write("WARNING: " + message + "\n")
-                                break
-                            elif method == "kill":
-                                harakiri = "scancel " + config["general"]["jobid"]
-                                monitor_file.write("ERROR: " + message + "\n")
-                                monitor_file.write("Will kill the run now..." + "\n")
-                                monitor_file.flush()
-                                print("ERROR: " + message)
-                                print("Will kill the run now...", flush=True)
-                                database_actions.database_entry_crashed(config)
-                                os.system(harakiri)
-                                sys.exit(42)
-            next_check += frequency
-        if warned == 0:
-            new_list.append(
-                (trigger, search_file, method, next_check, frequency, message)
-            )
-    config["general"]["error_list"] = new_list
-    return config
-
-
-def job_is_still_running(config):
-    if psutil.pid_exists(config["general"]["launcher_pid"]):
-        return True
-    return False
-
-
 def _increment_date_and_run_number(config):
     config["general"]["run_number"] += 1
     config["general"]["current_date"] += config["general"]["delta_date"]
@@ -224,7 +49,7 @@ def _increment_date_and_run_number(config):
 
 
 def _write_date_file(config):  # self, date_file=None):
-    monitor_file = config["general"]["monitor_file"]
+    monitor_file = config["general"]["logfile"]
     # if not date_file:
     date_file = (
         config["general"]["experiment_scripts_dir"]
@@ -466,65 +291,6 @@ def _clean_old_runs_size(config):
             os.remove(file_)
 
 
-def start_various_jobtypes_after_compute(config):
-    monitor_file = config["general"]["monitor_file"]
-    # Jobs that should be started directly from the compute job:
-    next_jobs = ["post"]  # Later also: "viz", "couple", ("analysis"...?)
-    for jobtype in next_jobs:
-        do_jobtype = False
-        for model in config:
-            # Allows for both "do_post: True" or "post: True" in config:
-            if (
-                config[model].get(f"do_{jobtype}", False) or
-                config[model].get(jobtype, False)
-            ):
-                do_jobtype = True
-        if do_jobtype:
-            monitor_file.write(f"{jobtype} for this run:\n")
-            command_line_config = config["general"]["command_line_config"]
-            command_line_config["jobtype"] = jobtype
-            command_line_config["original_command"] = command_line_config[
-                "original_command"
-            ].replace("compute", jobtype)
-            monitor_file.write(f"Initializing {jobtype} object with:\n")
-            monitor_file.write(str(command_line_config))
-            # NOTE(PG) Non top level import to avoid circular dependency:
-            from .sim_objects import SimulationSetup
-            jobtype_obj = SimulationSetup(command_line_config)
-            monitor_file.write("f{jobtype} object built....\n")
-            if f"{jobtype}_update_compute_config_before_resubmit" in jobtype_obj.config:
-                monitor_file.write(f"{jobtype} object needs to update the calling job config:\n")
-                # FIXME(PG): This might need to be a deep update...?
-                config.update(jobtype.config[f"{jobtype}_update_compute_config_before_resubmit"])
-            monitor_file.write(f"Calling {jobtype} job:\n")
-            jobtype_obj()
-    return config
-
-
-def start_post_job(config):
-    monitor_file = config["general"]["monitor_file"]
-    do_post = False
-    for model in config:
-        if "post_processing" in config[model]:
-            if config[model]["post_processing"]:
-                do_post = True
-
-    if do_post:
-        monitor_file.write("Post processing for this run:\n")
-        command_line_config = config["general"]["command_line_config"]
-        command_line_config["jobtype"] = "post"
-        command_line_config["original_command"] = command_line_config[
-            "original_command"
-        ].replace("compute", "post")
-        monitor_file.write("Initializing post object with:\n")
-        monitor_file.write(str(command_line_config))
-        # NOTE(PG) Non top level import to avoid circular dependency:
-        from .sim_objects import SimulationSetup
-        this_post = SimulationSetup(command_line_config)
-        monitor_file.write("Post object built; calling post job:\n")
-        this_post()
-    return config
-
 
 def all_done(config):
     helpers.write_to_log(
@@ -555,29 +321,6 @@ def signal_tidy_completion(config):
     return config
 
 
-def maybe_resubmit(config):
-    monitor_file = config["general"]["monitor_file"]
-    monitor_file.write("resubmitting \n")
-    command_line_config = config["general"]["command_line_config"]
-    command_line_config["jobtype"] = "compute"
-    command_line_config["original_command"] = command_line_config[
-        "original_command"
-    ].replace("tidy_and_resubmit", "compute")
-
-    # seb-wahl: end_date is by definition (search for 'end_date') smaller than final_date
-    # hence we have to use next_date = current_date + increment
-    if config["general"]["next_date"] >= config["general"]["final_date"]:
-        monitor_file.write("Reached the end of the simulation, quitting...\n")
-        helpers.write_to_log(config, ["# Experiment over"], message_sep="")
-    else:
-        monitor_file.write("Init for next run:\n")
-        # NOTE(PG) Non top level import to avoid circular dependency:
-        from .sim_objects import SimulationSetup
-        next_compute = SimulationSetup(command_line_config)
-        next_compute(kill_after_submit=False)
-    return config
-
-
 # DONT LIKE THE FOLLOWING PART...
 # I wish it was closer to the copy_files routine in filelists,
 # but as it is really a different thing - moving everything
@@ -589,7 +332,7 @@ def maybe_resubmit(config):
 def throw_away_some_infiles(config):
     if config["general"]["run_number"] == 1:
         return config
-    monitor_file = config["general"]["monitor_file"]
+    monitor_file = config["general"]["logfile"]
     monitor_file.write("throwing away restart_in files \n")
     for model in config["general"]["valid_model_names"]:
         print(f"{model}")
@@ -605,7 +348,7 @@ def throw_away_some_infiles(config):
 
 
 def copy_all_results_to_exp(config):
-    monitor_file = config["general"]["monitor_file"]
+    monitor_file = config["general"]["logfile"]
     monitor_file.write("Copying stuff to main experiment folder \n")
     for root, dirs, files in os.walk(config["general"]["thisrun_dir"], topdown=False):
         if config["general"]["verbose"]:

@@ -62,17 +62,17 @@ def parse_shargs():
         action="store_true",
     )
 
-    parser.add_argument(
-        "-j",
-        "--last_jobtype",
-        help="Write the jobtype this run was called from (esm-tools internal)",
-        default="command_line",
-    )
-
+    #parser.add_argument(
+    #    "-j",
+    #    "--last_jobtype",
+    #    help="Write the jobtype this run was called from (esm-tools internal)",
+    #    default="command_line",
+    #)
+#
     parser.add_argument(
         "-t",
         "--task",
-        help="The task to run. Choose from: compute, post, couple, tidy_and_resubmit",
+        help="The task to run. Choose from: compute, post, couple, tidy",
         default="compute",
     )
 
@@ -166,7 +166,7 @@ def main():
     command_line_config["launcher_pid"] = pid
     command_line_config["jobtype"] = jobtype
     command_line_config["scriptname"] = ARGS.runscript
-    command_line_config["last_jobtype"] = ARGS.last_jobtype
+    #command_line_config["last_jobtype"] = ARGS.last_jobtype
     command_line_config["verbose"] = verbose
     command_line_config["inspect"] = inspect
     command_line_config["use_venv"] = use_venv

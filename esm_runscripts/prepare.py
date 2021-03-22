@@ -180,15 +180,14 @@ def model_env_into_computer(config):
                         pprint_config({key: env_vars[key][0]})
                         logging.info("\nIn '" + model + "':")
                         pprint_config({key: value})
-                        # Ask the user how to proceed if it is not a ``tidy_and_
-                        # resubmit`` job
-                        if not config["general"]["jobtype"]=="tidy_and_resubmit":
+                        # Ask the user how to proceed if it is not a `tidy job
+                        if not config["general"]["jobtype"]=="tidy":
                             user_answer = input(
                                 f"Environment variable '{key}' defined in '{model0}' is "
                                 + "going to be overwritten by the one defined in "
                                 + f"'{model}'. Are you okay with that? (Y/n): "
                             )
-                        # If it is a ``tidy_and_resubmit`` job, the user has already
+                        # If it is a ``tidy`` job, the user has already
                         # interacted and accepted the overwriting.
                         else:
                             user_answer = "Y"

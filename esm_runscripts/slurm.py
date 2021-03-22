@@ -53,27 +53,19 @@ class Slurm:
         """
         return os.environ.get("SLURM_JOB_ID")
 
-    def calc_requirements(self, config):
+    def write_hostfile(self, config):
         """
-        Calculates requirements and writes them to ``self.path``.
+        Gathers previously prepared requirements 
+        (batch_system.calculate_requirements) and writes them to ``self.path``.
         """
-        start_proc = 0
-        end_proc = 0
         with open(self.path, "w") as hostfile:
             for model in config["general"]["valid_model_names"]:
-                if "nproc" in config[model]:
-                    end_proc = start_proc + int(config[model]["nproc"]) - 1
-                elif "nproca" in config[model] and "nprocb" in config[model]:
-                    end_proc = start_proc + int(config[model]["nproca"])*int(config[model]["nprocb"]) - 1
+                end_proc = config[model].get("end_proc", None)
+                start_proc = config[model].get("start_proc", None)
 
-                    # KH 30.04.20: nprocrad is replaced by more flexible
-                    # partitioning using nprocar and nprocbr
-                    if "nprocar" in config[model] and "nprocbr" in config[model]:
-                        if config[model]["nprocar"] != "remove_from_namelist" and config[model]["nprocbr"] != "remove_from_namelist":
-                            end_proc += config[model]["nprocar"] * config[model]["nprocbr"]
-
-                else:
+                if not start_proc or not end_proc:
                     continue
+                
                 if "execution_command" in config[model]:
                     command = "./" + config[model]["execution_command"]
                 elif "executable" in config[model]:
@@ -81,7 +73,6 @@ class Slurm:
                 else:
                     continue
                 hostfile.write(str(start_proc) + "-" + str(end_proc) + "  " + command + "\n")
-                start_proc = end_proc + 1
 
 
     @staticmethod

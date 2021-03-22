@@ -76,7 +76,7 @@ def all_files_to_copy_append(
 
 
 def add_batch_hostfile(config):
-    config["general"]["batch"].calc_requirements(config)
+    config["general"]["batch"].write_hostfile(config)
 
     config = all_files_to_copy_append(
         config,
