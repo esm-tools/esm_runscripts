@@ -201,6 +201,10 @@ def init_total_workflow(config):
         config["general"]["workflow"]["last_task_in_queue"] = "tidy"
     if not "first_task_in_queue" in config["general"]["workflow"]:
         config["general"]["workflow"]["first_task_in_queue"] = "compute"
+
+    if not "next_run_triggered_by" in config["general"]["workflow"]:
+        config["general"]["workflow"]["next_run_triggered_by"] = "tidy"
+
     return config
 
 
@@ -234,11 +238,11 @@ def collect_all_workflow_information(config):
                     if subjob in gw_config["subjobs"]:
                         del gw_config["subjobs"][subjob]
                     # make sure that the run_after and run_before refer to that cluster
-                    for other_subjob in w_config["subjobs"]:
-                        if "run_after" in w_config["subjobs"][other_subjob]:
+                    for other_subjob in gw_config["subjobs"]:
+                        if "run_after" in gw_config["subjobs"][other_subjob]:
                             if gw_config["subjobs"][other_subjob]["run_after"] == subjob:
                                 gw_config["subjobs"][other_subjob]["run_after"] == subjob + "_" + model
-                        if "run_before" in w_config["subjobs"][other_subjob]:
+                        if "run_before" in gw_config["subjobs"][other_subjob]:
                             if gw_config["subjobs"][other_subjob]["run_before"] == subjob:
                                 gw_config["subjobs"][other_subjob]["run_before"] == subjob + "_" + model
 
