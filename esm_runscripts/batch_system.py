@@ -276,8 +276,8 @@ class batch_system:
             if config["general"].get("taskset", False):
                 sadfile.write("\n"+"#Creating hostlist for MPI + MPI&OMP heterogeneous parallel job" + "\n")
                 sadfile.write("rm -f ./hostlist" + "\n")
-                sadfile.write("export SLURM_HOSTFILE=./hostlist" + "\n")
-                sadfile.write("IFS=$'\\n'; set -f" + "\n")                                                         
+                sadfile.write(f"export SLURM_HOSTFILE={config['general']['thisrun_work_dir']}/hostlist\n")
+                sadfile.write("IFS=$'\\n'; set -f" + "\n")
                 sadfile.write("listnodes=($(< <( scontrol show hostnames $SLURM_JOB_NODELIST )))"+"\n")
                 sadfile.write("unset IFS; set +f" + "\n")
                 sadfile.write("rank=0" + "\n")
@@ -297,8 +297,8 @@ class batch_system:
                 sadfile.write("        host_value=${listnodes[${index_host}]}" + "\n")
                 sadfile.write("        (( slot =  current_core % " + str(config["computer"]["cores_per_node"]) +" ))" + "\n")
                 sadfile.write("        echo $host_value >> hostlist" + "\n")
-                sadfile.write("        (( current_core = current_core + omp_threads_${model} ))" + "\n") 
-                sadfile.write("    done" + "\n") 
+                sadfile.write("        (( current_core = current_core + omp_threads_${model} ))" + "\n")
+                sadfile.write("    done" + "\n")
                 sadfile.write("done" + "\n\n")
             for line in commands:
                 sadfile.write(line + "\n")
