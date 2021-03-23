@@ -12,9 +12,14 @@ Documentation goes here
 #
 #import esm_rcfile
 #
+import sys
+import os
+
 from . import config_initialization
 from . import prepare
 from . import workflow
+
+import esm_parser
 #from . import batch_system, helpers, prepare, workflow
 #from . import chunky_parts
 
@@ -36,22 +41,22 @@ class SimulationSetup(object):
 
 
 
-    def __call__(self, kill_after_submit=True):
+    def pseudocall(self, kill_after_submit=True):
 
         # call to observe here..
         pid = self.config["general"]["command_line_config"].get("pid", -666)
-        if not pid == "-666":
-            self.observe(*args, **kwargs)
+        if not pid == -666:
+            print("self.observe(*args, **kwargs)")
 
 
         if self.config["general"]["jobtype"] == "compute":
-            self.compute(*args, **kwargs)
+            print("self.compute(*args, **kwargs)")
         elif self.config["general"]["jobtype"] == "inspect":
-            self.inspect(*args, **kwargs)
+            print("self.inspect(*args, **kwargs)")
         elif self.config["general"]["jobtype"] == "tidy":
-            self.tidy(*args, **kwargs)
+            print("self.tidy(*args, **kwargs)")
         elif self.config["general"]["jobtype"] == "viz":
-            self.viz(*args, **kwargs)
+            print("self.viz(*args, **kwargs)")
 
         """
         Warning
@@ -65,7 +70,44 @@ class SimulationSetup(object):
             well as the post processing job!
         """
 
-        batch_system.maybe_resubmit(*args, **kwargs)
+        print("batch_system.maybe_resubmit(*args, **kwargs)")
+        if kill_after_submit:
+            print("helpers.end_it_all(self.config)")
+        sys.exit(0)
+
+    def __call__(self, kill_after_submit=True):
+
+        #self.pseudocall(kill_after_submit)
+        # call to observe here..
+        pid = self.config["general"]["command_line_config"].get("pid", -666)
+        if not pid == -666:
+            self.observe()
+
+
+        if self.config["general"]["jobtype"] == "compute":
+            self.compute()
+        elif self.config["general"]["jobtype"] == "inspect":
+            #esm_parser.pprint_config(self.config)
+            self.inspect()
+            helpers.end_it_all(self.config)
+        elif self.config["general"]["jobtype"] == "tidy":
+            self.tidy()
+        elif self.config["general"]["jobtype"] == "viz":
+            self.viz()
+
+        """
+        Warning
+        -------
+            The date is changed during maybe_resubmit! Be careful where you put
+            any calls that may depend on date information!
+
+        Note
+        ----
+            This method is also responsible for calling the next compute job as
+            well as the post processing job!
+        """
+
+        batch_system.maybe_resubmit(self.config)
         if kill_after_submit:
             helpers.end_it_all(self.config)
 
@@ -79,10 +121,10 @@ class SimulationSetup(object):
        
         # not sure what this is doing really
 
-        config = set_logfile_name(config, "monitoring_file")
+        self.config = set_logfile_name(self.config, "monitoring_file")
 
         with open(
-            config["general"]["logfile_path"],
+            self.config["general"]["logfile_path"],
             "w",
             buffering=1,
         ) as logfile:
@@ -125,15 +167,15 @@ class SimulationSetup(object):
     def inspect(self):
         from . import inspect
         print(f"Inspecting {self.config['general']['experiment_dir']}")
-        config = set_logfile_name(config)
+        self.config = set_logfile_name(self.config)
 
-        with open(
-            config["general"]["logfile_path"],
-            "w",
-            buffering=1,
-        ) as logfile:
-            self.config["general"]["logfile"] = logfile
-            self.config = inspect.run_job(self.config)
+        #with open(
+        #    self.config["general"]["logfile_path"],
+        #    "w",
+        #    buffering=1,
+        #) as logfile:
+        #    self.config["general"]["logfile"] = logfile
+        self.config = inspect.run_job(self.config)
 
 
 
@@ -188,8 +230,11 @@ class SimulationSetup(object):
 
 def set_logfile_name(config, jobtype = None):
 
+    if not jobtype:
+        jobtype = config["general"]["jobtype"]
+
     filename = (
-            self.config["general"]["expid"] +
+            config["general"]["expid"] +
             "_" +
             jobtype +
             "_" +
@@ -209,7 +254,11 @@ def set_logfile_name(config, jobtype = None):
         filename
     )
 
-    if os.path.isfile(monitor_file_path):
-        os.symlink(monitor_file_path, monitor_file_in_run)
+    if os.path.isfile(config["general"]["logfile_path"]):
+        os.symlink(
+            config["general"]["logfile_path"],
+            config["general"]["logfile_path_in_run"]
+            )
+
     
     return config

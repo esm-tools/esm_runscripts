@@ -8,12 +8,13 @@ def assemble(config):
     config = complete_clusters(config)
     config = order_clusters(config)
 
-    esm_parser.pprint_config(config["general"]["workflow"])
-    sys.exit(0)
-
     return config
 
 
+
+def display_nicely(config):
+    esm_parser.pprint_config(config["general"]["workflow"])
+    return config
 
 
 
@@ -85,9 +86,6 @@ def order_clusters(config):
     return config
 
             
-
-
-
 
 
 def complete_clusters(config):
