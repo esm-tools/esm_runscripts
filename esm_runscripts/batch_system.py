@@ -277,7 +277,7 @@ class batch_system:
                 sadfile.write("\n"+"#Creating hostlist for MPI + MPI&OMP heterogeneous parallel job" + "\n")
                 sadfile.write("rm -f ./hostlist" + "\n")
                 sadfile.write("export SLURM_HOSTFILE=./hostlist" + "\n")
-                sadfile.write("IFS=$'\\n'; set -f" + "\n")                                                         
+                sadfile.write("IFS=$'\\n'; set -f" + "\n")
                 sadfile.write("listnodes=($(< <( scontrol show hostnames $SLURM_JOB_NODELIST )))"+"\n")
                 sadfile.write("unset IFS; set +f" + "\n")
                 sadfile.write("rank=0" + "\n")
@@ -297,8 +297,8 @@ class batch_system:
                 sadfile.write("        host_value=${listnodes[${index_host}]}" + "\n")
                 sadfile.write("        (( slot =  current_core % " + str(config["computer"]["cores_per_node"]) +" ))" + "\n")
                 sadfile.write("        echo $host_value >> hostlist" + "\n")
-                sadfile.write("        (( current_core = current_core + omp_threads_${model} ))" + "\n") 
-                sadfile.write("    done" + "\n") 
+                sadfile.write("        (( current_core = current_core + omp_threads_${model} ))" + "\n")
+                sadfile.write("    done" + "\n")
                 sadfile.write("done" + "\n\n")
             for line in commands:
                 sadfile.write(line + "\n")
@@ -321,7 +321,28 @@ class batch_system:
                 six.print_("Contents of ", self.bs.filename, ":")
                 with open(self.bs.filename, "r") as fin:
                     print(fin.read())
+
+        # Write the environment in a file that can be sourced from preprocessing and
+        # postprocessing scripts
+        batch_system.write_env(config, environment, sadfilename)
+
         return config
+
+    @staticmethod
+    def write_env(config, environment, sadfilename):
+        folder = config["general"]["thisrun_scripts_dir"]
+        this_batch_system = config["computer"]
+        sadfilename_short = sadfilename.split("/")[-1]
+        envfilename = folder + "/env.sh"
+
+        with open(envfilename, "w") as envfile:
+            if "sh_interpreter" in this_batch_system:
+                envfile.write("#!" + this_batch_system["sh_interpreter"] + "\n")
+            envfile.write(f"# ENVIRONMENT used in {sadfilename_short}\n")
+            envfile.write("# Use this file to source the environment in your\n")
+            envfile.write("# preprocessing or postprocessing scripts\n\n")
+            for line in environment:
+                envfile.write(line + "\n")
 
     @staticmethod
     def submit(config):
