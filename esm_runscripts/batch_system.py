@@ -276,7 +276,7 @@ class batch_system:
             if config["general"].get("taskset", False):
                 sadfile.write("\n"+"#Creating hostlist for MPI + MPI&OMP heterogeneous parallel job" + "\n")
                 sadfile.write("rm -f ./hostlist" + "\n")
-                sadfile.write("export SLURM_HOSTFILE=./hostlist" + "\n")
+                sadfile.write(f"export SLURM_HOSTFILE={config['general']['thisrun_work_dir']}/hostlist\n")
                 sadfile.write("IFS=$'\\n'; set -f" + "\n")
                 sadfile.write("listnodes=($(< <( scontrol show hostnames $SLURM_JOB_NODELIST )))"+"\n")
                 sadfile.write("unset IFS; set +f" + "\n")
