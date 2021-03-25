@@ -7,7 +7,9 @@ import os
 from . import config_initialization
 from . import prepare
 from . import workflow
-from . import batch_system
+from . import resubmit
+from . import helpers
+from . import logfiles
 
 import esm_parser
 
@@ -36,25 +38,10 @@ class SimulationSetup(object):
 
         #self.pseudocall(kill_after_submit)
         # call to observe here..
-
-        log_stuff = False
-        if os.path.isdir(os.path.dirname(self.config["general"]["experiment_log_file"])):
-            log_stuff = True
-
         org_jobtype = str(self.config["general"]["jobtype"])
+        self.config = logfiles.initialize_logfiles(self.config, org_jobtype)
 
-        if log_stuff:
-            helpers.write_to_log(
-                config,
-                [
-                    org_jobtype,
-                    str(self.config["general"]["run_number"]),
-                    str(self.config["general"]["current_date"]),
-                    str(self.config["general"]["jobid"]),
-                    "- start",
-                ],
-            )
-        
+
         if self.config["general"]["jobtype"] == "prepcompute":
             self.prepcompute()
         elif self.config["general"]["jobtype"] == "inspect":
@@ -74,46 +61,23 @@ class SimulationSetup(object):
             # that last line is necessary so that maybe_resubmit knows which 
             # cluster to look up in the workflow
 
-
-        batch_system.maybe_resubmit(self.config)
+        resubmit.maybe_resubmit(self.config)
         
-        if os.path.isdir(os.path.dirname(self.config["general"]["experiment_log_file"])):
-            log_stuff = True
-
-        if log_stuff:
-            helpers.write_to_log(
-                self.config,
-                [
-                    org_jobtype,
-                    str(self.config["general"]["run_number"]),
-                    str(self.config["general"]["current_date"]),
-                    str(self.config["general"]["jobid"]),
-                    "- done",
-                ],
-            )
+        self.config = logfiles.finalize_logfiles(self.config, org_jobtype)
         
-            if kill_after_submit:
-                helpers.end_it_all(self.config)
+        if kill_after_submit:
+            helpers.end_it_all(self.config)
 
 
 
-###################################     OBSERVE      #############################################################
+
+
+#########################     OBSERVE      #############################################################
 
     def observe(self):
         
         from . import observe
-       
-        # not sure what this is doing really
-
-        self.config = set_logfile_name(self.config, "monitoring_file")
-
-        with open(
-            self.config["general"]["logfile_path"],
-            "w",
-            buffering=1,
-        ) as logfile:
-            self.config["general"]["logfile"] = logfile
-            self.config = observe.run_job(self.config)
+        self.config = observe.run_job(self.config)
 
 
 ###################################     TIDY      #############################################################
@@ -136,29 +100,13 @@ class SimulationSetup(object):
         folder.
         """
         from . import tidy
-        config = set_logfile_name(config)
-
-        with open(
-            config["general"]["logfile_path"],
-            "w",
-            buffering=1,
-        ) as logfile:
-            self.config["general"]["logfile"] = logfile
-            self.config = tidy.run_job(self.config)
+        self.config = tidy.run_job(self.config)
 
 
 ###################################     INSPECT      #############################################################
     def inspect(self):
         from . import inspect
         print(f"Inspecting {self.config['general']['experiment_dir']}")
-        self.config = set_logfile_name(self.config)
-
-        #with open(
-        #    self.config["general"]["logfile_path"],
-        #    "w",
-        #    buffering=1,
-        #) as logfile:
-        #    self.config["general"]["logfile"] = logfile
         self.config = inspect.run_job(self.config)
 
 
@@ -175,14 +123,6 @@ class SimulationSetup(object):
             a ``sys.exit()`` as the very last after job submission.
         """
         from . import prepcompute
-        self.config = set_logfile_name(self.config)
-
-        #with open(
-        #    self.config["general"]["logfile_path"],
-        #    "w",
-        #    buffering=1,
-        #) as logfile:
-        #    self.config["general"]["logfile"] = logfile
         self.config = prepcompute.run_job(self.config)
 
 
@@ -199,50 +139,7 @@ class SimulationSetup(object):
         """
         # NOTE(PG): Local import, not everyone will have viz yet...
         import esm_viz as viz
-        config = set_logfile_name(config)
-
-        with open(
-            config["general"]["logfile_path"],
-            "w",
-            buffering=1,
-        ) as logfile:
-            self.config["general"]["logfile"] = logfile
-            self.config = viz.run_job(self.config)
+        self.config = viz.run_job(self.config)
 
 
 
-
-def set_logfile_name(config, jobtype = None):
-
-    if not jobtype:
-        jobtype = config["general"]["jobtype"]
-
-    filename = (
-            config["general"]["expid"] +
-            "_" +
-            jobtype +
-            "_" +
-            config["general"]["run_datestamp"] +
-            ".log"
-    )
-
-    config["general"]["logfile_path"] = (
-        config["general"]["experiment_scripts_dir"] +
-        "/" +
-        filename
-    )
-
-    config["general"]["logfile_path_in_run"] = (
-        config["general"]["thisrun_scripts_dir"] +
-        "/" +
-        filename
-    )
-
-    if os.path.isfile(config["general"]["logfile_path"]):
-        os.symlink(
-            config["general"]["logfile_path"],
-            config["general"]["logfile_path_in_run"]
-            )
-
-    
-    return config

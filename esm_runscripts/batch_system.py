@@ -358,23 +358,17 @@ class batch_system:
 
     @staticmethod
     def submit(config):
-        if not config["general"]["check"]:
-            if config["general"]["verbose"]:
-                six.print_("\n", 40 * "+ ")
-            print("Submitting jobscript to batch system...")
-            print()
-            print(f"Output written by {config['computer']['batch_system']}:")
-            if config["general"]["verbose"]:
-                for command in config["general"]["submit_command"]:
-                    print(command)
-                six.print_("\n", 40 * "+ ")
+        if config["general"]["verbose"]:
+            six.print_("\n", 40 * "+ ")
+        print("Submitting jobscript to batch system...")
+        print()
+        print(f"Output written by {config['computer']['batch_system']}:")
+        if config["general"]["verbose"]:
             for command in config["general"]["submit_command"]:
-                os.system(command)
-        else:
-            print(
-                "Actually not submitting anything, this job preparation was launched in 'check' mode (-c)."
-            )
-            print()
+                print(command)
+            six.print_("\n", 40 * "+ ")
+        for command in config["general"]["submit_command"]:
+            os.system(command)
         return config
 
 
