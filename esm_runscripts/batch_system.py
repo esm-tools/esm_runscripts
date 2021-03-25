@@ -5,9 +5,11 @@ import esm_environment
 import six
 
 from . import helpers
+from . import dataprocess
 from .slurm import Slurm
 
 known_batch_systems = ["slurm"]
+reserved_jobtypes = ["prepcompute", "prepare", "tidy", "inspect"]
 
 
 class UnknownBatchSystemError(Exception):
@@ -20,7 +22,6 @@ class batch_system:
     # should be written independent of actual batch system
     def __init__(self, config, name):
         self.name = name
-        self.reserved_jobtypes = ["compute", "prepare", "tidy", "inspect"]
 
         if name == "slurm":
             self.bs = Slurm(config)
@@ -118,7 +119,7 @@ class batch_system:
         if not cluster:
             cluster = config["general"]["jobtype"]
 
-        if cluster in self.reserved_jobtypes:
+        if cluster in reserved_jobtypes:
             for model in config["general"]["valid_model_names"]:
                 if "nproc" in config[model]:
                     config[model]["tasks"] = config[model]["nproc"]
@@ -139,7 +140,8 @@ class batch_system:
                 else:
                     continue
                 tasks += config[model]["tasks"]
-                config[model]["start_proc"] = config[model]["end_proc"]
+                config[model]["end_proc"] = end_proc
+                config[model]["start_proc"] = start_proc
                 start_proc = end_proc + 1
 
 
@@ -162,7 +164,7 @@ class batch_system:
     @staticmethod
     def get_environment(config, subjob):
         environment = []
-        if subjob in self.reserved_jobtypes:
+        if subjob in reserved_jobtypes:
             env = esm_environment.environment_infos("runtime", config)
             commands = env.commands
         else:
@@ -192,7 +194,7 @@ class batch_system:
     def get_run_commands(config, subjob):  # here or in compute.py?
 
         commands = []
-        if subjob in self.reserved_jobtypes:
+        if subjob in reserved_jobtypes:
 
             batch_system = config["computer"]
             if "execution_command" in batch_system:
@@ -212,7 +214,7 @@ class batch_system:
                 )
                 commands.append("time " + batch_system["execution_command"] + " &")
         else:
-            commands.append(dataprocess.subjob_tasks(config, subjob))
+            commands += dataprocess.subjob_tasks(config, subjob)
 
         return commands
 
@@ -244,8 +246,11 @@ class batch_system:
 
 
 
+
+
+
     @staticmethod
-    def write_simple_runscript(config, batch_or_shell = "batch", cluster = "None"):
+    def write_simple_runscript(config, batch_or_shell = "batch", cluster = "prepcompute"):
 
         # if no cluster is specified, work on the one we are in
         if not cluster:
@@ -253,9 +258,13 @@ class batch_system:
 
         clusterconf = None
         if "workflow" in config["general"]:
-            if "clusters" in config["general"]["workflow"]:
-                if cluster in config["general"]["workflow"]["clusters"]:
-                   clusterconf = config["general"]["workflow"]["clusters"][cluster] 
+            if "subjob_clusters" in config["general"]["workflow"]:
+                if cluster in config["general"]["workflow"]["subjob_clusters"]:
+                   clusterconf = config["general"]["workflow"]["subjob_clusters"][cluster] 
+
+        if not clusterconf:
+            print(f"No config found for cluster {cluster}.")
+            sys.exit(-1)
 
         self = config["general"]["batch"]
         sadfilename = batch_system.get_sad_filename(config, cluster)
@@ -289,23 +298,25 @@ class batch_system:
                         sadfile.write(line + "\n")
 
                     # Add actual commands
-                    commands = batch_system.get_run_commands(config)
+                    commands = batch_system.get_run_commands(config, subjob)
                     #commands = clusterconf.get("data_task_list", [])
                     sadfile.write("\n")
                     sadfile.write("cd " + config["general"]["thisrun_work_dir"] + "\n")
+                    print(commands)
                     for line in commands:
                         sadfile.write(line + "\n")
 
-            elif multisrun_stuff: # pauls stuff maybe here? or matching to clusterconf possible?
-                dummy = 0
+            #elif multisrun_stuff: # pauls stuff maybe here? or matching to clusterconf possible?
+            #    dummy = 0
             else: # "normal" case
                 dummy = 0
 
 
 
-            if submits_another_job(cluster) and batch_or_shell == "batch":
+            if submits_another_job(config, cluster) and batch_or_shell == "batch":
                 # -j ? is that used somewhere? I don't think so, replaced by workflow
                 #   " -j "+ config["general"]["jobtype"]
+
                 observe_call = (
                     "esm_runscripts "
                     + config["general"]["scriptname"]
@@ -365,3 +376,11 @@ class batch_system:
             )
             print()
         return config
+
+
+def submits_another_job(config, cluster):
+    clusterconf = config["general"]["workflow"]["subjob_clusters"][cluster]
+    if clusterconf.get("submit_next", []) == []:
+       return False
+    return True
+

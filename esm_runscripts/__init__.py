@@ -8,7 +8,7 @@ from .sim_objects import *
 from .batch_system import *
 from .database import *
 from .database_actions import *
-from .compute import *
+from .prepcompute import *
 from .tidy import *
 from .prepare import *
 from .dataprocess import *

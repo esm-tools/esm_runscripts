@@ -6,8 +6,9 @@ def run_job(config):
 
 def init_monitor_file(config):
     # which job am I spying on?
-    thisjob = config["general"]["jobtype"]
-    called_from = config["general"]["workflow"]["subjob_clusters"][thisjob]["called_from"]
+    observe_job = config["general"]["jobtype"]
+    actual_job = observe_job.replace("observe_", "")
+    called_from = actual_job
     #called_from = config["general"]["last_jobtype"]
 
     exp_log_path = (
@@ -24,7 +25,7 @@ def init_monitor_file(config):
     log_in_run = (
         self.config["general"]["thisrun_scripts_dir"] +
         self.config["general"]["expid"] +
-        "_compute_" +
+        "_called_from_" +
         str(self.config["general"]["jobid"]) +
         ".log"
     )
@@ -42,20 +43,20 @@ def init_monitor_file(config):
     return config
 
 
-def get_last_jobid(config):
-    # which job am I spying on?
-    thisjob = config["general"]["jobtype"]
-    called_from = config["general"]["workflow"]["subjob_clusters"][thisjob]["called_from"]
-    #called_from = config["general"]["last_jobtype"]
-    last_jobid = "UNKNOWN"
-    if called_from == "compute":
-        with open(config["general"]["experiment_log_file"], "r") as logfile:
-            lastline = [
-                l for l in logfile.readlines() if "compute" in l and "start" in l
-            ][-1]
-            last_jobid = lastline.split(" - ")[0].split()[-1]
-    config["general"]["last_jobid"] = last_jobid
-    return config
+#def get_last_jobid(config):
+#    # which job am I spying on?
+#    thisjob = config["general"]["jobtype"]
+#    called_from = thisjob.replace("observe_", "")
+#    #called_from = config["general"]["last_jobtype"]
+#    last_jobid = "UNKNOWN"
+#    if called_from == "compute":
+#        with open(config["general"]["experiment_log_file"], "r") as logfile:
+#            lastline = [
+#                l for l in logfile.readlines() if "compute" in l and "start" in l
+#            ][-1]
+#            last_jobid = lastline.split(" - ")[0].split()[-1]
+#    config["general"]["last_jobid"] = last_jobid
+#    return config
 
 
 
@@ -77,35 +78,8 @@ def wait_and_observe(config):
 
 
 def wake_up_call(config):
-    thisjob = config["general"]["jobtype"]
-    called_from = config["general"]["workflow"]["subjob_clusters"][thisjob]["called_from"]
-    #äcalled_from = config["general"]["last_jobtype"]
     monitor_file = config["general"]["logfile"]
-    last_jobid = config["general"]["last_jobid"]
     monitor_file.write("job ended, starting to tidy up now \n")
-    # Log job completion
-    if called_from != "command_line":
-        helpers.write_to_log(
-            config,
-            [
-                called_from,
-                str(config["general"]["run_number"]),
-                str(config["general"]["current_date"]),
-                last_jobid,
-                "- done",
-            ],
-        )
-    # Tell the world you're cleaning up:
-    helpers.write_to_log(
-        config,
-        [
-            str(config["general"]["jobtype"]),
-            str(config["general"]["run_number"]),
-            str(config["general"]["current_date"]),
-            str(config["general"]["jobid"]),
-            "- start",
-        ],
-    )
     return config
 
 
@@ -113,7 +87,7 @@ def assemble_error_list(config):
     gconfig = config["general"]
 
     thisjob = config["general"]["jobtype"]
-    called_from = config["general"]["workflow"]["subjob_clusters"][thisjob]["called_from"]
+    called_from = thisjob.replace("observe_", "")
     if not called_from == "compute":
         config["general"]["error_list"] = []
         return config
@@ -173,7 +147,7 @@ def assemble_error_list(config):
 
 def check_for_errors(config):
     thisjob = config["general"]["jobtype"]
-    called_from = config["general"]["workflow"]["subjob_clusters"][thisjob]["called_from"]
+    called_from = thisjob.replace("observe_",  "")
     if not called_from == "compute":
         return config
 

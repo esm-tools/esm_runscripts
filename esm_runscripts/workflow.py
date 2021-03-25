@@ -173,18 +173,23 @@ def init_total_workflow(config):
                 ):
                     tasks += config[model]["nprocar"] * config[model]["nprocbr"]
         
+   
+    prepcompute = {"prepcompute": {
+            "nproc": 1,
+            "run_before" : "compute",
+            }}
 
     compute = {"compute" :{
             "nproc": tasks,
             "run_before" : "tidy",
             "submit_to_batch_system": True,
-            "run_on_queue": config["computer"]["partition"]
+            "run_on_queue": config["computer"]["partitions"]["compute"]["name"]
             }}
 
     # das ist nur vorübergehend
     tidy = {"tidy":{
             "nproc": 1,
-            "run_after" : "compute",
+            "run_after" : "prepcompute",
             }}
 
     if not "workflow"  in config["general"]:
@@ -192,13 +197,14 @@ def init_total_workflow(config):
     if not "subjob_clusters" in config["general"]["workflow"]:
         config["general"]["workflow"]["subjob_clusters"] = {}
     if not "subjobs" in config["general"]["workflow"]:
-        config["general"]["workflow"]["subjobs"] = compute
+        config["general"]["workflow"]["subjobs"] = prepcompute
+        config["general"]["workflow"]["subjobs"].update(compute)
         config["general"]["workflow"]["subjobs"].update(tidy)
 
     if not "last_task_in_queue" in config["general"]["workflow"]:
         config["general"]["workflow"]["last_task_in_queue"] = "tidy"
     if not "first_task_in_queue" in config["general"]["workflow"]:
-        config["general"]["workflow"]["first_task_in_queue"] = "compute"
+        config["general"]["workflow"]["first_task_in_queue"] = "prepcompute"
 
     if not "next_run_triggered_by" in config["general"]["workflow"]:
         config["general"]["workflow"]["next_run_triggered_by"] = "tidy"

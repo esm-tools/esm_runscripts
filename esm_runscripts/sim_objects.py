@@ -1,27 +1,15 @@
 """
 Documentation goes here
 """
-#import pdb
-#import os
-#
-#from loguru import logger
-#
-#import esm_tools
-#import esm_parser
-#
-#
-#import esm_rcfile
-#
 import sys
 import os
 
 from . import config_initialization
 from . import prepare
 from . import workflow
+from . import batch_system
 
 import esm_parser
-#from . import batch_system, helpers, prepare, workflow
-#from . import chunky_parts
 
 class SimulationSetup(object):
     def __init__(self, command_line_config=None, user_config=None):
@@ -39,53 +27,36 @@ class SimulationSetup(object):
 
         self.config = workflow.assemble(self.config)
 
+        #esm_parser.pprint_config(self.config)
+        #sys.exit(0)
 
 
-    def pseudocall(self, kill_after_submit=True):
-
-        # call to observe here..
-        pid = self.config["general"]["command_line_config"].get("pid", -666)
-        if not pid == -666:
-            print("self.observe(*args, **kwargs)")
-
-
-        if self.config["general"]["jobtype"] == "compute":
-            print("self.compute(*args, **kwargs)")
-        elif self.config["general"]["jobtype"] == "inspect":
-            print("self.inspect(*args, **kwargs)")
-        elif self.config["general"]["jobtype"] == "tidy":
-            print("self.tidy(*args, **kwargs)")
-        elif self.config["general"]["jobtype"] == "viz":
-            print("self.viz(*args, **kwargs)")
-
-        """
-        Warning
-        -------
-            The date is changed during maybe_resubmit! Be careful where you put
-            any calls that may depend on date information!
-
-        Note
-        ----
-            This method is also responsible for calling the next compute job as
-            well as the post processing job!
-        """
-
-        print("batch_system.maybe_resubmit(*args, **kwargs)")
-        if kill_after_submit:
-            print("helpers.end_it_all(self.config)")
-        sys.exit(0)
 
     def __call__(self, kill_after_submit=True):
 
         #self.pseudocall(kill_after_submit)
         # call to observe here..
-        pid = self.config["general"]["command_line_config"].get("pid", -666)
-        if not pid == -666:
-            self.observe()
 
+        log_stuff = False
+        if os.path.isdir(os.path.dirname(self.config["general"]["experiment_log_file"])):
+            log_stuff = True
 
-        if self.config["general"]["jobtype"] == "compute":
-            self.compute()
+        org_jobtype = str(self.config["general"]["jobtype"])
+
+        if log_stuff:
+            helpers.write_to_log(
+                config,
+                [
+                    org_jobtype,
+                    str(self.config["general"]["run_number"]),
+                    str(self.config["general"]["current_date"]),
+                    str(self.config["general"]["jobid"]),
+                    "- start",
+                ],
+            )
+        
+        if self.config["general"]["jobtype"] == "prepcompute":
+            self.prepcompute()
         elif self.config["general"]["jobtype"] == "inspect":
             #esm_parser.pprint_config(self.config)
             self.inspect()
@@ -94,22 +65,35 @@ class SimulationSetup(object):
             self.tidy()
         elif self.config["general"]["jobtype"] == "viz":
             self.viz()
+        elif self.config["general"]["jobtype"].startswith("observe"): 
+            pid = self.config["general"]["command_line_config"].get("pid", -666)
+            if not pid == -666:
+                self.observe()
 
-        """
-        Warning
-        -------
-            The date is changed during maybe_resubmit! Be careful where you put
-            any calls that may depend on date information!
+            self.config["general"]["jobtype"] = self.config["general"]["jobtype"].replace("observe_", "")
+            # that last line is necessary so that maybe_resubmit knows which 
+            # cluster to look up in the workflow
 
-        Note
-        ----
-            This method is also responsible for calling the next compute job as
-            well as the post processing job!
-        """
 
         batch_system.maybe_resubmit(self.config)
-        if kill_after_submit:
-            helpers.end_it_all(self.config)
+        
+        if os.path.isdir(os.path.dirname(self.config["general"]["experiment_log_file"])):
+            log_stuff = True
+
+        if log_stuff:
+            helpers.write_to_log(
+                self.config,
+                [
+                    org_jobtype,
+                    str(self.config["general"]["run_number"]),
+                    str(self.config["general"]["current_date"]),
+                    str(self.config["general"]["jobid"]),
+                    "- done",
+                ],
+            )
+        
+            if kill_after_submit:
+                helpers.end_it_all(self.config)
 
 
 
@@ -179,8 +163,8 @@ class SimulationSetup(object):
 
 
 
-###################################     COMPUTE      #############################################################
-    def compute(self):
+###################################     PREPCOMPUTE      #############################################################
+    def prepcompute(self):
         """
         All steps needed for a model computation.
 
@@ -190,16 +174,16 @@ class SimulationSetup(object):
             Default ``True``. If set, the entire Python instance is killed with
             a ``sys.exit()`` as the very last after job submission.
         """
-        from . import compute
-        config = set_logfile_name(config)
+        from . import prepcompute
+        self.config = set_logfile_name(self.config)
 
-        with open(
-            config["general"]["logfile_path"],
-            "w",
-            buffering=1,
-        ) as logfile:
-            self.config["general"]["logfile"] = logfile
-            self.config = compute.run_job(self.config)
+        #with open(
+        #    self.config["general"]["logfile_path"],
+        #    "w",
+        #    buffering=1,
+        #) as logfile:
+        #    self.config["general"]["logfile"] = logfile
+        self.config = prepcompute.run_job(self.config)
 
 
 ###################################     VIZ     #############################################################

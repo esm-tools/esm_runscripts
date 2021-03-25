@@ -4,7 +4,7 @@ import importlib.util
 def subjob_environment(config, subjob):
 
     task_list = []
-    subjob_config = config["general"]["worksflow"]["subjobs"][subjob]
+    subjob_config = config["general"]["workflow"]["subjobs"][subjob]
 
 
     env_preparation = subjob_config.get("env_preparation", False)
@@ -17,7 +17,7 @@ def subjob_environment(config, subjob):
         spec.loader.exec_module(envmodule)
 
         env_dict = getattr(envmodule, "prepare_environment")(config)
-        task_list.append(export_string(env_dict))
+        task_list += export_string(env_dict)
 
     return task_list
 
@@ -26,16 +26,16 @@ def subjob_environment(config, subjob):
 def subjob_tasks(config, subjob):
 
     task_list = []
-    subjob_config = config["general"]["worksflow"]["subjobs"][subjob]
+    subjob_config = config["general"]["workflow"]["subjobs"][subjob]
 
 
     env_preparation = subjob_config.get("env_preparation", False)
     scriptdir = subjob_config.get("script_dir", False)
-    script = subjob_config.get(script, False)
+    script = subjob_config.get("script", False)
     
     if script:
         script = assemble_filename(script, scriptdir, config) 
-        task_list.append(add_scriptcall(script, cluster, config))
+        task_list += add_scriptcall(script, cluster, config)
 
     return task_list
 

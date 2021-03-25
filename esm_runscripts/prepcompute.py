@@ -28,7 +28,7 @@ def run_job(config):
         "input",
         "restart_in",
     ]
-    config = evaluate(config, "compute", "compute_recipe")
+    config = evaluate(config, "prepcompute", "prepcompute_recipe")
     return config
 
 

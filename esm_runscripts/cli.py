@@ -72,8 +72,8 @@ def parse_shargs():
     parser.add_argument(
         "-t",
         "--task",
-        help="The task to run. Choose from: compute, post, couple, tidy",
-        default="compute",
+        help="The task to run. Choose from: prepcompute, post, couple, tidy",
+        default="prepcompute",
     )
 
     parser.add_argument(
@@ -118,7 +118,7 @@ def main():
     update = False
     expid = "test"
     pid = -666
-    jobtype = "compute"
+    jobtype = "prepcompute"
     verbose = False
     inspect = None
     use_venv = None

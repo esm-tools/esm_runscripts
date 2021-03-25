@@ -30,13 +30,13 @@ def complete_config_from_user_config(user_config):
     
     if config["general"].get("inspect"):
         config["general"]["jobtype"] = "inspect"
-
-    if config["general"].get("inspect", "Error") not in [
-            "workflow",
-            "overview",
-            "config",
-            ]: 
-        config["general"]["reset_calendar_to_last"] = True
+        
+        if config["general"].get("inspect") not in [
+                "workflow",
+                "overview",
+                "config",
+                ]: 
+            config["general"]["reset_calendar_to_last"] = True
 
     return config
 
