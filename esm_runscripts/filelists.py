@@ -226,6 +226,12 @@ def globbing(config):
                 ):  # * only in targets if denotes subfolder
                     if "*" in filename:
                         del config[model][filetype + "_sources"][descr]
+                        # Save the wildcard string for later use when copying to target
+                        wild_card = config[model].get(
+                            f"{filetype}_sources_wild_card", {}
+                        )
+                        wild_card[descr] = filename.split("/")[-1]
+                        config[model][filetype + "_sources_wild_card"] = wild_card
                         # skip subdirectories in file list, otherwise they
                         # will be listed as missing files later on
                         all_filenames = [f for f in glob.glob(filename) if not os.path.isdir(f)]
@@ -277,9 +283,40 @@ def target_subfolders(config):
                                 descr
                             ] = filename.replace("*", source_filename)
                         elif "/" in filename:
-                            config[model][filetype + "_targets"][
-                                descr
-                            ] = "/".join(filename.split("/")[:-1]) + "/" + source_filename.split("/")[-1]
+                            config[model][filetype + "_targets"][descr] = (
+                                "/".join(filename.split("/")[:-1])
+                                + "/"
+                                + source_filename.split("/")[-1]
+                            )
+                        elif "*" in filename:
+                            # Get the general description of the filename
+                            gen_descr = descr.split("_glob_")[0]
+                            # Load the wild cards from source and target and split them
+                            # at the *
+                            wild_card_source_all = config[model][
+                                f"{filetype}_sources_wild_card"
+                            ]
+                            wild_card_source = wild_card_source_all[gen_descr].split(
+                                "*"
+                            )
+                            wild_card_target = filename.split("*")
+                            if len(wild_card_target) != len(wild_card_source):
+                                esm_parser.user_error(
+                                    "Wild card",
+                                    (
+                                        "The wild card pattern of the source "
+                                        + f"{wild_card_source} does not match with the "
+                                        + f"target {wild_card_target}."
+                                    ),
+                                )
+                            # Loop through the pieces of the wild cards to create
+                            # the correct target name by substituting in the source
+                            # name
+                            target_name = source_filename.split("/")[-1]
+                            for wcs, wct in zip(wild_card_source, wild_card_target):
+                                target_name = target_name.replace(wcs, wct)
+                            # Return the correct target name
+                            config[model][filetype + "_targets"][descr] = target_name
                         else:
                             config[model][filetype + "_targets"][
                                 descr
