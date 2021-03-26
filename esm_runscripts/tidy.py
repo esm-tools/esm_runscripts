@@ -42,31 +42,6 @@ def tidy_coupler(config):
     return config
 
 
-def _increment_date_and_run_number(config):
-    config["general"]["run_number"] += 1
-    config["general"]["current_date"] += config["general"]["delta_date"]
-    return config
-
-
-def _write_date_file(config):  # self, date_file=None):
-    monitor_file = config["general"]["logfile"]
-    # if not date_file:
-    date_file = (
-        config["general"]["experiment_scripts_dir"]
-        + "/"
-        + config["general"]["expid"]
-        + "_"
-        + config["general"]["setup_name"]
-        + ".date"
-    )
-    with open(date_file, "w") as date_file:
-        date_file.write(
-            config["general"]["current_date"].output()
-            + " "
-            + str(config["general"]["run_number"])
-        )
-    monitor_file.write("writing date file \n")
-    return config
 
 
 def clean_run_dir(config):
@@ -292,33 +267,33 @@ def _clean_old_runs_size(config):
 
 
 
-def all_done(config):
-    helpers.write_to_log(
-        config,
-        [
-            str(config["general"]["jobtype"]),
-            str(config["general"]["run_number"]),
-            str(config["general"]["current_date"]),
-            str(config["general"]["jobid"]),
-            "- done",
-        ],
-    )
-
-    database_actions.database_entry_success(config)
-    return config
-
-def signal_tidy_completion(config):
-    helpers.write_to_log(
-        config,
-        [
-            str(config["general"]["jobtype"]),
-            str(config["general"]["run_number"]),
-            str(config["general"]["current_date"]),
-            str(config["general"]["jobid"]),
-            "- done",
-        ],
-    )
-    return config
+#def all_done(config):
+#    helpers.write_to_log(
+#        config,
+#        [
+#            str(config["general"]["jobtype"]),
+#            str(config["general"]["run_number"]),
+#            str(config["general"]["current_date"]),
+#            str(config["general"]["jobid"]),
+#            "- done",
+#        ],
+#    )
+#
+#    database_actions.database_entry_success(config)
+#    return config
+#
+#def signal_tidy_completion(config):
+#    helpers.write_to_log(
+#        config,
+#        [
+#            str(config["general"]["jobtype"]),
+#            str(config["general"]["run_number"]),
+#            str(config["general"]["current_date"]),
+#            str(config["general"]["jobid"]),
+#            "- done",
+#        ],
+#    )
+#    return config
 
 
 # DONT LIKE THE FOLLOWING PART...

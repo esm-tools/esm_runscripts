@@ -1,4 +1,13 @@
+import os
+import sys
+import copy
+import logging
+
+import esm_parser
+from esm_calendar import Date, Calendar
+
 from . import helpers
+from . import batch_system
 
 
 def run_job(config):
@@ -7,39 +16,41 @@ def run_job(config):
 
 
 def _read_date_file(config):
-    import os
-    import logging
+    if not (
+            config["general"].get("current_date", None) and 
+            config["general"].get("run_number", None)
+            ):
 
-    date_file = (
-        config["general"]["experiment_dir"]
-        + "/scripts/"
-        + config["general"]["expid"]
-        + "_"
-        + config["general"]["setup_name"]
-        + ".date"
-    )
-    if os.path.isfile(date_file):
-        logging.info("Date file read from %s", date_file)
-        with open(date_file) as date_file:
-            date, run_number = date_file.readline().strip().split()
-            run_number = int(run_number)
-        write_file = False
-    else:
-        logging.info("No date file found %s", date_file)
-        logging.info("Initializing run_number=1 and date=18500101")
-        date = config["general"].get("initial_date", "18500101")
-        run_number = 1
-        write_file = True
-    config["general"]["run_number"] = run_number
-    config["general"]["current_date"] = date
+                date_file = (
+                    config["general"]["experiment_dir"]
+                    + "/scripts/"
+                    + config["general"]["expid"]
+                    + "_"
+                    + config["general"]["setup_name"]
+                    + ".date"
+                )
+                if os.path.isfile(date_file):
+                    logging.info("Date file read from %s", date_file)
+                    with open(date_file) as date_file:
+                        date, run_number = date_file.readline().strip().split()
+                        run_number = int(run_number)
+                    write_file = False
+                else:
+                    logging.info("No date file found %s", date_file)
+                    logging.info("Initializing run_number=1 and date=18500101")
+                    date = config["general"].get("initial_date", "18500101")
+                    run_number = 1
+                    write_file = True
+
+                config["general"]["run_number"] = run_number
+                config["general"]["current_date"] = date
+    
     logging.info("current_date = %s", date)
     logging.info("run_number = %s", run_number)
     return config
 
 
 def check_model_lresume(config):
-    import esm_parser
-
     if config["general"]["run_number"] != 1:
         for model in config["general"]["valid_model_names"]:
             config[model]["lresume"] = True
@@ -82,13 +93,13 @@ def check_model_lresume(config):
 
 
 def resolve_some_choose_blocks(config):
-    from esm_parser import choose_blocks
+    #from esm_parser import choose_blocks
 
     # Component-specific environment variables into ``computer``
     # before ``computer`` ``choose_`` blocks are resolved
     model_env_into_computer(config)
 
-    choose_blocks(config, blackdict=config._blackdict)
+    esm_parser.choose_blocks(config, blackdict=config._blackdict)
     return config
 
 def model_env_into_computer(config):
@@ -129,9 +140,8 @@ def model_env_into_computer(config):
         Asks the user how to proceed.
     '''
 
-    import copy
-    import logging
-    from esm_parser import basic_choose_blocks, dict_merge, user_note, user_error, pprint_config
+    #import logging
+    #from esm_parser import basic_choose_blocks, dict_merge, user_note, user_error, pprint_config
 
     # Get which type of changes are to be applied to the environment
     run_or_compile = config.get("general", {}).get("run_or_compile", "runtime")
@@ -154,7 +164,7 @@ def model_env_into_computer(config):
                 modelconfig["environment_changes"] = modelconfig[thesechanges]
         # Resolve ``choose_`` blocks, ``add_`` and ``remove_`` inside ``environment_
         # changes``
-        basic_choose_blocks(modelconfig["environment_changes"], config)
+        esm_parser.basic_choose_blocks(modelconfig["environment_changes"], config)
         # Set to true when specified by the user in ``env_overwrite`` or when this
         # method has been already called once in this run
         overwrite = config[model].get("env_overwrite", False)
@@ -216,7 +226,7 @@ def model_env_into_computer(config):
                             logging.info("Wrong answer, please choose Y/n.")
                 # Merge variable into the ``computer`` dictionary so that it becomes
                 # part of the general environment.
-                dict_merge(config["computer"], {key: value})
+                esm_parser.dict_merge(config["computer"], {key: value})
                 # Add the variable to ``env_vars`` so it can be checked for conflicts
                 # with other models.
                 env_vars[key] = [value, model]
@@ -298,7 +308,6 @@ def set_leapyear(config):
 
 
 def set_overall_calendar(config):
-    from esm_calendar import Calendar
 
     # set the overall calendar
     if config["general"]["leapyear"]:
@@ -309,9 +318,6 @@ def set_overall_calendar(config):
 
     
 def find_last_prepared_run(config):
-    from esm_calendar import Date, Calendar
-    import os
-    import sys
 
     calendar = config["general"]["calendar"]
     current_date = Date(config["general"]["current_date"], calendar)
@@ -353,7 +359,6 @@ def find_last_prepared_run(config):
 
 
 def set_most_dates(config):
-    from esm_calendar import Calendar, Date
 
     calendar = config["general"]["calendar"]
     if isinstance(config["general"]["current_date"], Date):
@@ -500,7 +505,6 @@ def _add_all_folders(config):
 
 
 def set_prev_date(config):
-    import esm_parser
 
     """Sets several variables relevant for the previous date. Loops over all models in ``valid_model_names``, and sets model variables for:
     * ``prev_date``
@@ -542,7 +546,6 @@ def set_prev_date(config):
 
 
 def set_parent_info(config):
-    import esm_parser
 
     """Sets several variables relevant for the previous date. Loops over all models in ``valid_model_names``, and sets model variables for:
     * ``parent_expid``
@@ -605,10 +608,8 @@ def finalize_config(config):
 
 
 def add_submission_info(config):
-    import os
-    from . import batch_system
 
-    bs = batch_system(config, config["computer"]["batch_system"])
+    bs = batch_system.batch_system(config, config["computer"]["batch_system"])
 
     submitted = bs.check_if_submitted()
     if submitted:
@@ -622,9 +623,8 @@ def add_submission_info(config):
 
 
 def initialize_batch_system(config):
-    from . import batch_system
 
-    config["general"]["batch"] = batch_system(
+    config["general"]["batch"] = batch_system.batch_system(
         config, config["computer"]["batch_system"]
     )
     return config

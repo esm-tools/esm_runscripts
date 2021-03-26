@@ -323,6 +323,10 @@ class batch_system:
                     + " -e "
                     + config["general"]["expid"]
                     + " -t observe -p ${process}"
+                    + " -s "
+                    + config["general"]["start_date"]
+                    + "-r "
+                    + config["general"]["run_number"]
                     + " -v "
                 )
 

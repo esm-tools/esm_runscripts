@@ -98,20 +98,52 @@ def maybe_resubmit(config):
 
     jobtype = config["general"]["jobtype"]
     for cluster in config["general"]["workflow"]["subjob_clusters"][jobtype]["next_submit"]:
-        if cluster == config["general"]["workflow"]["first_task_in_queue"]:
+        if not cluster == config["general"]["workflow"]["first_task_in_queue"]:
+
+            submission_type = get_submission_type(cluster, config)
+            if submission_type == "SimulationSetup":
+                resubmit_SimulationSetup(config, cluster)
+            elif submission_type == "shell":
+                resubmit_shell(config, cluster)
+            elif submission_type == "batch_system":
+                resubmit_batch_system(config, cluster)
+    
+    for cluster in config["general"]["workflow"]["subjob_clusters"][jobtype]["next_submit"]:
+        if not cluster == config["general"]["workflow"]["first_task_in_queue"]:
             # count up the calendar here, skip job submission if end of
             # experiment is reached. all other clusters will still be 
             # submitted though
+            config = _increment_date_and_run_number(config)
+            config = _write_date_file(config)
             if end_of_experiment(config):
                 continue
-
-        submission_type = get_submission_type(cluster, config)
-        if submission_type == "SimulationSetup":
-            resubmit_SimulationSetup(config, cluster)
-        elif submission_type == "shell":
-            resubmit_shell(config, cluster)
-        elif submission_type == "batch_system":
-            resubmit_batch_system(config, cluster)
     return config
 
 
+def _increment_date_and_run_number(config):
+    config["general"]["run_number"] += 1
+    config["general"]["current_date"] += config["general"]["delta_date"]
+    return config
+
+
+def _write_date_file(config):  # self, date_file=None):
+    #monitor_file = config["general"]["logfile"]
+    monitor_file = logfiles.logfile_handle
+
+    # if not date_file:
+    date_file = (
+        config["general"]["experiment_scripts_dir"]
+        + "/"
+        + config["general"]["expid"]
+        + "_"
+        + config["general"]["setup_name"]
+        + ".date"
+    )
+    with open(date_file, "w") as date_file:
+        date_file.write(
+            config["general"]["current_date"].output()
+            + " "
+            + str(config["general"]["run_number"])
+        )
+    monitor_file.write("writing date file \n")
+    return config

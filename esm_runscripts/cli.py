@@ -90,10 +90,17 @@ def parse_shargs():
         default=-666,
     )
 
+    parser.add_argument(
+        "-s",
+        "--start_date",
+        help="The start_date of the run, overwriting settings in the date file.",
+        default=None,
+    )
+
     parser.add_argument("-x", "--exclude", help="e[x]clude this step", default=None)
     parser.add_argument("-o", "--only", help="[o]nly do this step", default=None)
     parser.add_argument(
-        "-r", "--resume-from", help="[r]esume from this step", default=None
+        "-r", "--run_number", help="run_number for this run, overwriting settings in date file", default=None
     )
 
     # PG: Might not work anymore:
@@ -118,6 +125,8 @@ def main():
     update = False
     expid = "test"
     pid = -666
+    start_date = None
+    run_number = None
     jobtype = "prepcompute"
     verbose = False
     inspect = None
@@ -135,6 +144,10 @@ def main():
         profile = parsed_args["profile"]
     if "pid" in parsed_args:
         pid = parsed_args["pid"]
+    if "start_date" in parsed_args:
+        start_date = parsed_args["start_date"]
+    if "run_number" in parsed_args:
+        run_number = parsed_args["run_number"]
     if "update" in parsed_args:
         update = parsed_args["update"]
     if "expid" in parsed_args:
@@ -164,6 +177,8 @@ def main():
     command_line_config["update"] = update
     command_line_config["expid"] = expid
     command_line_config["launcher_pid"] = pid
+    command_line_config["current_date"] = start_date
+    command_line_config["run_number"] = run_number
     command_line_config["jobtype"] = jobtype
     command_line_config["scriptname"] = ARGS.runscript
     #command_line_config["last_jobtype"] = ARGS.last_jobtype
