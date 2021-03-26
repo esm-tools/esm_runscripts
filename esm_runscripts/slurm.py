@@ -63,7 +63,7 @@ class Slurm:
                 end_proc = config[model].get("end_proc", None)
                 start_proc = config[model].get("start_proc", None)
 
-                if not start_proc or not end_proc:
+                if start_proc == None or end_proc == None:
                     continue
                 
                 if "execution_command" in config[model]:

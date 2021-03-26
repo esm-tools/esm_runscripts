@@ -189,7 +189,7 @@ def init_total_workflow(config):
     # das ist nur vorübergehend
     tidy = {"tidy":{
             "nproc": 1,
-            "run_after" : "prepcompute",
+            "run_after" : "compute",
             }}
 
     if not "workflow"  in config["general"]:

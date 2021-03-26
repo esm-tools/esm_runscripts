@@ -1,8 +1,13 @@
 import sys
+
+from . import batch_system
 from . import logfiles
 
+
+
+
 def resubmit_batch_system(config, cluster = None):
-    config = batch_system.write_simple_runscript(config, "batch", cluster)
+    config = config["general"]["batch"].write_simple_runscript(config, cluster, "batch")
     if not check_if_check(config):
         config = batch_system.submit(config)
     return config
@@ -11,7 +16,7 @@ def resubmit_batch_system(config, cluster = None):
 
 
 def resubmit_shell(config, cluster = None):
-    config = batch_system.write_simple_runscript(config, "shell", cluster)
+    config = batch_system.write_simple_runscript(config, cluster, "shell")
     # - os.system that (or subprocess)
     return config
 
@@ -40,7 +45,8 @@ def resubmit_SimulationSetup(config, cluster = None):
         monitor_file.write(f"{cluster} object needs to update the calling job config:\n")
         # FIXME(PG): This might need to be a deep update...?
         config.update(cluster_obj.config[f"{cluster}_update_{jobtype}_config_before_resubmit"])
-    
+
+    print(f"beep {cluster}")
     if not check_if_check(config):
 
         monitor_file.write(f"Calling {cluster} job:\n")
@@ -105,7 +111,7 @@ def maybe_resubmit(config):
                 resubmit_SimulationSetup(config, cluster)
             elif submission_type == "shell":
                 resubmit_shell(config, cluster)
-            elif submission_type == "batch_system":
+            elif submission_type == "batch":
                 resubmit_batch_system(config, cluster)
     
     for cluster in config["general"]["workflow"]["subjob_clusters"][jobtype]["next_submit"]:

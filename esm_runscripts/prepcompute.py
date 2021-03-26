@@ -75,21 +75,6 @@ def all_files_to_copy_append(
     return config
 
 
-def add_batch_hostfile(config):
-    config["general"]["batch"].write_hostfile(config)
-
-    config = all_files_to_copy_append(
-        config,
-        "general",
-        "config",
-        "batchhostfile",
-        config["general"]["batch"].bs.path,
-        None,
-        None,
-    )
-    return config
-
-
 def prepare_coupler_files(config):
     if config["general"]["standalone"] is False:
         coupler_filename = config["general"]["coupler"].prepare(

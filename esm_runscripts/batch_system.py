@@ -9,7 +9,7 @@ from . import dataprocess
 from .slurm import Slurm
 
 known_batch_systems = ["slurm"]
-reserved_jobtypes = ["prepcompute", "prepare", "tidy", "inspect"]
+reserved_jobtypes = ["prepcompute", "compute", "prepare", "tidy", "inspect"]
 
 
 class UnknownBatchSystemError(Exception):
@@ -69,7 +69,6 @@ class batch_system:
         this_batch_system = config["computer"]
         if "sh_interpreter" in this_batch_system:
             header.append("#!" + this_batch_system["sh_interpreter"])
-        config = batch_system.calculate_requirements(config)
         tasks = config["general"]["resubmit_tasks"]
         replacement_tags = [("@tasks@", tasks)]
         all_flags = [
@@ -157,6 +156,7 @@ class batch_system:
             tasks = config["general"]["workflow"]["subjob_clusters"][cluster][nproc]
 
         config["general"]["resubmit_tasks"] = tasks
+
         return config
 
 
@@ -250,11 +250,11 @@ class batch_system:
 
 
     @staticmethod
-    def write_simple_runscript(config, batch_or_shell = "batch", cluster = "prepcompute"):
+    def write_simple_runscript(config, cluster, batch_or_shell = "batch"):
 
         # if no cluster is specified, work on the one we are in
-        if not cluster:
-            cluster = config["general"]["jobtype"]
+        #if not cluster:
+        #    cluster = config["general"]["jobtype"]
 
         clusterconf = None
         if "workflow" in config["general"]:
@@ -279,7 +279,11 @@ class batch_system:
 
             # batch header (if any)
             if batch_or_shell == "batch":
+                
+                config = batch_system.calculate_requirements(config, cluster)
                 header = batch_system.get_batch_header(config)
+                config = add_batch_hostfile(config)
+
                 for line in header:
                     sadfile.write(line + "\n")
                 sadfile.write("\n")
@@ -302,7 +306,7 @@ class batch_system:
                     #commands = clusterconf.get("data_task_list", [])
                     sadfile.write("\n")
                     sadfile.write("cd " + config["general"]["thisrun_work_dir"] + "\n")
-                    print(commands)
+                    print(f"Commands {commands}")
                     for line in commands:
                         sadfile.write(line + "\n")
 
@@ -381,4 +385,21 @@ def submits_another_job(config, cluster):
     if clusterconf.get("submit_next", []) == []:
        return False
     return True
+
+def add_batch_hostfile(config):
+    config["general"]["batch"].write_hostfile(config)
+
+
+
+    #config = all_files_to_copy_append(
+    #    config,
+    #    "general",
+    #    "config",
+    #    "batchhostfile",
+    #    config["general"]["batch"].bs.path,
+    #    None,
+    #    None,
+    #)
+    return config
+
 
