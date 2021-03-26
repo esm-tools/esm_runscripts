@@ -288,7 +288,7 @@ def target_subfolders(config):
                                 + "/"
                                 + source_filename.split("/")[-1]
                             )
-                        elif "*" in filename:
+                        else:
                             # Get the general description of the filename
                             gen_descr = descr.split("_glob_")[0]
                             # Load the wild cards from source and target and split them
@@ -312,15 +312,11 @@ def target_subfolders(config):
                             # Loop through the pieces of the wild cards to create
                             # the correct target name by substituting in the source
                             # name
-                            target_name = source_filename.split("/")[-1]
+                            target_name = source_filename
                             for wcs, wct in zip(wild_card_source, wild_card_target):
                                 target_name = target_name.replace(wcs, wct)
                             # Return the correct target name
                             config[model][filetype + "_targets"][descr] = target_name
-                        else:
-                            config[model][filetype + "_targets"][
-                                descr
-                            ] = source_filename.split("/")[-1]
                     elif filename.endswith("/"):
                         source_filename = os.path.basename(
                             config[model][filetype + "_sources"][descr]
