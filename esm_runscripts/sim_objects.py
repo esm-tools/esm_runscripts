@@ -285,7 +285,7 @@ class PrevRunInfo(dict):
     """
     A dictionary subclass to access information from the previous run. The object is
     created in the ``SimulationSetup`` class in ``self.config["prev_run"]``. The idea
-    behing this class is that variables from the previous simulation can be called from
+    behind this class is that variables from the previous simulation can be called from
     the yaml files with a very similar syntax as one would do for the current run.
 
     The syntax is as follows:
