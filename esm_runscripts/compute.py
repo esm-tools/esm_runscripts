@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import copy
 
 import esm_rcfile
 import six
@@ -324,7 +325,10 @@ def _write_finalized_config(config):
         + "_finished_config.yaml",
         "w",
     ) as config_file:
-        out = yaml.dump(config)
+        # Avoid saving ``prev_run`` information in the config file
+        config_final = copy.deepcopy(config)
+        del config_final["prev_run"]
+        out = yaml.dump(config_final)
         out = strip_python_tags(out)
         config_file.write(out)
     return config
