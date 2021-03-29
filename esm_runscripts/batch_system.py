@@ -194,14 +194,14 @@ class batch_system:
     def get_run_commands(config, subjob):  # here or in compute.py?
 
         commands = []
-        if subjob in reserved_jobtypes:
+        if subjob.startswith("compute"):
 
             batch_system = config["computer"]
             if "execution_command" in batch_system:
                 line = helpers.assemble_log_message(
                     config,
                     [
-                        config["general"]["jobtype"],
+                        "compute",
                         config["general"]["run_number"],
                         config["general"]["current_date"],
                         config["general"]["jobid"],
@@ -315,11 +315,14 @@ class batch_system:
             else: # "normal" case
                 dummy = 0
 
-
+            print (submits_another_job(config, cluster))
+            print (batch_or_shell)
 
             if submits_another_job(config, cluster) and batch_or_shell == "batch":
                 # -j ? is that used somewhere? I don't think so, replaced by workflow
                 #   " -j "+ config["general"]["jobtype"]
+
+                print ("huhu")
 
                 observe_call = (
                     "esm_runscripts "
@@ -328,11 +331,15 @@ class batch_system:
                     + config["general"]["expid"]
                     + " -t observe -p ${process}"
                     + " -s "
-                    + config["general"]["start_date"]
-                    + "-r "
-                    + config["general"]["run_number"]
+                    + config["general"]["current_date"].format(
+                            form=9, givenph=False, givenpm=False, givenps=False
+                        )
+                    + " -r "
+                    + str(config["general"]["run_number"])
                     + " -v "
                 )
+
+                print(observe_call)
 
                 if "--open-run" in config["general"]["original_command"] or not config["general"].get("use_venv"):
                     observe_call += " --open-run"
@@ -381,8 +388,10 @@ class batch_system:
 
 
 def submits_another_job(config, cluster):
+    print (cluster)
     clusterconf = config["general"]["workflow"]["subjob_clusters"][cluster]
-    if clusterconf.get("submit_next", []) == []:
+    print(clusterconf)
+    if clusterconf.get("next_submit", []) == []:
        return False
     return True
 
