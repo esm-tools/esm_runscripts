@@ -315,6 +315,7 @@ class PrevRunInfo(dict):
         """
         self._config = config
         self._prev_config = None
+        self.__setitem__("NONE_YET", {})
 
 
     def __getitem__(self, key):
