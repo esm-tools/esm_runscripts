@@ -350,7 +350,11 @@ class batch_system:
                     print("ERROR -- See write_simple_runscript for the code causing this.")
                     sys.exit(1)
 
+                subjobs_to_launch = config["general"]["workflow"]["subjob_clusters"][cluster]["next_submit"]
 
+                sadfile.write("\n")
+                sadfile.write("# Call to esm_runscript to start subjobs:\n")
+                sadfile.write(str(subjobs_to_launch) + "\n")
                 sadfile.write("process=$! \n")
                 sadfile.write("cd " + config["general"]["experiment_scripts_dir"] + "\n")
                 sadfile.write(observe_call + "\n")

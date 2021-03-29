@@ -115,7 +115,7 @@ def maybe_resubmit(config):
                 resubmit_batch_system(config, cluster)
     
     for cluster in config["general"]["workflow"]["subjob_clusters"][jobtype]["next_submit"]:
-        if not cluster == config["general"]["workflow"]["first_task_in_queue"]:
+        if cluster == config["general"]["workflow"]["first_task_in_queue"]:
             # count up the calendar here, skip job submission if end of
             # experiment is reached. all other clusters will still be 
             # submitted though
