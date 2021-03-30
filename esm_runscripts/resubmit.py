@@ -4,22 +4,27 @@ from . import batch_system
 from . import logfiles
 
 
+def submit(config):
+    if config["general"]["verbose"]:
+        six.print_("\n", 40 * "+ ")
+    print("Submitting jobscript to batch system...")
+    print()
+    print(f"Output written by {config['computer']['batch_system']}:")
+    if config["general"]["verbose"]:
+        for command in config["general"]["submit_command"]:
+            print(command)
+        six.print_("\n", 40 * "+ ")
+    for command in config["general"]["submit_command"]:
+        os.system(command)
+    return config
 
 
-def resubmit_batch_system(config, cluster = None):
-    config = config["general"]["batch"].write_simple_runscript(config, cluster, "batch")
+
+def resubmit_batch_or_shell(config, batch_or_shell, cluster = None):
+    config = config["general"]["batch"].write_simple_runscript(config, cluster, batch_or_shell)
     if not check_if_check(config):
-        config = batch_system.submit(config)
+        config = submit(config)
     return config
-
-
-
-
-def resubmit_shell(config, cluster = None):
-    config = batch_system.write_simple_runscript(config, cluster, "shell")
-    # - os.system that (or subprocess)
-    return config
-
 
 
 def resubmit_SimulationSetup(config, cluster = None):
@@ -109,10 +114,8 @@ def maybe_resubmit(config):
             submission_type = get_submission_type(cluster, config)
             if submission_type == "SimulationSetup":
                 resubmit_SimulationSetup(config, cluster)
-            elif submission_type == "shell":
-                resubmit_shell(config, cluster)
-            elif submission_type == "batch":
-                resubmit_batch_system(config, cluster)
+            elif submission_type in ["batch", "shell"]:
+                resubmit_batch_or_shell(config, submission_type, cluster)
     
     for cluster in config["general"]["workflow"]["subjob_clusters"][jobtype]["next_submit"]:
         if cluster == config["general"]["workflow"]["first_task_in_queue"]:

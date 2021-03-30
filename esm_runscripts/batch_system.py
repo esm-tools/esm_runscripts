@@ -226,22 +226,25 @@ class batch_system:
         # cd SCRIPTDIR; sbatch sadfile
         # in case if shell:
         # cd SCRIPTDIR; ./sadfile
-        
+
         commands = []
-        if "batch_or_shell" == "batch":
-            call = batch_system["submit"] + " "
+        if batch_or_shell == "batch":
+            call = config["computer"]["submit"] + " "
         else:
             call = "./"
 
         batch_system = config["computer"]
+
+
         if "submit" in batch_system:
             commands.append(
                 "cd "
                 + config["general"]["thisrun_scripts_dir"]
                 + "; "
                 + call
-                + sadfilename
+                + os.path.basename(sadfilename)
             )
+
         return commands
 
 
@@ -306,7 +309,6 @@ class batch_system:
                     #commands = clusterconf.get("data_task_list", [])
                     sadfile.write("\n")
                     sadfile.write("cd " + config["general"]["thisrun_work_dir"] + "\n")
-                    print(f"Commands {commands}")
                     for line in commands:
                         sadfile.write(line + "\n")
 
@@ -315,14 +317,11 @@ class batch_system:
             else: # "normal" case
                 dummy = 0
 
-            print (submits_another_job(config, cluster))
-            print (batch_or_shell)
 
             if submits_another_job(config, cluster) and batch_or_shell == "batch":
                 # -j ? is that used somewhere? I don't think so, replaced by workflow
                 #   " -j "+ config["general"]["jobtype"]
 
-                print ("huhu")
 
                 observe_call = (
                     "esm_runscripts "
@@ -339,7 +338,6 @@ class batch_system:
                     + " -v "
                 )
 
-                print(observe_call)
 
                 if "--open-run" in config["general"]["original_command"] or not config["general"].get("use_venv"):
                     observe_call += " --open-run"
@@ -363,6 +361,8 @@ class batch_system:
             config, batch_or_shell, sadfilename
         )
 
+        print(config["general"]["submit_command"] ) 
+
         if config["general"]["verbose"]:
             six.print_("\n", 40 * "+ ")
             six.print_("Contents of ", sadfilename, ":")
@@ -375,26 +375,8 @@ class batch_system:
                     print(fin.read())
         return config
 
-    @staticmethod
-    def submit(config):
-        if config["general"]["verbose"]:
-            six.print_("\n", 40 * "+ ")
-        print("Submitting jobscript to batch system...")
-        print()
-        print(f"Output written by {config['computer']['batch_system']}:")
-        if config["general"]["verbose"]:
-            for command in config["general"]["submit_command"]:
-                print(command)
-            six.print_("\n", 40 * "+ ")
-        for command in config["general"]["submit_command"]:
-            os.system(command)
-        return config
-
-
 def submits_another_job(config, cluster):
-    print (cluster)
     clusterconf = config["general"]["workflow"]["subjob_clusters"][cluster]
-    print(clusterconf)
     if clusterconf.get("next_submit", []) == []:
        return False
     return True
