@@ -1,14 +1,16 @@
 import os
 import sys
 import psutil
+import time
 
 from . import helpers
 from . import database_actions
+from . import logfiles
+
 
 def run_job(config):
     helpers.evaluate(config, "observe", "observe_recipe")
     return config
-
 
 
 def init_monitor_file(config):
@@ -19,32 +21,31 @@ def init_monitor_file(config):
     #called_from = config["general"]["last_jobtype"]
 
     exp_log_path = (
-        self.config["general"]["experiment_scripts_dir"] +
-        self.config["general"]["expid"] +
+        config["general"]["experiment_scripts_dir"] +
+        config["general"]["expid"] +
         "_" +
         called_from + 
         "_" +
-        self.config["general"]["run_datestamp"] +
+        config["general"]["run_datestamp"] +
         "_" +
-        str(self.config["general"]["jobid"]) +
+        str(config["general"]["jobid"]) +
         ".log"
     )
     log_in_run = (
-        self.config["general"]["thisrun_scripts_dir"] +
-        self.config["general"]["expid"] +
+        config["general"]["thisrun_scripts_dir"] +
+        config["general"]["expid"] +
         "_" + 
         called_from +
         "_" + 
-        str(self.config["general"]["jobid"]) +
+        str(config["general"]["jobid"]) +
         ".log"
     )
 
     if os.path.isfile(exp_log_path):
         os.symlink(exp_log_path, log_in_run)
 
-    monitor_file = config["general"]["logfile"]
+    monitor_file = logfiles.logfile_handle
 
-    print (monitor_file)
     print (called_from)
     print (exp_log_path)
 
@@ -75,7 +76,7 @@ def init_monitor_file(config):
 
 def wait_and_observe(config):
     if config["general"]["submitted"]:
-        monitor_file = config["general"]["logfile"]
+        monitor_file = logfiles.logfile_handle
         thistime = 0
         error_check_list = assemble_error_list(config)
         while job_is_still_running(config):
@@ -91,7 +92,7 @@ def wait_and_observe(config):
 
 
 def wake_up_call(config):
-    monitor_file = config["general"]["logfile"]
+    monitor_file = logfiles.logfile_handle
     monitor_file.write("job ended, starting to tidy up now \n")
     return config
 
@@ -166,7 +167,7 @@ def check_for_errors(config):
 
     new_list = []
     error_check_list = config["general"]["error_list"]
-    monitor_file = config["general"]["logfile"]
+    monitor_file = logfiles.logfile_handle
     time = config["general"]["next_test_time"]
     for (
         trigger,
