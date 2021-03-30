@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 
 import esm_environment
 import six
@@ -35,7 +36,14 @@ class batch_system:
         return self.bs.get_jobid()
 
     def write_hostfile(self, config):
-        return self.bs.write_hostfile(config)
+        self.bs.write_hostfile(config)
+        hostfile_in_work = (
+                config["general"]["work_dir"] 
+                + "/" + 
+                os.path.basename(self.bs.path)
+                ) 
+        shutil.copyfile(self.bs.path, hostfile_in_work)
+        return config
 
     def get_job_state(self, jobid):
         return self.bs.get_job_state(jobid)
@@ -64,13 +72,23 @@ class batch_system:
         )
 
     @staticmethod
-    def get_batch_header(config):
+    def get_batch_header(config, cluster):
         header = []
         this_batch_system = config["computer"]
         if "sh_interpreter" in this_batch_system:
             header.append("#!" + this_batch_system["sh_interpreter"])
         tasks = config["general"]["resubmit_tasks"]
-        replacement_tags = [("@tasks@", tasks)]
+
+        if cluster == "compute":
+            partition = config["computer"]["partitions"]["compute"]["name"]
+        else:
+            partition = config["computer"]["partitions"]["pp"]["name"]
+
+        replacement_tags = [
+                ("@tasks@", tasks),
+                ("@partition@", partition),
+                ]
+
         all_flags = [
             "partition_flag",
             "time_flag",
@@ -284,7 +302,7 @@ class batch_system:
             if batch_or_shell == "batch":
                 
                 config = batch_system.calculate_requirements(config, cluster)
-                header = batch_system.get_batch_header(config)
+                header = batch_system.get_batch_header(config, cluster)
                 config = add_batch_hostfile(config)
 
                 for line in header:
@@ -352,7 +370,7 @@ class batch_system:
 
                 sadfile.write("\n")
                 sadfile.write("# Call to esm_runscript to start subjobs:\n")
-                sadfile.write(str(subjobs_to_launch) + "\n")
+                sadfile.write("# " + str(subjobs_to_launch) + "\n")
                 sadfile.write("process=$! \n")
                 sadfile.write("cd " + config["general"]["experiment_scripts_dir"] + "\n")
                 sadfile.write(observe_call + "\n")
@@ -360,8 +378,6 @@ class batch_system:
         config["general"]["submit_command"] = batch_system.get_submit_command(
             config, batch_or_shell, sadfilename
         )
-
-        print(config["general"]["submit_command"] ) 
 
         if config["general"]["verbose"]:
             six.print_("\n", 40 * "+ ")

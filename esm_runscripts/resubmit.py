@@ -1,4 +1,5 @@
 import sys
+import os
 
 from . import batch_system
 from . import logfiles
@@ -11,9 +12,9 @@ def submit(config):
     print()
     print(f"Output written by {config['computer']['batch_system']}:")
     if config["general"]["verbose"]:
+        six.print_("\n", 40 * "+ ")
         for command in config["general"]["submit_command"]:
             print(command)
-        six.print_("\n", 40 * "+ ")
     for command in config["general"]["submit_command"]:
         os.system(command)
     return config
