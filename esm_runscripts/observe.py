@@ -1,3 +1,10 @@
+import os
+import sys
+import psutil
+
+from . import helpers
+from . import database_actions
+
 def run_job(config):
     helpers.evaluate(config, "observe", "observe_recipe")
     return config
@@ -27,7 +34,7 @@ def init_monitor_file(config):
         self.config["general"]["expid"] +
         "_" + 
         called_from +
-        "_"
+        "_" + 
         str(self.config["general"]["jobid"]) +
         ".log"
     )
@@ -36,6 +43,10 @@ def init_monitor_file(config):
         os.symlink(exp_log_path, log_in_run)
 
     monitor_file = config["general"]["logfile"]
+
+    print (monitor_file)
+    print (called_from)
+    print (exp_log_path)
 
     monitor_file.write("observing job initialized \n")
     monitor_file.write(

@@ -52,9 +52,12 @@ class SimulationSetup(object):
             self.tidy()
         elif self.config["general"]["jobtype"] == "viz":
             self.viz()
-        elif self.config["general"]["jobtype"].startswith("observe"): 
-            pid = self.config["general"]["command_line_config"].get("pid", -666)
+        elif self.config["general"]["jobtype"].startswith("observe"):
+            print("startswith observe")
+            pid = self.config["general"]["command_line_config"].get("launcher_pid", -666)
+            print(pid)
             if not pid == -666:
+                print("actually starting observe")
                 self.observe()
 
             self.config["general"]["jobtype"] = self.config["general"]["jobtype"].replace("observe_", "")

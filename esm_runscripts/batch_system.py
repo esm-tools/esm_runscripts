@@ -378,8 +378,11 @@ class batch_system:
                 sadfile.write("# Call to esm_runscript to start subjobs:\n")
                 sadfile.write("# " + str(subjobs_to_launch) + "\n")
                 sadfile.write("process=$! \n")
+                sadfile.write("# Comment the following line if you don't want esm_runscripts to restart:\n")
                 sadfile.write("cd " + config["general"]["experiment_scripts_dir"] + "\n")
                 sadfile.write(observe_call + "\n")
+                sadfile.write("\n")
+                sadfile.write("wait\n")
 
         config["general"]["submit_command"] = batch_system.get_submit_command(
             config, batch_or_shell, sadfilename
