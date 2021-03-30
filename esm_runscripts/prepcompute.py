@@ -266,7 +266,7 @@ def initialize_experiment_logfile(config):
             str(config["general"]["run_number"]),
             str(config["general"]["current_date"]),
             str(config["general"]["jobid"]),
-            "- submitted",
+            "- started",
         ],
     )
 

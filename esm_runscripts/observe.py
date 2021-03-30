@@ -25,7 +25,9 @@ def init_monitor_file(config):
     log_in_run = (
         self.config["general"]["thisrun_scripts_dir"] +
         self.config["general"]["expid"] +
-        "_called_from_" +
+        "_" + 
+        called_from +
+        "_"
         str(self.config["general"]["jobid"]) +
         ".log"
     )

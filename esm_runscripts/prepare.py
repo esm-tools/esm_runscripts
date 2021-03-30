@@ -45,8 +45,8 @@ def _read_date_file(config):
                 config["general"]["run_number"] = run_number
                 config["general"]["current_date"] = date
     
-    logging.info("current_date = %s", date)
-    logging.info("run_number = %s", run_number)
+    logging.info("current_date = %s", config["general"]["current_date"])
+    logging.info("run_number = %s", config["general"]["run_number"])
     return config
 
 

@@ -87,6 +87,7 @@ class batch_system:
         replacement_tags = [
                 ("@tasks@", tasks),
                 ("@partition@", partition),
+                ("@jobtype@", cluster),
                 ]
 
         all_flags = [
@@ -181,10 +182,13 @@ class batch_system:
 
     @staticmethod
     def get_environment(config, subjob):
+        print(f"get_environment {subjob}")
         environment = []
-        if subjob in reserved_jobtypes:
+        if subjob.replace("_general", "") in reserved_jobtypes: #??? fishy
+            print("looking in esm_environment")
             env = esm_environment.environment_infos("runtime", config)
             commands = env.commands
+            commands += [""]
         else:
             commands = dataprocess.subjob_environment(config, subjob) 
 
@@ -346,7 +350,9 @@ class batch_system:
                     + config["general"]["scriptname"]
                     + " -e "
                     + config["general"]["expid"]
-                    + " -t observe -p ${process}"
+                    + " -t observe_"
+                    + cluster 
+                    + " -p ${process}"
                     + " -s "
                     + config["general"]["current_date"].format(
                             form=9, givenph=False, givenpm=False, givenps=False
