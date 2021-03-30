@@ -3,7 +3,7 @@ import os
 
 from . import batch_system
 from . import logfiles
-
+from . import helpers
 
 def submit(config):
     if config["general"]["verbose"]:
@@ -87,6 +87,7 @@ def get_submission_type(cluster, config):
 
 def end_of_experiment(config):
     if config["general"]["next_date"] >= config["general"]["final_date"]:
+        monitor_file = logfiles.logfile_handle
         monitor_file.write("Reached the end of the simulation, quitting...\n")
         helpers.write_to_log(config, ["# Experiment over"], message_sep="")
         return True
