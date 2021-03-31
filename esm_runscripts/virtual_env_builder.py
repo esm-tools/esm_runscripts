@@ -140,7 +140,7 @@ def _install_tools_general(venv_context, config, deps=True):
                 subprocess.check_call(f"git clone --quiet {branch_command} {url} {src_dir}", shell=True)
             # Carry out the editable installation (with or without dependencies)
             _run_bin_in_venv(venv_context, ["pip", "install", "-q", f"--find-links={os.environ.get('HOME')}/.cache/pip/wheels", "-e", src_dir] + no_deps_flag)
-            _run_bin_in_venv(venv_context, ["pip", "wheel", "-q", f"--wheel-dir={os.environ.get('HOME')}/.cache/pip/wheels", src_dir])
+            #_run_bin_in_venv(venv_context, ["pip", "wheel", "-q", f"--wheel-dir={os.environ.get('HOME')}/.cache/pip/wheels", src_dir])
         # If the package is not editable then do a standard installation.
         # Note: this step only runs with the `--no-deps` flag if the user has specified
         # a branch, as this flags means also that is the second time passing through
