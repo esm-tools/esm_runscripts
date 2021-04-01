@@ -3,6 +3,10 @@ from . import helpers
 
 def initialize_logfiles(config, org_jobtype):
     global logfile_handle
+    global logfile_run_number
+
+    logfile_run_number = str(config["general"]["run_number"])
+
     log_stuff = False
     if os.path.isdir(os.path.dirname(config["general"]["experiment_log_file"])):
         if not org_jobtype == "inspect": 
@@ -16,7 +20,7 @@ def initialize_logfiles(config, org_jobtype):
             config,
             [
                 org_jobtype,
-                str(config["general"]["run_number"]),
+                logfile_run_number,
                 str(config["general"]["current_date"]),
                 str(config["general"]["jobid"]), 
                 "- start",
@@ -44,7 +48,7 @@ def finalize_logfiles(config, org_jobtype):
             config,
             [
                 org_jobtype,
-                str(config["general"]["run_number"]),
+                logfile_run_number,
                 str(config["general"]["current_date"]),
                 str(config["general"]["jobid"]),
                 "- done",

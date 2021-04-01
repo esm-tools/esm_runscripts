@@ -1,5 +1,6 @@
 import sys
 import os
+import six
 
 from . import batch_system
 from . import logfiles
@@ -56,7 +57,7 @@ def resubmit_SimulationSetup(config, cluster = None):
     if not check_if_check(config):
 
         monitor_file.write(f"Calling {cluster} job:\n")
-        cluster_obj()
+        cluster_obj(kill_after_submit = False)
 
     return config
 
@@ -126,14 +127,31 @@ def maybe_resubmit(config):
             # submitted though
             config = _increment_date_and_run_number(config)
             config = _write_date_file(config)
+
             if end_of_experiment(config):
                 continue
+
+            submission_type = get_submission_type(cluster, config)
+            if submission_type == "SimulationSetup":
+                resubmit_SimulationSetup(config, cluster)
+            elif submission_type in ["batch", "shell"]:
+                resubmit_batch_or_shell(config, submission_type, cluster)
+
     return config
 
 
 def _increment_date_and_run_number(config):
     config["general"]["run_number"] += 1
     config["general"]["current_date"] += config["general"]["delta_date"]
+
+    config["general"]["command_line_config"]["current_date"] = (
+            config["general"]["current_date"].format(
+                form=9, givenph=False, givenpm=False, givenps=False
+                )
+            )
+
+    config["general"]["command_line_config"]["run_number"] = config["general"]["run_number"] 
+
     return config
 
 

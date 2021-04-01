@@ -20,6 +20,8 @@ def init_monitor_file(config):
     called_from = actual_job
     #called_from = config["general"]["last_jobtype"]
 
+    del config["general"]["command_line_config"]["launcher_pid"]
+
     exp_log_path = (
         config["general"]["experiment_scripts_dir"] +
         config["general"]["expid"] +
