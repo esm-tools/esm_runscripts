@@ -259,16 +259,16 @@ def initialize_experiment_logfile(config):
             ["# Beginning of Experiment " + config["general"]["expid"]],
             message_sep="",
         )
-    write_to_log(
-        config,
-        [
-            str(config["general"]["jobtype"]),
-            str(config["general"]["run_number"]),
-            str(config["general"]["current_date"]),
-            str(config["general"]["jobid"]),
-            "- started",
-        ],
-    )
+        write_to_log(
+            config,
+            [
+                str(config["general"]["jobtype"]),
+                str(config["general"]["run_number"]),
+                str(config["general"]["current_date"]),
+                str(config["general"]["jobid"]),
+                "- start",
+            ],
+        )
 
     # Write trace-log file now that we know where to do that
     if "trace_sink" in dir(logger):

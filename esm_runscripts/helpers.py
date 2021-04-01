@@ -131,6 +131,9 @@ def assemble_log_message(
     if message_sep is None:
         message_sep = config["general"].get("experiment_log_file_message_sep", " ")
     if timestampStr_from_Unix:
+        if strftime_str == "%c":
+            # date doesn't do %c as it is supposed to
+            strftime_str = '"%a %b  %e %T %Y"'
         timestampStr = "$(date +" + strftime_str + ")"
     else:
         timestampStr = dateTimeObj.strftime(strftime_str)

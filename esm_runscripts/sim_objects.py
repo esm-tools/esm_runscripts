@@ -41,6 +41,9 @@ class SimulationSetup(object):
         org_jobtype = str(self.config["general"]["jobtype"])
         self.config = logfiles.initialize_logfiles(self.config, org_jobtype)
 
+        if self.config["general"]["submitted"]:
+            old_stdout = sys.stdout
+            sys.stdout = logfiles.logfile_handle
 
         if self.config["general"]["jobtype"] == "prepcompute":
             self.prepcompute()
@@ -68,9 +71,15 @@ class SimulationSetup(object):
         
         self.config = logfiles.finalize_logfiles(self.config, org_jobtype)
         
+        if self.config["general"]["submitted"]:
+            sys.stdout = old_stdout
+
         if kill_after_submit:
+            if self.config["general"].get("experiment_over", False):
+                helpers.write_to_log(self.config, ["# Experiment over"], message_sep="")
             helpers.end_it_all(self.config)
 
+        return self.config["general"].get("experiment_over", False)
 
 
 

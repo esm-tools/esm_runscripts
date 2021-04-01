@@ -211,29 +211,52 @@ class batch_system:
 
 
 
+    @staticmethod
+    def append_start_statement(config, subjob):
+        line = helpers.assemble_log_message(
+            config,
+            [
+                subjob.replace("_general", ""),
+                config["general"]["run_number"],
+                config["general"]["current_date"],
+                config["general"]["jobid"],
+                "- start",
+            ],
+            timestampStr_from_Unix=True,
+        )
+        startline = (
+            "echo " + line + " >> " + config["general"]["experiment_log_file"]
+        )
+        return startline
+
+
+    @staticmethod
+    def append_done_statement(config, subjob):
+        line = helpers.assemble_log_message(
+            config,
+            [
+                subjob.replace("_general", ""),
+                config["general"]["run_number"],
+                config["general"]["current_date"],
+                config["general"]["jobid"],
+                "- done",
+            ],
+            timestampStr_from_Unix=True,
+        )
+        doneline = (
+            "echo " + line + " >> " + config["general"]["experiment_log_file"]
+        )
+        return doneline
+
+
 
     @staticmethod
     def get_run_commands(config, subjob):  # here or in compute.py?
 
         commands = []
         if subjob.startswith("compute"):
-
             batch_system = config["computer"]
             if "execution_command" in batch_system:
-                line = helpers.assemble_log_message(
-                    config,
-                    [
-                        "compute",
-                        config["general"]["run_number"],
-                        config["general"]["current_date"],
-                        config["general"]["jobid"],
-                        "- start",
-                    ],
-                    timestampStr_from_Unix=True,
-                )
-                commands.append(
-                    "echo " + line + " >> " + config["general"]["experiment_log_file"]
-                )
                 commands.append("time " + batch_system["execution_command"] + " &")
         else:
             commands += dataprocess.subjob_tasks(config, subjob)
@@ -330,6 +353,8 @@ class batch_system:
                     commands = batch_system.get_run_commands(config, subjob)
                     #commands = clusterconf.get("data_task_list", [])
                     sadfile.write("\n")
+                    sadfile.write(self.append_start_statement(config, subjob) + "\n")
+                    sadfile.write("\n")
                     sadfile.write("cd " + config["general"]["thisrun_work_dir"] + "\n")
                     for line in commands:
                         sadfile.write(line + "\n")
@@ -381,6 +406,8 @@ class batch_system:
                 sadfile.write("# Comment the following line if you don't want esm_runscripts to restart:\n")
                 sadfile.write("cd " + config["general"]["experiment_scripts_dir"] + "\n")
                 sadfile.write(observe_call + "\n")
+                sadfile.write("\n")
+                sadfile.write(self.append_done_statement(config, subjob) + "\n")
                 sadfile.write("\n")
                 sadfile.write("wait\n")
 

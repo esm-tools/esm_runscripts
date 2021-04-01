@@ -46,18 +46,17 @@ def resubmit_SimulationSetup(config, cluster = None):
     from .sim_objects import SimulationSetup
     cluster_obj = SimulationSetup(command_line_config)
     
-    monitor_file.write("f{cluster} object built....\n")
+    monitor_file.write(f"{cluster} object built....\n")
     
     if f"{cluster}_update_{jobtype}_config_before_resubmit" in cluster_obj.config:
         monitor_file.write(f"{cluster} object needs to update the calling job config:\n")
         # FIXME(PG): This might need to be a deep update...?
         config.update(cluster_obj.config[f"{cluster}_update_{jobtype}_config_before_resubmit"])
 
-    print(f"beep {cluster}")
     if not check_if_check(config):
 
         monitor_file.write(f"Calling {cluster} job:\n")
-        cluster_obj(kill_after_submit = False)
+        config["general"]["experiment_over"] = cluster_obj(kill_after_submit = False)
 
     return config
 
@@ -84,13 +83,12 @@ def get_submission_type(cluster, config):
 
 
 
-
-
 def end_of_experiment(config):
     if config["general"]["next_date"] >= config["general"]["final_date"]:
         monitor_file = logfiles.logfile_handle
         monitor_file.write("Reached the end of the simulation, quitting...\n")
-        helpers.write_to_log(config, ["# Experiment over"], message_sep="")
+        config["general"]["experiment_over"] = True
+        #helpers.write_to_log(config, ["# Experiment over"], message_sep="")
         return True
     return False
 
