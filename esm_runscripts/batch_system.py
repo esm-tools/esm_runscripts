@@ -1,5 +1,6 @@
 import os
 import sys
+import stat
 import shutil
 
 import esm_environment
@@ -322,7 +323,7 @@ class batch_system:
             print("jobtype: ", config["general"]["jobtype"])
             print("writing sad file for:", cluster)
 
-
+        print (f"sadfilename: {sadfilename}")
         with open(sadfilename, "w") as sadfile:
 
             # batch header (if any)
@@ -414,6 +415,10 @@ class batch_system:
         config["general"]["submit_command"] = batch_system.get_submit_command(
             config, batch_or_shell, sadfilename
         )
+
+        if batch_or_shell == "shell":
+            sadfilestats = os.stat(sadfilename)
+            os.chmod(sadfilename, sadfilestats.st_mode | stat.S_IEXEC)
 
         if config["general"]["verbose"]:
             six.print_("\n", 40 * "+ ")

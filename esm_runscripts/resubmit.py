@@ -71,13 +71,10 @@ def get_submission_type(cluster, config):
 
     if clusterconf.get("submit_to_batch_system", False):
         submission_type = "batch"
-    elif clusterconf.get("script", False):
-        submission_type = "script"
-    else:
-        if not cluster in ["prepcompute", "tidy", "inspect", "viz"]:
-            print (f"No idea how to submit cluster {cluster}.")
-            sys.exit(-1)
+    elif cluster in ["prepcompute", "tidy", "inspect", "viz"]:
         submission_type = "SimulationSetup"
+    else:
+        submission_type = "shell"
 
     return submission_type
 
@@ -111,8 +108,9 @@ def maybe_resubmit(config):
     jobtype = config["general"]["jobtype"]
     for cluster in config["general"]["workflow"]["subjob_clusters"][jobtype]["next_submit"]:
         if not cluster == config["general"]["workflow"]["first_task_in_queue"]:
-
+            print(cluster)
             submission_type = get_submission_type(cluster, config)
+            print(submission_type)
             if submission_type == "SimulationSetup":
                 resubmit_SimulationSetup(config, cluster)
             elif submission_type in ["batch", "shell"]:
