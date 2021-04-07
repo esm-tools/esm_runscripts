@@ -12,14 +12,21 @@ def subjob_environment(config, subjob):
     scriptdir = subjob_config.get("script_dir", False)
 
     print(f"Inside subjob_environment: {env_preparation}")
+    print(f"Inside subjob_environment: {scriptdir}")
     if env_preparation:
         env = assemble_filename(env_preparation, scriptdir, config)
-        spec = importlib.util.spec_from_file_location(env)
-        envmodule = importlib.module_from_spec(spec)
+        print(f"Inside subjob_environment: {env}")
+        spec = importlib.util.spec_from_file_location(
+                subjob, 
+                env
+                )
+        envmodule = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(envmodule)
 
         env_dict = getattr(envmodule, "prepare_environment")(config)
+        print(f"Inside subjob_environment: {env_dict}")
         task_list += export_string(env_dict)
+        print(f"Inside subjob_environment: {task_list}")
 
     return task_list
 
@@ -31,8 +38,18 @@ def subjob_tasks(config, subjob):
     task_list = []
     subjob_config = config["general"]["workflow"]["subjobs"][subjob]
 
+    old_logfile = config["general"]["logfile_path"]
+    logfile_dir = os.path.dirname(old_logfile)
+    logfile_name = os.path.basename(old_logfile).replace(
+            config["general"]["jobtype"],
+            subjob
+            )
+
+    new_logfile = os.path.join(logfile_dir, logfile_name)
+
     scriptdir = subjob_config.get("script_dir", False)
     script = subjob_config.get("script", False)
+
     print(f"Inside subjob_tasks: {scriptdir}")
     print(f"Inside subjob_tasks: {script}")
     
@@ -40,7 +57,7 @@ def subjob_tasks(config, subjob):
         script = assemble_filename(script, scriptdir, config) 
         print(f"Inside subjob_tasks: {script}")
         #task_list += add_scriptcall(script, cluster, config)
-        task_list += [script]
+        task_list += [script + " > " + new_logfile]
 
     print(f"Inside subjob_tasks: {task_list}")
     return task_list
@@ -60,7 +77,7 @@ def export_string(environment_dict):
     export_string = []
     for entry in environment_dict:
         value = environment_dict[entry]
-        export_string.append([f"export {entry}={value}"])
+        export_string.append(f"export {entry}={value}")
     return export_string
 
 
