@@ -185,13 +185,13 @@ class batch_system:
     def get_environment(config, subjob):
         print(f"get_environment {subjob}")
         environment = []
-        if subjob.replace("_general", "") in reserved_jobtypes: #??? fishy
-            print("looking in esm_environment")
-            env = esm_environment.environment_infos("runtime", config)
-            commands = env.commands
-            commands += [""]
-        else:
+
+        print("looking in esm_environment")
+        env = esm_environment.environment_infos("runtime", config)
+        commands = env.commands
+        if not subjob.replace("_general", "") in reserved_jobtypes: #??? fishy
             commands = dataprocess.subjob_environment(config, subjob) 
+        commands += [""]
 
         return commands
 
@@ -260,7 +260,9 @@ class batch_system:
             if "execution_command" in batch_system:
                 commands.append("time " + batch_system["execution_command"] + " &")
         else:
-            commands += dataprocess.subjob_tasks(config, subjob)
+            subjob_tasks = dataprocess.subjob_tasks(config, subjob)
+            for task in subjob_tasks: 
+                commands.append(task + " &")
 
         return commands
 
@@ -366,7 +368,7 @@ class batch_system:
                 dummy = 0
 
 
-            if submits_another_job(config, cluster) and batch_or_shell == "batch":
+            if submits_another_job(config, cluster):# and batch_or_shell == "batch":
                 # -j ? is that used somewhere? I don't think so, replaced by workflow
                 #   " -j "+ config["general"]["jobtype"]
 
@@ -409,8 +411,9 @@ class batch_system:
                 sadfile.write(observe_call + "\n")
                 sadfile.write("\n")
                 sadfile.write(self.append_done_statement(config, subjob) + "\n")
-                sadfile.write("\n")
-                sadfile.write("wait\n")
+            
+            sadfile.write("\n")
+            sadfile.write("wait\n")
 
         config["general"]["submit_command"] = batch_system.get_submit_command(
             config, batch_or_shell, sadfilename
