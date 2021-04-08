@@ -85,6 +85,7 @@ class batch_system:
             "notification_flag",
             "hyperthreading_flag",
             "additional_flags",
+            "overcommit_flag"
         ]
         if config["general"]["jobtype"] in ["compute", "tidy_and_resume"]:
             conditional_flags.append("exclusive_flag")
