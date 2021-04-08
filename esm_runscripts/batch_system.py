@@ -7,8 +7,9 @@ import six
 
 from . import helpers
 from .slurm import Slurm
+from .pbs import Pbs
 
-known_batch_systems = ["slurm"]
+known_batch_systems = ["slurm", "pbs"]
 
 
 class UnknownBatchSystemError(Exception):
@@ -20,6 +21,8 @@ class batch_system:
         self.name = name
         if name == "slurm":
             self.bs = Slurm(config)
+        elif name == "pbs":
+            self.bs = Pbs(config)
         else:
             raise UnknownBatchSystemError(name)
 
@@ -62,24 +65,22 @@ class batch_system:
         if "sh_interpreter" in this_batch_system:
             header.append("#!" + this_batch_system["sh_interpreter"])
         tasks, nodes = batch_system.calculate_requirements(config)
-        replacement_tags = [("@tasks@", tasks)]
+
+        replacement_tags = [("@tasks@", tasks), ("@nodes@", nodes)]
         if config["general"].get("taskset", False):
-            replacement_tags = [("@nodes@", nodes)]
-            all_flags = [
-                "partition_flag",
-                "time_flag",
-                "nodes_flag",
-                "output_flags",
-                "name_flag",
-            ]
+            tasks_nodes_flag = "nodes_flag"
+        elif config["computer"]["batch_system"] in ["pbs"]:
+            tasks_nodes_flag = "nodes_flag"
         else:
-            all_flags = [
-                "partition_flag",
-                "time_flag",
-                "tasks_flag",
-                "output_flags",
-                "name_flag",
-            ]
+            tasks_nodes_flag = "tasks_flag"
+
+        all_flags = [
+            "partition_flag",
+            "time_flag",
+            tasks_nodes_flag,
+            "output_flags",
+            "name_flag",
+        ]
         conditional_flags = [
             "accounting_flag",
             "notification_flag",
@@ -108,9 +109,19 @@ class batch_system:
         if config["general"]["jobtype"] == "compute":
             for model in config["general"]["valid_model_names"]:
                 if "nproc" in config[model]:
-                    tasks += config[model]["nproc"]
+                    nproc = config[model]["nproc"]
+                    cores_per_node = config['computer']['cores_per_node']
+                    tasks += nproc
+                    # If heterogeneous MPI-OMP
                     if config["general"].get("taskset", False):
-                        nodes +=int((config[model]["nproc"]*config[model]["omp_num_threads"])/config['computer']['cores_per_node'])
+                        omp_num_threads = config[model].get("omp_num_threads", 1)
+                    # If only MPI
+                    else:
+                        omp_num_threads = 1
+                    nodes += (
+                        int(nproc * omp_num_threads / cores_per_node)
+                        + ((nproc * omp_num_threads) % cores_per_node > 0)
+                    )
                 elif "nproca" in config[model] and "nprocb" in config[model]:
                     tasks += config[model]["nproca"] * config[model]["nprocb"]
 
@@ -175,6 +186,8 @@ class batch_system:
         if config['general'].get('use_venv', False):
             extras.append("# Start everything in a venv")
             extras.append("source "+config["general"]["experiment_dir"]+"/.venv_esmtools/bin/activate")
+        if config["computer"].get("pre_run_commands", False):
+            extras.append(config["computer"]["pre_run_commands"])
         if config["general"].get("funny_comment", True):
             extras.append("# 3...2...1...Liftoff!")
         return extras
