@@ -3,7 +3,6 @@ import importlib.util
 
 def subjob_environment(config, subjob):
 
-    print(f"Inside subjob_environment: {subjob}")
     task_list = []
     subjob_config = config["general"]["workflow"]["subjobs"][subjob]
 
@@ -11,11 +10,8 @@ def subjob_environment(config, subjob):
     env_preparation = subjob_config.get("env_preparation", False)
     scriptdir = subjob_config.get("script_dir", False)
 
-    print(f"Inside subjob_environment: {env_preparation}")
-    print(f"Inside subjob_environment: {scriptdir}")
     if env_preparation:
         env = assemble_filename(env_preparation, scriptdir, config)
-        print(f"Inside subjob_environment: {env}")
         spec = importlib.util.spec_from_file_location(
                 subjob, 
                 env
@@ -24,16 +20,13 @@ def subjob_environment(config, subjob):
         spec.loader.exec_module(envmodule)
 
         env_dict = getattr(envmodule, "prepare_environment")(config)
-        print(f"Inside subjob_environment: {env_dict}")
         task_list += export_string(env_dict)
-        print(f"Inside subjob_environment: {task_list}")
 
     return task_list
 
 
 
 def subjob_tasks(config, subjob):
-    print(f"Inside subjob_tasks: {subjob}")
 
     task_list = []
     subjob_config = config["general"]["workflow"]["subjobs"][subjob]
@@ -50,16 +43,11 @@ def subjob_tasks(config, subjob):
     scriptdir = subjob_config.get("script_dir", False)
     script = subjob_config.get("script", False)
 
-    print(f"Inside subjob_tasks: {scriptdir}")
-    print(f"Inside subjob_tasks: {script}")
-    
     if script:
         script = assemble_filename(script, scriptdir, config) 
-        print(f"Inside subjob_tasks: {script}")
         #task_list += add_scriptcall(script, cluster, config)
         task_list += [script + " > " + new_logfile]
 
-    print(f"Inside subjob_tasks: {task_list}")
     return task_list
 
 
