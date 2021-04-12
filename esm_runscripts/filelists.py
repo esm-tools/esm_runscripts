@@ -355,6 +355,20 @@ def assemble_intermediate_files_and_finalize_targets(config):
     return config
 
 
+def find_valid_year(config, year):
+    for entry in config:
+        min_val = -50000000000
+        max_val = 500000000000
+
+        from_info = float(config[entry].get("from", min_val))
+        to_info = float(config[entry].get("to", max_val))
+
+        if from_info <= year <= to_info:
+            return entry
+        # if the current model year is out of the valid bounds, report and exit
+            print(f"Sorry, no entry found for year {year} in config {config}")
+            sys.exit(-1)
+
 def replace_year_placeholder(config):
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"] + ["general"]:
@@ -364,73 +378,165 @@ def replace_year_placeholder(config):
                         filetype + "_additional_information"
                     ]:
                         if file_category in config[model][filetype + "_targets"]:
+                        
+                            all_years = [config["general"]["current_date"].year]
+                            
                             if (
-                                "@YEAR@"
+                                "need_timestep_before"
+                                in config[model][
+                                    filetype + "_additional_information"
+                                ][file_category]
+                            ):
+                                all_years.append(
+                                    config["general"]["prev_date"].year
+                                )
+                            if (
+                                "need_timestep_after"
+                                in config[model][
+                                    filetype + "_additional_information"
+                                ][file_category]
+                            ):
+                                all_years.append(
+                                    config["general"]["next_date"].year
+                                )
+                            if (
+                                "need_year_before"
+                                in config[model][
+                                    filetype + "_additional_information"
+                                ][file_category]
+                            ):
+                                all_years.append(
+                                    config["general"]["current_date"].year - 1
+                                )
+                            if (
+                                "need_year_after"
+                                in config[model][
+                                    filetype + "_additional_information"
+                                ][file_category]
+                            ):
+                                all_years.append(
+                                    config["general"]["current_date"].year + 1
+                                )
+
+                            all_years = list(
+                                dict.fromkeys(all_years)
+                            )  # removes duplicates
+                            
+                            # loop over all years (including year_before & after)
+                            # change replace the @YEAR@ variable with the 
+                            # corresponding year
+                            for year in all_years:
+                                new_category = file_category + "_year_" + str(year)
+                                
+                                # if the source contains 'from' or 'to' information
+                                # then they have a dict type
+                                if type(config[model][filetype + "_sources"][file_category]) == dict:
+                                
+                                    # process the 'from' and 'to' information in
+                                    # file sources and targets
+                                    config[model][filetype + "_sources"][new_category] = \
+                                        find_valid_year(
+                                            config[model][filetype + "_sources"][file_category],
+                                            year
+                                        )
+                                    
+                                    config[model][filetype + "_targets"][new_category] = \
+                                            config[model][filetype + "_targets"][file_category]
+
+                                    if (
+                                        "@YEAR@"
+                                        in config[model][filetype + "_targets"][new_category]
+                                    ):
+                                        new_target_name = config[model][
+                                            filetype + "_targets"
+                                        ][new_category].replace("@YEAR@", str(year))
+                                    
+                                        config[model][filetype + "_targets"][
+                                            new_category
+                                        ] = new_target_name
+                                    
+                                    if (
+                                        "@YEAR@"
+                                        in config[model][filetype + "_sources"][new_category]
+                                    ):    
+                                        new_source_name = config[model][
+                                            filetype + "_sources"
+                                        ][new_category].replace("@YEAR@", str(year))
+
+                                        config[model][filetype + "_sources"][
+                                            new_category
+                                        ] = new_source_name
+                            # end of the for year loop
+                            
+                            # deniz: new additions for @YEAR_1850@
+                            # these are the Kinne aerosol files for the background
+                            # aerosol concentration. They are needed for years
+                            # 1849, 1850, and 1851. All these 3 files are the same
+                            # and ECHAM needs them 
+                            if ("@YEAR_1850@" 
                                 in config[model][filetype + "_targets"][file_category]
                             ):
-                                all_years = [config["general"]["current_date"].year]
-
-                                if (
-                                    "need_timestep_before"
-                                    in config[model][
-                                        filetype + "_additional_information"
-                                    ][file_category]
-                                ):
-                                    all_years.append(
-                                        config["general"]["prev_date"].year
-                                    )
-                                if (
-                                    "need_timestep_after"
-                                    in config[model][
-                                        filetype + "_additional_information"
-                                    ][file_category]
-                                ):
-                                    all_years.append(
-                                        config["general"]["next_date"].year
-                                    )
-                                if (
-                                    "need_year_before"
-                                    in config[model][
-                                        filetype + "_additional_information"
-                                    ][file_category]
-                                ):
-                                    all_years.append(
-                                        config["general"]["current_date"].year - 1
-                                    )
-                                if (
-                                    "need_year_after"
-                                    in config[model][
-                                        filetype + "_additional_information"
-                                    ][file_category]
-                                ):
-                                    all_years.append(
-                                        config["general"]["current_date"].year + 1
-                                    )
-
-                                all_years = list(
-                                    dict.fromkeys(all_years)
-                                )  # removes duplicates
-
-                                for year in all_years:
-
+                                # only target name is changed since source file is for a fixed year (1850)
+                                for year in [1849, 1850, 1851]:
                                     new_category = file_category + "_year_" + str(year)
+                                    
+                                    # add the sources and targets to the config
+                                    config[model][filetype + "_sources"][new_category] = \
+                                        config[model][filetype + "_sources"][file_category]
+                                        
+                                    config[model][filetype + "_targets"][new_category] = \
+                                        config[model][filetype + "_targets"][file_category]
+                                    
+                                    # construct the file target and add this to the config
                                     new_target_name = config[model][
                                         filetype + "_targets"
-                                    ][file_category].replace("@YEAR@", str(year))
-                                    new_source_name = config[model][
-                                        filetype + "_sources"
-                                    ][file_category].replace("@YEAR@", str(year))
-
+                                    ][new_category].replace("@YEAR_1850@", str(year))
+                                    
                                     config[model][filetype + "_targets"][
                                         new_category
                                     ] = new_target_name
-                                    config[model][filetype + "_sources"][
-                                        new_category
-                                    ] = new_source_name
 
-                                del config[model][filetype + "_targets"][file_category]
-                                del config[model][filetype + "_sources"][file_category]
+                            del config[model][filetype + "_sources"][file_category]
+                            del config[model][filetype + "_targets"][file_category]
+                # end of if additonal information
 
+                year = config["general"]["current_date"].year
+                
+                for file_category in config[model][filetype + "_targets"]:
+                    
+                    if type(config[model][filetype + "_sources"][file_category]) == dict:
+                        config[model][filetype + "_sources"][file_category] = \
+                            find_valid_year(
+                                config[model][filetype + "_sources"][file_category],
+                                year
+                            )
+                    if (
+                        "@YEAR@"
+                        in config[model][filetype + "_targets"][file_category]
+                    ):
+                        new_target_name = config[model][
+                            filetype + "_targets"
+                        ][file_category].replace("@YEAR@", str(year))
+                        
+                        config[model][filetype + "_targets"][
+                            file_category
+                        ] = new_target_name
+
+                    if (
+                        "@YEAR@"
+                        in config[model][filetype + "_sources"][file_category]
+                    ):
+                        new_source_name = config[model][
+                            filetype + "_sources"
+                        ][file_category].replace("@YEAR@", str(year))
+                        
+                        config[model][filetype + "_sources"][
+                            file_category
+                        ] = new_source_name
+
+            # end of if filetype in target
+        # end of model loop
+    # end of filetype loop
     return config
 
 
