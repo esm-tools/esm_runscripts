@@ -6,6 +6,7 @@ import os
 
 from . import config_initialization
 from . import prepare
+from . import prepexp
 from . import workflow
 from . import resubmit
 from . import helpers
@@ -25,9 +26,14 @@ class SimulationSetup(object):
 
         self.config = config_initialization.save_command_line_config(self.config, command_line_config)
 
+        self.config = workflow.assemble(self.config)
+        
+        if command_line_config["jobtype"] == "unknown":
+            command_line_config["jobtype"] = self.config["general"]["workflow"]["first_task_in_queue"]
+            self.config["general"]["jobtype"] = self.config["general"]["workflow"]["first_task_in_queue"]
+
         self.config = prepare.run_job(self.config)
 
-        self.config = workflow.assemble(self.config)
 
         #esm_parser.pprint_config(self.config)
         #sys.exit(0)
@@ -35,6 +41,12 @@ class SimulationSetup(object):
 
 
     def __call__(self, kill_after_submit=True):
+        if self.config["general"]["jobtype"] == "inspect":
+            #esm_parser.pprint_config(self.config)
+            self.inspect()
+            helpers.end_it_all(self.config)
+        
+        self.config = prepexp.run_job(self.config)
 
         #self.pseudocall(kill_after_submit)
         # call to observe here..
@@ -47,20 +59,13 @@ class SimulationSetup(object):
 
         if self.config["general"]["jobtype"] == "prepcompute":
             self.prepcompute()
-        elif self.config["general"]["jobtype"] == "inspect":
-            #esm_parser.pprint_config(self.config)
-            self.inspect()
-            helpers.end_it_all(self.config)
         elif self.config["general"]["jobtype"] == "tidy":
             self.tidy()
         elif self.config["general"]["jobtype"] == "viz":
             self.viz()
         elif self.config["general"]["jobtype"].startswith("observe"):
-            print("startswith observe")
             pid = self.config["general"]["command_line_config"].get("launcher_pid", -666)
-            print(pid)
             if not pid == -666:
-                print("actually starting observe")
                 self.observe()
 
             self.config["general"]["jobtype"] = self.config["general"]["jobtype"].replace("observe_", "")

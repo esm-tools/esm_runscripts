@@ -15,6 +15,8 @@ def run_job(config):
     return config
 
 
+
+
 def _read_date_file(config):
     if not (
             config["general"].get("current_date", None) and 
@@ -48,6 +50,7 @@ def _read_date_file(config):
     logging.info("current_date = %s", config["general"]["current_date"])
     logging.info("run_number = %s", config["general"]["run_number"])
     return config
+
 
 
 def check_model_lresume(config):

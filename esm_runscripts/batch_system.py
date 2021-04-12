@@ -183,10 +183,8 @@ class batch_system:
 
     @staticmethod
     def get_environment(config, subjob):
-        print(f"get_environment {subjob}")
         environment = []
 
-        print("looking in esm_environment")
         env = esm_environment.environment_infos("runtime", config)
         commands = env.commands
         if not subjob.replace("_general", "") in reserved_jobtypes: #??? fishy
@@ -325,7 +323,6 @@ class batch_system:
             print("jobtype: ", config["general"]["jobtype"])
             print("writing sad file for:", cluster)
 
-        print (f"sadfilename: {sadfilename}")
         with open(sadfilename, "w") as sadfile:
 
             # batch header (if any)

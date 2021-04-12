@@ -7,6 +7,7 @@ def assemble(config):
     config = collect_all_workflow_information(config)
     config = complete_clusters(config)
     config = order_clusters(config)
+    config = prepend_newrun_job(config)
 
     return config
 
@@ -18,12 +19,54 @@ def display_nicely(config):
 
 
 
+
+def prepend_newrun_job(config):
+    gw_config = config["general"]["workflow"]
+    first_cluster_name = gw_config["first_task_in_queue"]
+    first_cluster = gw_config["subjob_clusters"][first_cluster_name]
+
+    if not first_cluster.get("batch_or_shell", "Error") == "SimulationSetup":
+        
+        last_cluster_name = gw_config["last_task_in_queue"]
+        last_cluster = gw_config["subjob_clusters"][last_cluster_name]
+
+        new_first_cluster_name = "newrun"
+        new_first_cluster = { "newrun": {
+            "called_from" : last_cluster_name,
+            "run_before": first_cluster_name,
+            "next_submit": [first_cluster_name],
+            "subjobs": ["newrun_general"],
+            "batch_or_shell": "SimulationSetup"
+            }
+            }
+
+        last_cluster["next_submit"].append("newrun")
+        last_cluster["next_submit"].remove(first_cluster_name)
+
+        first_cluster["called_from"] = "newrun"
+
+        gw_config["first_task_in_queue"] = "newrun"
+
+        new_subjob = { "newrun_general": {
+            "nproc": 1,
+            "called_from" : last_cluster_name,
+            "run_before": first_cluster_name,
+            "next_submit": [first_cluster_name],
+            "subjob_cluster" : "newrun"
+            } 
+            }
+
+        gw_config["subjob_clusters"].update(new_first_cluster)
+        gw_config["subjobs"].update(new_subjob)
+    
+    return config
+
+            # 
+
+
+
 def order_clusters(config):
     gw_config = config["general"]["workflow"]
-
-    # I don't think I need this:
-    #cluster_ordering = {"loop_start": {"compute": {"tidy": "loop_end"}}
-
 
     for subjob_cluster in gw_config["subjob_clusters"]:
         if not "next_submit" in gw_config["subjob_clusters"][subjob_cluster]:
@@ -116,28 +159,37 @@ def complete_clusters(config):
            
             clusterconf = merge_single_entry_if_possible("submit_to_batch_system", subjobconf, clusterconf)
             clusterconf = merge_single_entry_if_possible("order_in_cluster", subjobconf, clusterconf)
-        clusterconf = merge_single_entry_if_possible("run_on_queue", subjobconf, clusterconf)
-        clusterconf = merge_single_entry_if_possible("run_after", subjobconf, clusterconf)
-        clusterconf = merge_single_entry_if_possible("run_before", subjobconf, clusterconf)
 
-        nproc_sum += subjobconf.get("nproc", 1)
-        nproc_max = max(subjobconf.get("nproc", 1), nproc_max)
+            if subjobconf.get("submit_to_batch_system", False):
+                clusterconf["batch_or_shell"] = "batch"
+            elif subjobconf.get("script", False):
+                clusterconf["batch_or_shell"] = "shell"
 
-    if not "submit_to_batch_system" in clusterconf:
-        clusterconf["submit_to_batch_system"] = False
-    else:
-        if not "run_on_queue" in clusterconf:
-            print(f"Information on target queue is missing in cluster {clusterconf}.")
-            sys.exit(-1)
+            clusterconf = merge_single_entry_if_possible("run_on_queue", subjobconf, clusterconf)
+            clusterconf = merge_single_entry_if_possible("run_after", subjobconf, clusterconf)
+            clusterconf = merge_single_entry_if_possible("run_before", subjobconf, clusterconf)
 
-    if not "order_in_cluster" in clusterconf:
-        clusterconf["order_in_cluster"] = "sequential"
+            nproc_sum += subjobconf.get("nproc", 1)
+            nproc_max = max(subjobconf.get("nproc", 1), nproc_max)
 
-    if clusterconf["order_in_cluster"] == "concurrent":
-        nproc = nproc_sum
-    else:
-        nproc = nproc_max
-    clusterconf["nproc"] = nproc
+        if not "submit_to_batch_system" in clusterconf:
+            clusterconf["submit_to_batch_system"] = False
+        else:
+            if not "run_on_queue" in clusterconf:
+                print(f"Information on target queue is missing in cluster {clusterconf}.")
+                sys.exit(-1)
+
+        if not clusterconf.get("batch_or_shell", False):
+            clusterconf["batch_or_shell"] = "SimulationSetup"
+
+        if not "order_in_cluster" in clusterconf:
+            clusterconf["order_in_cluster"] = "sequential"
+
+        if clusterconf["order_in_cluster"] == "concurrent":
+            nproc = nproc_sum
+        else:
+            nproc = nproc_max
+        clusterconf["nproc"] = nproc
 
     return config
 
