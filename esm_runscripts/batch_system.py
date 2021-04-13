@@ -72,6 +72,20 @@ class batch_system:
             + ".sad"
         )
 
+
+    @staticmethod
+    def get_shell_header(config, cluster):
+        header = []
+        coupling_dir = os.path.realpath(__file__)
+
+        this_batch_system = config["computer"]
+        if "sh_interpreter" in this_batch_system:
+            header.append("#!" + this_batch_system["sh_interpreter"])
+
+        header.append(". " + coupling_dir + "/coupling/coupling_general.functions")
+        return header
+
+
     @staticmethod
     def get_batch_header(config, cluster):
         header = []
@@ -188,7 +202,7 @@ class batch_system:
         env = esm_environment.environment_infos("runtime", config)
         commands = env.commands
         if not subjob.replace("_general", "") in reserved_jobtypes: #??? fishy
-            commands = dataprocess.subjob_environment(config, subjob) 
+            commands += dataprocess.subjob_environment(config, subjob) 
         commands += [""]
 
         return commands
@@ -260,7 +274,7 @@ class batch_system:
         else:
             subjob_tasks = dataprocess.subjob_tasks(config, subjob)
             for task in subjob_tasks: 
-                commands.append(task + " &")
+                commands.append(task)
 
         return commands
 
@@ -335,6 +349,13 @@ class batch_system:
                 for line in header:
                     sadfile.write(line + "\n")
                 sadfile.write("\n")
+
+            else:
+                header = batch_system.get_shell_header(config, cluster)
+                for line in header:
+                    sadfile.write(line + "\n")
+                sadfile.write("\n")
+
 
             if clusterconf:
                 for subjob in clusterconf["subjobs"]:

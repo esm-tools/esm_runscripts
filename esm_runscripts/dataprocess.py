@@ -42,11 +42,16 @@ def subjob_tasks(config, subjob):
 
     scriptdir = subjob_config.get("script_dir", False)
     script = subjob_config.get("script", False)
+    call_function = subjob_config.get("call_function", False)
 
     if script:
         script = assemble_filename(script, scriptdir, config) 
         #task_list += add_scriptcall(script, cluster, config)
-        task_list += [script + " > " + new_logfile]
+        if call_function:
+            task_list += [". " + script]
+            task_list += [call_function + " > " + new_logfile + " &"]
+        else:
+            task_list += [script + " > " + new_logfile + " &"]
 
     return task_list
 
