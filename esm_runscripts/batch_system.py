@@ -76,7 +76,7 @@ class batch_system:
     @staticmethod
     def get_shell_header(config, cluster):
         header = []
-        coupling_dir = os.path.realpath(__file__)
+        coupling_dir = os.path.dirname(os.path.realpath(__file__))
 
         this_batch_system = config["computer"]
         if "sh_interpreter" in this_batch_system:
