@@ -68,7 +68,6 @@ class Slurm:
                     )
             config['general']['multi_srun'][run_type]['hostfile'] = os.path.basename(current_hostfile)
 
-
     @staticmethod
     def mini_calc_reqs(config, model, hostfile, start_proc, start_core, end_proc, end_core):
         if "nproc" in config[model]:
@@ -118,6 +117,27 @@ class Slurm:
         start_core = end_core + 1
         return start_proc, start_core, end_proc, end_core
 
+    @staticmethod
+    def calc_mpirun_options(config):
+
+        mpirun_options = ""
+        for model in config["general"]["valid_model_names"]:
+
+            if "nproc" in config[model]:
+                no_cpus = str(config[model]["nproc"])
+                if "omp_num_threads" in config[model]:
+                    no_cpus = str(int(config[model]["nproc"]) * int(config[model]["omp_num_threads"]))
+            elif "nproca" in config[model] and "nprocb" in config[model]:
+                no_cpus = str(int(config[model]["nproca"]) * int(config[model]["nprocb"]))
+
+            if "execution_command" in config[model]:
+                mpirun_options += " -np " + no_cpus + " ./" + config[model]["execution_command"] + " :"
+            elif "executable" in config[model]:
+                mpirun_options += " -np " + no_cpus + " ./" + config[model]["executable"] + " :"
+
+        mpirun_options = mpirun_options[:-1]  # remove trailing ":"
+
+        return mpirun_options
 
     def calc_requirements(self, config):
         """
@@ -126,13 +146,17 @@ class Slurm:
         if config['general'].get('multi_srun'):
             self.calc_requirements_multi_srun(config)
             return
-        start_proc = 0
-        start_core = 0
-        end_proc = 0
-        end_core = 0
-        with open(self.path, "w") as hostfile:
-            for model in config["general"]["valid_model_names"]:
-                start_proc, start_core, end_proc, end_core = self.mini_calc_reqs(config, model, hostfile, start_proc, start_core, end_proc, end_core)
+        if config["computer"].get("launcher") == "mpirun" :
+            with open(self.path, "w") as hostfile:
+               hostfile.write(self.calc_mpirun_options(config))
+        else:
+            start_proc = 0
+            start_core = 0
+            end_proc = 0
+            end_core = 0
+            with open(self.path, "w") as hostfile:
+               for model in config["general"]["valid_model_names"]:
+                    start_proc, start_core, end_proc, end_core = self.mini_calc_reqs(config, model, hostfile, start_proc, start_core, end_proc, end_core)
 
 
     @staticmethod
