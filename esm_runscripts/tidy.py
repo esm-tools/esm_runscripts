@@ -212,7 +212,8 @@ def check_for_errors(config):
 
 
 def job_is_still_running(config):
-    if psutil.pid_exists(config["general"]["launcher_pid"]):
+    jobid = config["general"]["launcher_pid"]
+    if config["general"]["batch"].job_is_still_running(jobid):
         return True
     return False
 

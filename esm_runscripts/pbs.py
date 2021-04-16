@@ -126,7 +126,7 @@ class Pbs:
         )
 
     @staticmethod
-    def get_job_state(jobid): #TODO
+    def get_job_state(jobid):
         """
         Returns the jobstate full name. See ``man squeue``, section ``JOB STATE CODES`` for more details.
 
@@ -140,11 +140,16 @@ class Pbs:
         str :
             The short job state.
         """
-        state_command = ["squeue -j" + str(jobid) + ' -o "%T"']
+        state_command = f"qstat {str(jobid)}"
 
-        squeue_output = subprocess.Popen(state_command, stdout = subprocess.PIPE, stderr = subprocess.PIPE).communicate()[0]
-        if len(squeue_output) == 2:
-            return squeue_output[0]
+        qstat_output = subprocess.Popen(
+            state_command.split(),
+            stdout = subprocess.PIPE,
+            stderr = subprocess.PIPE,
+        ).communicate()[0]
+        qstat_split = str(qstat_output).split()
+        if len(qstat_split) > 2:
+            return qstat_split[-3]
 
     @staticmethod
     def job_is_still_running(jobid):

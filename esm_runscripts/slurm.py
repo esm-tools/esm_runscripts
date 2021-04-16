@@ -152,9 +152,16 @@ class Slurm:
         """
         state_command = ["squeue -j" + str(jobid) + ' -o "%T"']
 
-        squeue_output = subprocess.Popen(state_command, stdout = subprocess.PIPE, stderr = subprocess.PIPE).communicate()[0]
-        if len(squeue_output) == 2:
-            return squeue_output[0]
+        squeue_output = subprocess.Popen(
+            state_command.split(),
+            stdout = subprocess.PIPE,
+            stderr = subprocess.PIPE,
+        ).communicate()[0]
+
+        out_pattern = 'b\\\'"STATE\"\\\\n"(.+?)"\\\\n\\\''
+        out_search = re.search(out_pattern, str(squeue_output))
+        if out_search:
+            return state.group(1)
 
     @staticmethod
     def job_is_still_running(jobid):
