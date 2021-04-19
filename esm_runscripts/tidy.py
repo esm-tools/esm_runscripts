@@ -5,7 +5,6 @@ import re
 import time
 import pathlib
 
-import psutil
 import shutil
 
 from . import coupler, database_actions, helpers

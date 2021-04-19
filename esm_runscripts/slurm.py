@@ -4,6 +4,8 @@ Contains functions for dealing with SLURM-based batch systems
 import os
 import subprocess
 import sys
+import re
+import psutil
 
 class Slurm:
     """
@@ -150,7 +152,7 @@ class Slurm:
         str :
             The short job state.
         """
-        state_command = ["squeue -j" + str(jobid) + ' -o "%T"']
+        state_command = f'squeue -j {str(jobid)} -o "%T"'
 
         squeue_output = subprocess.Popen(
             state_command.split(),
@@ -161,9 +163,9 @@ class Slurm:
         out_pattern = 'b\\\'"STATE\"\\\\n"(.+?)"\\\\n\\\''
         out_search = re.search(out_pattern, str(squeue_output))
         if out_search:
-            return state.group(1)
+            return out_search
 
     @staticmethod
     def job_is_still_running(jobid):
         """Returns a boolean if the job is still running"""
-        return bool(Slurm.get_job_state(jobid))
+        return psutil.pid_exists(jobid)
