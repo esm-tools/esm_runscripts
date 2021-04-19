@@ -108,7 +108,7 @@ class Pbs:
             # Cores per node
             cores_per_node = config["computer"]["cores_per_node"]
             # Define OMP threads if heterogeneous MPI-OMP
-            if config["general"].get("taskset", False):
+            if config["general"].get("heterogeneous_parallelization", False):
                 omp_num_threads = config[model].get("omp_num_threads", 1)
             # Define OMP threads if only MPI
             else:

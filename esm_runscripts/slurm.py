@@ -88,7 +88,7 @@ class Slurm:
             return start_proc, start_core, end_proc, end_core
 
         scriptfolder = config["general"]["thisrun_scripts_dir"] + "../work/"
-        if config["general"].get("taskset", False): 
+        if config["general"].get("heterogeneous_parallelization", False):
             command = "./" + config[model]["execution_command_script"]
             scriptname="script_"+model+".ksh"
             with open(scriptfolder+scriptname, "w") as f:
