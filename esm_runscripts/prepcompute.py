@@ -103,9 +103,19 @@ def create_new_files(config):
         for filetype in config["general"]["all_filetypes"]:
             if "create_" + filetype in config[model]:
                 filenames = config[model]["create_" + filetype].keys()
+            
                 for filename in filenames:
+
+
+                    full_filename = config[model]["thisrun_" + filetype + "_dir"] + "/" + filename
+                    if not os.path.isdir(
+                            os.path.dirname(
+                                full_filename
+                                )
+                            ):
+                        os.mkdir(os.path.dirname(full_filename))
                     with open(
-                        config[model]["thisrun_" + filetype + "_dir"] + "/" + filename,
+                        full_filename,
                         "w",
                     ) as createfile:
                         actionlist = config[model]["create_" + filetype][filename]
@@ -119,8 +129,8 @@ def create_new_files(config):
                         filetype,
                         filename,
                         config[model]["thisrun_" + filetype + "_dir"] + "/" + filename,
-                        None,
-                        None,
+                        filename,
+                        filename,
                     )
     return config
 

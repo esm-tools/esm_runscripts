@@ -26,12 +26,9 @@ class SimulationSetup(object):
 
         self.config = config_initialization.save_command_line_config(self.config, command_line_config)
 
-        self.config = workflow.assemble(self.config)
+        #self.config = workflow.assemble(self.config)
+            
         
-        if command_line_config["jobtype"] == "unknown":
-            command_line_config["jobtype"] = self.config["general"]["workflow"]["first_task_in_queue"]
-            self.config["general"]["jobtype"] = self.config["general"]["workflow"]["first_task_in_queue"]
-
         self.config = prepare.run_job(self.config)
 
 

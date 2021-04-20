@@ -6,20 +6,19 @@ import esm_parser
 
 def setup_correct_chunk_config(config):
     # to be called from the top of prepare
+
+    if not config["general"].get("iterative_coupling", False):
+        return config
+
     print ("Starting the iterative coupling business")
 
     chunk_config = _restore_original_config(config)
     chunk_config = _initialize_chunk_date_file(chunk_config) # make sure file exists and points to NEXT run
-        #chunk_config = update_chunk_date_file(chunk_config)
     chunk_config = _read_chunk_date_file_if_exists(chunk_config)
 
-    if _called_from_tidy_job(chunk_config):
-        chunk_config = _is_first_run_in_chunk(chunk_config)
-        chunk_config = _is_last_run_in_chunk(chunk_config)
-        chunk_config = _find_next_model_to_run(chunk_config)
-        chunk_config = _find_next_chunk_number(chunk_config)
-        chunk_config = _update_chunk_date_file(chunk_config)
-
+ #   if _called_from_tidy_job(chunk_config):
+#        chunk_config = _update_chunk_date_file(chunk_config)
+    
     chunk_config = _set_model_queue(chunk_config)
     config = _store_original_config(chunk_config)
 
@@ -27,16 +26,38 @@ def setup_correct_chunk_config(config):
     sys.exit(0)
     return config
 
-########################################   END OF API ###############################################
+
+
+
+def _update_run_in_chunk(config):
+    if not config["general"].get("iterative_coupling", False):
+        return config
+
+    config = _is_first_run_in_chunk(config)
+    config = _is_last_run_in_chunk(config)
+    config = _find_next_model_to_run(config)
+    config = _find_next_chunk_number(config)
+    return config
+        
 
 
 def _update_chunk_date_file(config):
+    if not config["general"].get("iterative_coupling", False):
+        return config
+
     # to be called at the end of tidy
     with open(config["general"]["chunk_date_file"], "x") as chunk_dates:
         chunk_dates.write(config["general"]["next_chunk_number"] + " " + config["general"]["next_setup_name"])
     config["general"]["setup_name"] = config["general"]["next_setup_name"]
     config["general"]["chunk_number"] = config["general"]["next_chunk_number"]
     return config
+
+
+
+
+
+########################################   END OF API ###############################################
+
 
 
 def _called_from_tidy_job(config):

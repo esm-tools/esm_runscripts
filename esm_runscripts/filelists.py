@@ -203,7 +203,7 @@ def globbing(config):
             if filetype + "_sources" in config[model]:
                 #oldconf = copy.deepcopy(config[model])
                 for descr, filename in six.iteritems(
-                    config[model][filetype + "_sources"]
+                    copy.deepcopy(config[model][filetype + "_sources"])
                     #oldconf[filetype + "_sources"]
                 ):  # * only in targets if denotes subfolder
                     if "*" in filename:

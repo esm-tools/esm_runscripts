@@ -5,7 +5,7 @@ def init_first_user_config(command_line_config, user_config):
 
     if not user_config:
         user_config = get_user_config_from_command_line(command_line_config)
-        
+       
     # maybe switch to another runscript, if iterative coupling
     if user_config["general"].get("iterative_coupling", False):
         user_config = chunky_parts.setup_correct_chunk_config(user_config)

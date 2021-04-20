@@ -13,6 +13,8 @@ from .tidy import *
 from .prepare import *
 from .dataprocess import *
 from .filelists import *
+from .chunky_parts import *
+from .workflow import *
 from .tidy import *
 from .namelists import *
 from .virtual_env_builder import *
