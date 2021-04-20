@@ -159,11 +159,10 @@ class Slurm:
             stdout = subprocess.PIPE,
             stderr = subprocess.PIPE,
         ).communicate()[0]
-
         out_pattern = 'b\\\'"STATE\"\\\\n"(.+?)"\\\\n\\\''
         out_search = re.search(out_pattern, str(squeue_output))
         if out_search:
-            return out_search
+            return out_search.group(1)
 
     @staticmethod
     def job_is_still_running(jobid):
