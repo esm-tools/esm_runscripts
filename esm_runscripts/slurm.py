@@ -5,7 +5,8 @@ import os
 import subprocess
 import sys
 import re
-import psutil
+# import psutil
+from esm_parser import user_error
 
 class Slurm:
     """
@@ -152,19 +153,86 @@ class Slurm:
         str :
             The short job state.
         """
-        state_command = f'squeue -j {str(jobid)} -o "%T"'
+        # state_command = f'squeue -j {str(jobid)} -o "%T"'
 
-        squeue_output = subprocess.Popen(
-            state_command.split(),
-            stdout = subprocess.PIPE,
-            stderr = subprocess.PIPE,
-        ).communicate()[0]
-        out_pattern = 'b\\\'"STATE\"\\\\n"(.+?)"\\\\n\\\''
-        out_search = re.search(out_pattern, str(squeue_output))
-        if out_search:
-            return out_search.group(1)
+        # squeue_output = subprocess.Popen(
+            # state_command.split(),
+            # stdout = subprocess.PIPE,
+            # stderr = subprocess.PIPE,
+        # ).communicate()[0]
+        # out_pattern = 'b\\\'"STATE\"\\\\n"(.+?)"\\\\n\\\''
+        # out_search = re.search(out_pattern, str(squeue_output))
+        # if out_search:
+            # return out_search.group(1)
+
+        # deniz: sacct is much better and persistent compared to squeue. Also
+        # getoutput returns standard strings compared to byte strings. This 
+        # allows easier regex
+        command = f'sacct -j  {str(jobid)} --parsable --format=jobid,State'
+        output = subprocess.getoutput(state_command)
+        # output will be like
+        #   JobID|State|
+        #   29319673|COMPLETED|
+        #   29319673.batch|COMPLETED|
+        #   29319673.0|COMPLETED|
+        pattern = f'{jobid}\|([A-Z]+)\|'
+        match = re.search(pattern, output)
+
+        # If regex matches then return the Slurm status. Otherwise, something
+        # is really wrong
+        if match:
+            # return the Slurm job state code: eg. COMPLETED, RUNNNING, CANCELLED, ...
+            # https://slurm.schedmd.com/sacct.html
+            return match.group(1)
+        else:
+            err_msg = f"Job ID {jobid} does not correspond to a valid Slurm job"
+            user_error("RUNTIME ERROR", err_msg, 1)
+
 
     @staticmethod
     def job_is_still_running(jobid):
-        """Returns a boolean if the job is still running"""
-        return psutil.pid_exists(jobid)
+        # """Returns a boolean if the job is still running"""
+        # return psutil.pid_exists(jobid)
+
+        # deniz: these are the official Slurm job state codes, from:
+        # https://slurm.schedmd.com/sacct.html
+        wait_status_list = ['S', 'SUSPENDED', 'PD', 'PENDING', 'RQ', 'REQUEUED']
+        
+        running_status_list = ['R', 'RUNNING']
+        
+        bad_exit_status_list = ['BF', 'BOOT_FAIL', 'CA', 'CANCELLED', 
+            'DL', 'DEADLINE', 'F', 'FAILED', 'NF', 'NODE_FAIL', 
+            'OOM', 'OUT_OF_MEMORY', 'PR', 'PREEMPTED', 'TO', 'TIMEOUT']
+            
+        good_exit_status_list = ['COMPLETED']
+        
+        # deniz: could not categorize these 2 
+        other_status_list = ['RS', 'RESIZING', 'RV', 'REVOKED']
+        
+        # merge all states
+        all_states = wait_status_list + running_status_list + \
+            bad_exit_status_list + good_exit_status_list
+            
+        # get the state of the job and check if it is valid
+        job_state = get_job_state(jobid)
+            
+        if not job_state in all_states:
+            err_msg = f"job state: {job_state} is not a valid Slurm job state"
+            user_error("RUNTIME ERROR", err_msg, 1)
+
+        # deniz: TODO: add inside the verbose group ???
+        if job_state in good_exit_status_list:
+            print('already completed')
+            
+        if job_state in running_status_list:
+            return True
+        # eg. COMPLETED, PENDING, ...
+        else:
+            return False
+        
+        
+        
+        
+        
+        
+        
