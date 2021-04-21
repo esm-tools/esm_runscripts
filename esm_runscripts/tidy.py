@@ -5,6 +5,7 @@ import re
 import time
 import pathlib
 
+import psutil
 import shutil
 
 from . import coupler, database_actions, helpers
@@ -211,8 +212,7 @@ def check_for_errors(config):
 
 
 def job_is_still_running(config):
-    jobid = config["general"]["launcher_pid"]
-    if config["general"]["batch"].job_is_still_running(jobid):
+    if psutil.pid_exists(config["general"]["launcher_pid"]):
         return True
     return False
 
