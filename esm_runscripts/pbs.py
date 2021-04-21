@@ -196,6 +196,25 @@ class Pbs:
         ].replace("@components@", components)
 
     @staticmethod
+    def add_pre_launcher_lines(config, sadfile):
+        """
+        Adds pre-launcher lines to the ``sadfile``.
+
+        Parameters
+        ----------
+        config : dict
+            Configuration dictionary containing information about the experiment and
+            experiment directory.
+        sadfile : io.TextIOWrapper
+            File wrapper object for writing of the lines
+            (``sadfile.write("<your_line_here>")``).
+        """
+        # This changes the name of the output stream to include the $PBS_JOBID. This
+        # cannot be done in the header because PBS does not support its own variables
+        # to be used there (at least in the ALEPH's version).
+        sadfile.write(f'qalter $PBS_JOBID -o {config["computer"]["thisrun_logfile"]}\n')
+
+    @staticmethod
     def get_job_state(jobid):
         """
         Returns the jobstate. See ``man qstat`` for more details.

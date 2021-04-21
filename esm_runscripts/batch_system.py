@@ -41,6 +41,9 @@ class batch_system:
     def job_is_still_running(self, jobid):
         return self.bs.job_is_still_running(jobid)
 
+    def add_pre_launcher_lines(self, config, sadfile):
+        self.bs.add_pre_launcher_lines(config, sadfile)
+
     @staticmethod
     def get_sad_filename(config):
         folder = config["general"]["thisrun_scripts_dir"]
@@ -186,8 +189,6 @@ class batch_system:
         if config['general'].get('use_venv', False):
             extras.append("# Start everything in a venv")
             extras.append("source "+config["general"]["experiment_dir"]+"/.venv_esmtools/bin/activate")
-        if config["computer"].get("pre_run_commands", False):
-            extras.append(config["computer"]["pre_run_commands"])
         if config["general"].get("funny_comment", True):
             extras.append("# 3...2...1...Liftoff!")
         return extras
@@ -277,45 +278,25 @@ class batch_system:
             commands = config["general"]["post_task_list"]
 
         with open(sadfilename, "w") as sadfile:
+            # Write heading
             for line in header:
                 sadfile.write(line + "\n")
             sadfile.write("\n")
+            # Write environment
             for line in environment:
                 sadfile.write(line + "\n")
+            # Write extras
             for line in extra:
                 sadfile.write(line + "\n")
             sadfile.write("\n")
             sadfile.write("cd " + config["general"]["thisrun_work_dir"] + "\n")
-            if config["general"].get("heterogeneous_parallelization", False):
-                sadfile.write("\n"+"#Creating hostlist for MPI + MPI&OMP heterogeneous parallel job" + "\n")
-                sadfile.write("rm -f ./hostlist" + "\n")
-                sadfile.write(f"export SLURM_HOSTFILE={config['general']['thisrun_work_dir']}/hostlist\n")
-                sadfile.write("IFS=$'\\n'; set -f" + "\n")
-                sadfile.write("listnodes=($(< <( scontrol show hostnames $SLURM_JOB_NODELIST )))"+"\n")
-                sadfile.write("unset IFS; set +f" + "\n")
-                sadfile.write("rank=0" + "\n")
-                sadfile.write("current_core=0" + "\n")
-                sadfile.write("current_core_mpi=0" + "\n")
-                for model in config["general"]["valid_model_names"]:
-                    if model != "oasis3mct":
-                        sadfile.write("mpi_tasks_"+model+"="+str(config[model]["nproc"])+ "\n")
-                        sadfile.write("omp_threads_"+model+"="+str(config[model]["omp_num_threads"])+ "\n")
-                import pdb
-                #pdb.set_trace()
-                sadfile.write("for model in " + str(config["general"]["valid_model_names"])[1:-1].replace(',', '').replace('\'', '') +" ;do"+ "\n")
-                sadfile.write("    eval nb_of_cores=\${mpi_tasks_${model}}" + "\n")
-                sadfile.write("    eval nb_of_cores=$((${nb_of_cores}-1))" + "\n")
-                sadfile.write("    for nb_proc_mpi in `seq 0 ${nb_of_cores}`; do" + "\n")
-                sadfile.write("        (( index_host = current_core / " + str(config["computer"]["cores_per_node"]) +" ))" + "\n")
-                sadfile.write("        host_value=${listnodes[${index_host}]}" + "\n")
-                sadfile.write("        (( slot =  current_core % " + str(config["computer"]["cores_per_node"]) +" ))" + "\n")
-                sadfile.write("        echo $host_value >> hostlist" + "\n")
-                sadfile.write("        (( current_core = current_core + omp_threads_${model} ))" + "\n")
-                sadfile.write("    done" + "\n")
-                sadfile.write("done" + "\n\n")
+            # Write pre-launcher lines
+            self.add_pre_launcher_lines(config, sadfile)
+            # Launch simulation
             for line in commands:
                 sadfile.write(line + "\n")
             sadfile.write("process=$! \n")
+            # Run tidy and resubmit
             sadfile.write("cd " + config["general"]["experiment_scripts_dir"] + "\n")
             sadfile.write(tidy_call + "\n")
 
