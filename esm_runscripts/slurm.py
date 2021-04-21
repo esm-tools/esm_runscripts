@@ -135,8 +135,7 @@ class Slurm:
                 start_proc, start_core, end_proc, end_core = self.mini_calc_reqs(config, model, hostfile, start_proc, start_core, end_proc, end_core)
 
 
-    @staticmethod
-    def add_pre_launcher_lines(config, sadfile):
+    def add_pre_launcher_lines(self, config, sadfile):
         """
         Adds pre-launcher lines to the ``sadfile``.
 
@@ -150,7 +149,7 @@ class Slurm:
             (``sadfile.write("<your_line_here>")``).
         """
         if config["general"].get("heterogeneous_parallelization", False):
-            add_hostlist_file_gen_lines(config, sadfile)
+            self.add_hostlist_file_gen_lines(config, sadfile)
 
 
     @staticmethod
