@@ -5,6 +5,8 @@ import subprocess
 import esm_rcfile
 import six
 import yaml
+import stat
+
 from esm_calendar import Date
 
 import esm_tools
@@ -98,6 +100,20 @@ def prepare_coupler_files(config):
     return config
 
 
+
+def create_empty_folders(config):
+    for model in list(config):
+        if "create_folders" in config[model]:
+            folders = config[model]["create_folders"]
+            if not type(folders) == list:
+                folders = [folders]
+            for folder in folders:
+                if not os.path.isdir(folder):
+                    os.mkdir(folder)
+    return config
+
+
+
 def create_new_files(config):
     for model in list(config):
         for filetype in config["general"]["all_filetypes"]:
@@ -123,6 +139,10 @@ def create_new_files(config):
                             if "<--append--" in action:
                                 appendtext = action.replace("<--append--", "")
                                 createfile.write(appendtext.strip() + "\n")
+                    # make executable, just in case
+                    filestats = os.stat(full_filename)
+                    os.chmod(full_filename, filestats.st_mode | stat.S_IEXEC)
+
                     all_files_to_copy_append(
                         config,
                         model,
