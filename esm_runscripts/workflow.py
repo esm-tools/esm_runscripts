@@ -238,7 +238,7 @@ def init_total_workflow(config):
     compute = {"compute" :{
             "nproc": tasks,
             "run_before" : "tidy",
-            "submit_to_batch_system": True,
+            "submit_to_batch_system": config["general"].get("submit_to_batch_system", True),
             "run_on_queue": config["computer"]["partitions"]["compute"]["name"]
             }}
 
