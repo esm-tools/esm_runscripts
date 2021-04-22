@@ -89,7 +89,10 @@ class Slurm:
 
         scriptfolder = config["general"]["thisrun_scripts_dir"] + "../work/"
         if config["general"].get("heterogeneous_parallelization", False):
-            command = "./" + config[model]["execution_command_script"]
+            print(model)
+            command = "./" + config[model].get(
+                "execution_command",config[model]["executable"]
+            )
             scriptname="script_"+model+".ksh"
             with open(scriptfolder+scriptname, "w") as f:
                 f.write("#!/bin/ksh"+"\n")
@@ -106,8 +109,11 @@ class Slurm:
                 f.write("echo "+model+" taskset -c $slot-$((slot + "+str(config[model]["omp_num_threads"])+" - 1"+"))"+"\n")
                 f.write("taskset -c $slot-$((slot + "+str(config[model]["omp_num_threads"])+" - 1)) ./script_"+model+".ksh"+"\n")
             os.chmod(scriptfolder+progname, 0o755)
+            execution_command_het_par = f"prog_{model}.sh %o %t"
 
-        if "execution_command" in config[model]:
+        if config["general"].get("heterogeneous_parallelization", False):
+            command = "./" + execution_command_het_par
+        elif "execution_command" in config[model]:
             command = "./" + config[model]["execution_command"]
         elif "executable" in config[model]:
             command = "./" + config[model]["executable"]
