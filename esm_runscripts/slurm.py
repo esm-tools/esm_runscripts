@@ -89,7 +89,6 @@ class Slurm:
 
         scriptfolder = config["general"]["thisrun_scripts_dir"] + "../work/"
         if config["general"].get("heterogeneous_parallelization", False):
-            print(model)
             command = "./" + config[model].get(
                 "execution_command",config[model]["executable"]
             )
