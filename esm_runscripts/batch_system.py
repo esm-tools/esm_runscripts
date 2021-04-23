@@ -85,6 +85,7 @@ class batch_system:
             "notification_flag",
             "hyperthreading_flag",
             "additional_flags",
+            "overcommit_flag"
         ]
         if config["general"]["jobtype"] in ["compute", "tidy_and_resume"]:
             conditional_flags.append("exclusive_flag")
@@ -321,7 +322,28 @@ class batch_system:
                 six.print_("Contents of ", self.bs.filename, ":")
                 with open(self.bs.filename, "r") as fin:
                     print(fin.read())
+
+        # Write the environment in a file that can be sourced from preprocessing and
+        # postprocessing scripts
+        batch_system.write_env(config, environment, sadfilename)
+
         return config
+
+    @staticmethod
+    def write_env(config, environment, sadfilename):
+        folder = config["general"]["thisrun_scripts_dir"]
+        this_batch_system = config["computer"]
+        sadfilename_short = sadfilename.split("/")[-1]
+        envfilename = folder + "/env.sh"
+
+        with open(envfilename, "w") as envfile:
+            if "sh_interpreter" in this_batch_system:
+                envfile.write("#!" + this_batch_system["sh_interpreter"] + "\n")
+            envfile.write(f"# ENVIRONMENT used in {sadfilename_short}\n")
+            envfile.write("# Use this file to source the environment in your\n")
+            envfile.write("# preprocessing or postprocessing scripts\n\n")
+            for line in environment:
+                envfile.write(line + "\n")
 
     @staticmethod
     def submit(config):

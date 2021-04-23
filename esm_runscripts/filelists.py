@@ -300,13 +300,16 @@ def target_subfolders(config):
                                 "*"
                             )
                             wild_card_target = filename.split("*")
+                            # Check for syntax mistakes
                             if len(wild_card_target) != len(wild_card_source):
                                 esm_parser.user_error(
                                     "Wild card",
                                     (
                                         "The wild card pattern of the source "
                                         + f"{wild_card_source} does not match with the "
-                                        + f"target {wild_card_target}."
+                                        + f"target {wild_card_target}. Make sure the "
+                                        + f"that the number of * are the same in both "
+                                        + f"sources and targets."
                                     ),
                                 )
                             # Loop through the pieces of the wild cards to create
