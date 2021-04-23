@@ -87,8 +87,10 @@ class Slurm:
             return start_proc, start_core, end_proc, end_core
 
         scriptfolder = config["general"]["thisrun_scripts_dir"] + "../work/"
-        if config["general"].get("taskset", False): 
-            command = "./" + config[model]["execution_command_script"]
+        if config["general"].get("heterogeneous_parallelization", False):
+            command = "./" + config[model].get(
+                "execution_command",config[model]["executable"]
+            )
             scriptname="script_"+model+".ksh"
             with open(scriptfolder+scriptname, "w") as f:
                 f.write("#!/bin/ksh"+"\n")
@@ -105,8 +107,11 @@ class Slurm:
                 f.write("echo "+model+" taskset -c $slot-$((slot + "+str(config[model]["omp_num_threads"])+" - 1"+"))"+"\n")
                 f.write("taskset -c $slot-$((slot + "+str(config[model]["omp_num_threads"])+" - 1)) ./script_"+model+".ksh"+"\n")
             os.chmod(scriptfolder+progname, 0o755)
+            execution_command_het_par = f"prog_{model}.sh %o %t"
 
-        if "execution_command" in config[model]:
+        if config["general"].get("heterogeneous_parallelization", False):
+            command = "./" + execution_command_het_par
+        elif "execution_command" in config[model]:
             command = "./" + config[model]["execution_command"]
         elif "executable" in config[model]:
             command = "./" + config[model]["executable"]
@@ -159,6 +164,53 @@ class Slurm:
                     start_proc, start_core, end_proc, end_core = self.mini_calc_reqs(config, model, hostfile, start_proc, start_core, end_proc, end_core)
 
 
+    def add_pre_launcher_lines(self, config, sadfile):
+        """
+        Adds pre-launcher lines to the ``sadfile``.
+
+        Parameters
+        ----------
+        config : dict
+            Configuration dictionary containing information about the experiment and
+            experiment directory.
+        sadfile : io.TextIOWrapper
+            File wrapper object for writing of the lines
+            (``sadfile.write("<your_line_here>")``).
+        """
+        if config["general"].get("heterogeneous_parallelization", False):
+            self.add_hostlist_file_gen_lines(config, sadfile)
+
+
+    @staticmethod
+    def add_hostlist_file_gen_lines(config, sadfile):
+        sadfile.write("\n"+"#Creating hostlist for MPI + MPI&OMP heterogeneous parallel job" + "\n")
+        sadfile.write("rm -f ./hostlist" + "\n")
+        sadfile.write(f"export SLURM_HOSTFILE={config['general']['thisrun_work_dir']}/hostlist\n")
+        sadfile.write("IFS=$'\\n'; set -f" + "\n")
+        sadfile.write("listnodes=($(< <( scontrol show hostnames $SLURM_JOB_NODELIST )))"+"\n")
+        sadfile.write("unset IFS; set +f" + "\n")
+        sadfile.write("rank=0" + "\n")
+        sadfile.write("current_core=0" + "\n")
+        sadfile.write("current_core_mpi=0" + "\n")
+        for model in config["general"]["valid_model_names"]:
+            if model != "oasis3mct":
+                sadfile.write("mpi_tasks_"+model+"="+str(config[model]["nproc"])+ "\n")
+                sadfile.write("omp_threads_"+model+"="+str(config[model]["omp_num_threads"])+ "\n")
+        import pdb
+        #pdb.set_trace()
+        sadfile.write("for model in " + str(config["general"]["valid_model_names"])[1:-1].replace(',', '').replace('\'', '') +" ;do"+ "\n")
+        sadfile.write("    eval nb_of_cores=\${mpi_tasks_${model}}" + "\n")
+        sadfile.write("    eval nb_of_cores=$((${nb_of_cores}-1))" + "\n")
+        sadfile.write("    for nb_proc_mpi in `seq 0 ${nb_of_cores}`; do" + "\n")
+        sadfile.write("        (( index_host = current_core / " + str(config["computer"]["cores_per_node"]) +" ))" + "\n")
+        sadfile.write("        host_value=${listnodes[${index_host}]}" + "\n")
+        sadfile.write("        (( slot =  current_core % " + str(config["computer"]["cores_per_node"]) +" ))" + "\n")
+        sadfile.write("        echo $host_value >> hostlist" + "\n")
+        sadfile.write("        (( current_core = current_core + omp_threads_${model} ))" + "\n")
+        sadfile.write("    done" + "\n")
+        sadfile.write("done" + "\n\n")
+
+
     @staticmethod
     def get_job_state(jobid):
         """
@@ -179,6 +231,7 @@ class Slurm:
         squeue_output = subprocess.Popen(state_command, stdout = subprocess.PIPE, stderr = subprocess.PIPE).communicate()[0]
         if len(squeue_output) == 2:
             return squeue_output[0]
+
 
     @staticmethod
     def job_is_still_running(jobid):

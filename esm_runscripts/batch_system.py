@@ -7,8 +7,9 @@ import six
 
 from . import helpers
 from .slurm import Slurm
+from .pbs import Pbs
 
-known_batch_systems = ["slurm"]
+known_batch_systems = ["slurm", "pbs"]
 
 
 class UnknownBatchSystemError(Exception):
@@ -20,6 +21,8 @@ class batch_system:
         self.name = name
         if name == "slurm":
             self.bs = Slurm(config)
+        elif name == "pbs":
+            self.bs = Pbs(config)
         else:
             raise UnknownBatchSystemError(name)
 
@@ -37,6 +40,9 @@ class batch_system:
 
     def job_is_still_running(self, jobid):
         return self.bs.job_is_still_running(jobid)
+
+    def add_pre_launcher_lines(self, config, sadfile):
+        self.bs.add_pre_launcher_lines(config, sadfile)
 
     @staticmethod
     def get_sad_filename(config):
@@ -62,24 +68,22 @@ class batch_system:
         if "sh_interpreter" in this_batch_system:
             header.append("#!" + this_batch_system["sh_interpreter"])
         tasks, nodes = batch_system.calculate_requirements(config)
-        replacement_tags = [("@tasks@", tasks)]
-        if config["general"].get("taskset", False):
-            replacement_tags = [("@nodes@", nodes)]
-            all_flags = [
-                "partition_flag",
-                "time_flag",
-                "nodes_flag",
-                "output_flags",
-                "name_flag",
-            ]
+
+        replacement_tags = [("@tasks@", tasks), ("@nodes@", nodes)]
+        if config["general"].get("heterogeneous_parallelization", False):
+            tasks_nodes_flag = "nodes_flag"
+        elif config["computer"]["batch_system"] in ["pbs"]:
+            tasks_nodes_flag = "nodes_flag"
         else:
-            all_flags = [
-                "partition_flag",
-                "time_flag",
-                "tasks_flag",
-                "output_flags",
-                "name_flag",
-            ]
+            tasks_nodes_flag = "tasks_flag"
+
+        all_flags = [
+            "partition_flag",
+            "time_flag",
+            tasks_nodes_flag,
+            "output_flags",
+            "name_flag",
+        ]
         conditional_flags = [
             "accounting_flag",
             "notification_flag",
@@ -109,9 +113,19 @@ class batch_system:
         if config["general"]["jobtype"] == "compute":
             for model in config["general"]["valid_model_names"]:
                 if "nproc" in config[model]:
-                    tasks += config[model]["nproc"]
-                    if config["general"].get("taskset", False):
-                        nodes +=int((config[model]["nproc"]*config[model]["omp_num_threads"])/config['computer']['cores_per_node'])
+                    nproc = config[model]["nproc"]
+                    cores_per_node = config['computer']['cores_per_node']
+                    tasks += nproc
+                    # If heterogeneous MPI-OMP
+                    if config["general"].get("heterogeneous_parallelization", False):
+                        omp_num_threads = config[model].get("omp_num_threads", 1)
+                    # If only MPI
+                    else:
+                        omp_num_threads = 1
+                    nodes += (
+                        int(nproc * omp_num_threads / cores_per_node)
+                        + ((nproc * omp_num_threads) % cores_per_node > 0)
+                    )
                 elif "nproca" in config[model] and "nprocb" in config[model]:
                     tasks += config[model]["nproca"] * config[model]["nprocb"]
 
@@ -265,45 +279,25 @@ class batch_system:
             commands = config["general"]["post_task_list"]
 
         with open(sadfilename, "w") as sadfile:
+            # Write heading
             for line in header:
                 sadfile.write(line + "\n")
             sadfile.write("\n")
+            # Write environment
             for line in environment:
                 sadfile.write(line + "\n")
+            # Write extras
             for line in extra:
                 sadfile.write(line + "\n")
             sadfile.write("\n")
             sadfile.write("cd " + config["general"]["thisrun_work_dir"] + "\n")
-            if config["general"].get("taskset", False):
-                sadfile.write("\n"+"#Creating hostlist for MPI + MPI&OMP heterogeneous parallel job" + "\n")
-                sadfile.write("rm -f ./hostlist" + "\n")
-                sadfile.write(f"export SLURM_HOSTFILE={config['general']['thisrun_work_dir']}/hostlist\n")
-                sadfile.write("IFS=$'\\n'; set -f" + "\n")
-                sadfile.write("listnodes=($(< <( scontrol show hostnames $SLURM_JOB_NODELIST )))"+"\n")
-                sadfile.write("unset IFS; set +f" + "\n")
-                sadfile.write("rank=0" + "\n")
-                sadfile.write("current_core=0" + "\n")
-                sadfile.write("current_core_mpi=0" + "\n")
-                for model in config["general"]["valid_model_names"]:
-                    if model != "oasis3mct":
-                        sadfile.write("mpi_tasks_"+model+"="+str(config[model]["nproc"])+ "\n")
-                        sadfile.write("omp_threads_"+model+"="+str(config[model]["omp_num_threads"])+ "\n")
-                import pdb
-                #pdb.set_trace()
-                sadfile.write("for model in " + str(config["general"]["valid_model_names"])[1:-1].replace(',', '').replace('\'', '') +" ;do"+ "\n")
-                sadfile.write("    eval nb_of_cores=\${mpi_tasks_${model}}" + "\n")
-                sadfile.write("    eval nb_of_cores=$((${nb_of_cores}-1))" + "\n")
-                sadfile.write("    for nb_proc_mpi in `seq 0 ${nb_of_cores}`; do" + "\n")
-                sadfile.write("        (( index_host = current_core / " + str(config["computer"]["cores_per_node"]) +" ))" + "\n")
-                sadfile.write("        host_value=${listnodes[${index_host}]}" + "\n")
-                sadfile.write("        (( slot =  current_core % " + str(config["computer"]["cores_per_node"]) +" ))" + "\n")
-                sadfile.write("        echo $host_value >> hostlist" + "\n")
-                sadfile.write("        (( current_core = current_core + omp_threads_${model} ))" + "\n")
-                sadfile.write("    done" + "\n")
-                sadfile.write("done" + "\n\n")
+            # Write pre-launcher lines
+            self.add_pre_launcher_lines(config, sadfile)
+            # Launch simulation
             for line in commands:
                 sadfile.write(line + "\n")
             sadfile.write("process=$! \n")
+            # Run tidy and resubmit
             sadfile.write("cd " + config["general"]["experiment_scripts_dir"] + "\n")
             sadfile.write(tidy_call + "\n")
 
