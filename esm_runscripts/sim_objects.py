@@ -285,8 +285,8 @@ class PrevRunInfo(dict):
     """
     A dictionary subclass to access information from the previous run. The object is
     created in the ``SimulationSetup`` class in ``self.config["prev_run"]``. The idea
-    behind this class is that variables from the previous simulation can be called from
-    the yaml files with a very similar syntax as one would do for the current run.
+    behind this class is that variables from the previous run can be called from the
+    yaml files with a very similar syntax as one would do for the current run.
 
     The syntax is as follows:
 
@@ -305,8 +305,8 @@ class PrevRunInfo(dict):
 
     .. Warning:: Use this feature only when there is no other way of accessing the
        information needed. Note that, for example, dates of the previous run are
-       available under variables such as ``last_start_date``, ``parent_start_date``,
-       etc.
+       already available in the current run, under variables such as
+       ``last_start_date``, ``parent_start_date``, etc.
     """
 
     def __init__(self, config = {"general": {}}):
@@ -379,7 +379,7 @@ class PrevRunInfo(dict):
     def value_in_prev_run_config(self, key):
         """
         If the ``last_run_datestamp`` exists at this poing in the current ``config``,
-        try to load the previous config file to access the ``key``.
+        tries to load the previous config file to access the ``key``.
         """
 
         value = None
