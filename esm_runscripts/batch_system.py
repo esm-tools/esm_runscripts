@@ -70,7 +70,7 @@ class batch_system:
         tasks, nodes = batch_system.calculate_requirements(config)
 
         replacement_tags = [("@tasks@", tasks), ("@nodes@", nodes)]
-        if config["general"].get("heterogeneous_parallelization", False):
+        if config["computer"].get("heterogeneous_parallelization", False):
             tasks_nodes_flag = "nodes_flag"
         elif config["computer"]["batch_system"] in ["pbs"]:
             tasks_nodes_flag = "nodes_flag"
@@ -117,7 +117,7 @@ class batch_system:
                     cores_per_node = config['computer']['cores_per_node']
                     tasks += nproc
                     # If heterogeneous MPI-OMP
-                    if config["general"].get("heterogeneous_parallelization", False):
+                    if config["computer"].get("heterogeneous_parallelization", False):
                         omp_num_threads = config[model].get("omp_num_threads", 1)
                     # If only MPI
                     else:
