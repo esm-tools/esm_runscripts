@@ -22,8 +22,6 @@ def setup_correct_chunk_config(config):
     chunk_config = _set_model_queue(chunk_config)
     config = _store_original_config(chunk_config)
 
-    esm_parser.pprint_config(config)
-    sys.exit(0)
     return config
 
 
@@ -77,18 +75,29 @@ def _restore_original_config(config):
     if "general" in config:
         if "original_config" in config["general"]:
             resubmit = True
-            return copy.deepcopy(config["general"]["original_config"]), resubmit
+            return copy.deepcopy(config["general"]["original_config"]) #, resubmit
     resubmit = False
-    return config, resubmit
+    #return config, resubmit
+    return config
 
 
 def _store_original_config(config):
     new_config = {}
-    new_config["general"]={"original_config" : copy.deepcopy(config)}
-    return new_config
+    new_config={"original_config" : copy.deepcopy(config)}
+    config["general"].update(new_config)
+    return config
 
 
 def _read_chunk_date_file_if_exists(config):
+    config["general"]["chunk_date_file"] = (
+            config["general"]["base_dir"] 
+            + "/" 
+            + config["general"]["expid"] 
+            + "/scripts/" 
+            + config["general"]["expid"] 
+            + "_chunk_date"
+            )
+
     if os.path.isfile(config["general"]["chunk_date_file"]):
         with open(config["general"]["chunk_date_file"], "r") as chunk_dates:
             chunk_number, setup_name = chunk_dates.read().split()

@@ -1,6 +1,8 @@
 import esm_parser
 import esm_rcfile
 
+from . import chunky_parts
+
 def init_first_user_config(command_line_config, user_config):
 
     if not user_config:
@@ -9,9 +11,13 @@ def init_first_user_config(command_line_config, user_config):
     # maybe switch to another runscript, if iterative coupling
     if user_config["general"].get("iterative_coupling", False):
         user_config = chunky_parts.setup_correct_chunk_config(user_config)
-        command_line_config["scriptname"] = user_config["general"]["model_queue"][0]["runscript"]
-        model_config = self.get_user_config_from_command_line(command_line_config)
-        user_config = esm_parser.deep_update(config, model_config)
+        next_model = user_config["general"]["original_config"]["general"]["model_queue"][1]
+        scriptname = user_config["general"]["original_config"][next_model]["runscript"]
+        command_line_config["scriptname"] = scriptname
+        model_config = get_user_config_from_command_line(command_line_config)
+        user_config = esm_parser.new_deep_update(user_config, model_config)
+
+        esm_parser.pprint_config(user_config)
 
     if user_config["general"].get("debug_obj_init", False):
         pdb.set_trace()
