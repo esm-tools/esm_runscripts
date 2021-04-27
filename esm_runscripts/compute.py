@@ -1,11 +1,13 @@
 import os
 import shutil
 import subprocess
+import copy
 
 import esm_rcfile
 import six
 import yaml
 from esm_calendar import Date
+from colorama import Fore, Back, Style, init
 
 import esm_tools
 
@@ -76,6 +78,15 @@ def all_files_to_copy_append(
 
 
 def add_batch_hostfile(config):
+    if config["general"]["verbose"]:
+        print(
+            "Calculating the required resources and launcher options for:\n"
+            + "- batch system: "
+            + f'{config["computer"].get("batch_system", "NOT DEFINED!")}\n'
+            + "- job launcher: "
+            + f'{config["computer"].get("launcher", "NOT DEFINED!")}\n'
+        )
+
     config["general"]["batch"].calc_requirements(config)
 
     config = all_files_to_copy_append(
@@ -323,11 +334,24 @@ def _write_finalized_config(config):
         + "_finished_config.yaml",
         "w",
     ) as config_file:
-        out = yaml.dump(config)
+        # Avoid saving ``prev_run`` information in the config file
+        config_final = copy.deepcopy(config)
+        del config_final["prev_run"]
+        out = yaml.dump(config_final)
         out = strip_python_tags(out)
         config_file.write(out)
     return config
 
+def color_diff(diff):
+    for line in diff:
+        if line.startswith('+'):
+            yield Fore.GREEN + line + Fore.RESET
+        elif line.startswith('-'):
+            yield Fore.RED + line + Fore.RESET
+        elif line.startswith('^'):
+            yield Fore.BLUE + line + Fore.RESET
+        else:
+            yield line
 
 def update_runscript(fromdir, scriptsdir, tfile, gconfig, file_type):
     """
@@ -380,7 +404,7 @@ def update_runscript(fromdir, scriptsdir, tfile, gconfig, file_type):
                 f"{fromdir + '/' + tfile} differs from "
                 + f"{scriptsdir + '/' + tfile}:\n"
             )
-            for line in difflib.unified_diff(script_t, script_o):
+            for line in color_diff(difflib.unified_diff(script_t, script_o)):
                 differences += line
 
             # If the --update flag is used, notify that the target script will
@@ -472,21 +496,14 @@ def copy_tools_to_thisrun(config):
     # In case there is no esm_tools or namelists in the experiment folder,
     # copy from the default esm_tools path
     if not os.path.isdir(tools_dir):
-        if config['general'].get("use_venv") or esm_rcfile.FUNCTION_PATH.startswith("NONE_YET"):
-            if config["general"]["verbose"]:
-                print("Copying standard yamls from: package interal configs")
-            esm_tools.copy_config_folder(tools_dir)
-        else:
-            if config["general"]["verbose"]:
-                print("Copying from: ", esm_rcfile.FUNCTION_PATH)
-            shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir)
+        print("Copying standard yamls from: ", esm_rcfile.EsmToolsDir("FUNCTION_PATH"))
+        esm_tools.copy_config_folder(tools_dir)
     if not os.path.isdir(namelists_dir):
-        if esm_rcfile.get_rc_entry("NAMELIST_PATH", "NONE_YET").startswith("NONE_YET"):
-            if config["general"]["verbose"]:
-                print("Copying standard namelists from: package internal namelists")
-            esm_tools.copy_namelist_folder(namelists_dir)
-        else:
-            shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir)
+        print(
+            "Copying standard namelists from: ",
+            esm_rcfile.EsmToolsDir("NAMELIST_PATH"),
+        )
+        esm_tools.copy_namelist_folder(namelists_dir)
 
     # If ``fromdir`` and ``scriptsdir`` are the same, this is already a computing
     # simulation which means we want to use the script in the experiment folder,
