@@ -44,7 +44,7 @@ def _update_chunk_date_file(config):
         return config
 
     # to be called at the end of tidy
-    with open(config["general"]["chunk_date_file"], "x") as chunk_dates:
+    with open(config["general"]["chunk_date_file"], "w+") as chunk_dates:
         chunk_dates.write(config["general"]["next_chunk_number"] + " " + config["general"]["next_setup_name"])
     config["general"]["setup_name"] = config["general"]["next_setup_name"]
     config["general"]["chunk_number"] = config["general"]["next_chunk_number"]
@@ -104,12 +104,26 @@ def _read_chunk_date_file_if_exists(config):
 
         config["general"]["setup_name"] = setup_name
         config["general"]["chunk_number"] = chunk_number
+
+        index = 1
+
+        while "model" + str(index) in config:
+            if config["model" + str(index)]["setup_name"] == setup_name:
+                config["general"]["this_chunk_size"] = (
+                        config["model" + str(index)]["chunk_size"]
+                        )
+                break
+            index += 1
+
     return config
 
 
 def _initialize_chunk_date_file(config):
     config["general"]["setup_name"] = config["model1"]["setup_name"]
     config["general"]["chunk_number"] = 1
+    config["general"]["this_chunk_size"] = (
+            config["model1"]["chunk_size"]
+            )
     return config
 
 
