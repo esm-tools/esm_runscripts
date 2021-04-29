@@ -5,6 +5,7 @@ import sys
 import esm_environment
 import six
 
+from esm_parser import user_error
 from . import helpers
 from .slurm import Slurm
 from .pbs import Pbs
@@ -192,6 +193,23 @@ class batch_system:
             extras.append("source "+config["general"]["experiment_dir"]+"/.venv_esmtools/bin/activate")
         if config["general"].get("funny_comment", True):
             extras.append("# 3...2...1...Liftoff!")
+        # Search for ``pre_run_commands``s in the components
+        for component in config.keys():
+            pre_run_commands = config[component].get("pre_run_commands")
+            if isinstance(pre_run_commands, list):
+                for pr_command in pre_run_commands:
+                    extras.append(pr_command)
+            elif isinstance(pre_run_commands, str):
+                extras.append(pre_run_commands)
+            elif pre_run_commands==None:
+                continue
+            else:
+                user_error('Invalid type for "pre_run_commands"', (
+                    f'"{type(pre_run_commands)}" type is not supported for '
+                    f'"pre_run_commands" defined in "{component}". Please, define ' +
+                    '"pre_run_commands" as a "string" or a "list".'
+                )
+                )
         return extras
 
     @staticmethod
