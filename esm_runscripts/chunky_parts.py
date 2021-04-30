@@ -103,13 +103,13 @@ def _read_chunk_date_file_if_exists(config):
             chunk_number, setup_name = chunk_dates.read().split()
 
         config["general"]["setup_name"] = setup_name
-        config["general"]["chunk_number"] = chunk_number
+        config["general"]["chunk_number"] = int(chunk_number)
 
         index = 1
 
         while "model" + str(index) in config:
             if config["model" + str(index)]["setup_name"] == setup_name:
-                config["general"]["this_chunk_size"] = (
+                config["general"]["this_chunk_size"] = int(
                         config["model" + str(index)]["chunk_size"]
                         )
                 break
@@ -121,7 +121,7 @@ def _read_chunk_date_file_if_exists(config):
 def _initialize_chunk_date_file(config):
     config["general"]["setup_name"] = config["model1"]["setup_name"]
     config["general"]["chunk_number"] = 1
-    config["general"]["this_chunk_size"] = (
+    config["general"]["this_chunk_size"] = int(
             config["model1"]["chunk_size"]
             )
     return config
@@ -147,7 +147,7 @@ def _set_model_queue(config):
 
     
 def _is_first_run_in_chunk(config):
-    if config["general"]["run_number"] % config["general"]["this_chunk_size"] == 1:
+    if int(config["general"]["run_number"]) % int(config["general"]["this_chunk_size"]) == 1:
         config["general"]["first_run_in_chunk"] = True
     else:
         config["general"]["first_run_in_chunk"] = False
@@ -155,7 +155,7 @@ def _is_first_run_in_chunk(config):
 
 
 def _is_last_run_in_chunk(config):
-    if config["general"]["run_number"] % config["general"]["this_chunk_size"] == 0:
+    if int(config["general"]["run_number"]) % int(config["general"]["this_chunk_size"]) == 0:
         config["general"]["last_run_in_chunk"] = True
     else:
         config["general"]["last_run_in_chunk"] = False

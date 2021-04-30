@@ -91,6 +91,27 @@ def end_of_experiment(config):
 
 
 
+def end_of_experiment_all_models(config):
+    index = 0
+    expid = config["general"]["expid"]
+    while "model" + str(index) in config:
+        if not config["model" + str(index)]["setup_name"] == config["general"]["setup_name"]:
+            experiment_done = False
+            setup_name = config["model" + str(index)]["setup_name"]
+            logfile = config["general"]["experiment_log_dir"] + "/" + expid + "_" + setup_name + ".log"
+            if os.path.isfile(logfile):
+                with open(logfile, "r") as open_logfile:
+                    logfile_array = open_logfile.readlines()
+                    for line in logfile_array:
+                        if "# Experiment over" in line:
+                            experiment_done = True
+                            break
+            if not experiment_done:
+                return False
+        index += 1
+    return True
+
+
 def check_if_check(config):
     if config["general"]["check"]:
         print(
@@ -123,7 +144,9 @@ def maybe_resubmit(config):
             config = _write_date_file(config)
 
             if end_of_experiment(config):
-                continue
+                if config["general"].get("iterative_coupling", False):
+                    if end_of_experiment_all_models(config):
+                        continue
 
             submission_type = get_submission_type(cluster, config)
             if submission_type == "SimulationSetup":
