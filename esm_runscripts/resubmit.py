@@ -5,6 +5,7 @@ import six
 from . import batch_system
 from . import logfiles
 from . import helpers
+import esm_parser
 
 def submit(config):
     if config["general"]["verbose"]:
@@ -43,6 +44,7 @@ def resubmit_SimulationSetup(config, cluster = None):
     monitor_file.write(str(command_line_config))
     # NOTE(PG) Non top level import to avoid circular dependency:
     
+    os.chdir(config["general"]["started_from"])
     from .sim_objects import SimulationSetup
     cluster_obj = SimulationSetup(command_line_config)
     
@@ -92,23 +94,28 @@ def end_of_experiment(config):
 
 
 def end_of_experiment_all_models(config):
-    index = 0
+    index = 1
     expid = config["general"]["expid"]
-    while "model" + str(index) in config:
+    esm_parser.pprint_config(config)
+    while "model" + str(index) in config["general"]["original_config"]:
         if not config["model" + str(index)]["setup_name"] == config["general"]["setup_name"]:
             experiment_done = False
             setup_name = config["model" + str(index)]["setup_name"]
+            print(f"Testing if {setup_name} is already done...")
             logfile = config["general"]["experiment_log_dir"] + "/" + expid + "_" + setup_name + ".log"
             if os.path.isfile(logfile):
                 with open(logfile, "r") as open_logfile:
                     logfile_array = open_logfile.readlines()
                     for line in logfile_array:
                         if "# Experiment over" in line:
+                            print(f"    ...{setup_name} is done.")
                             experiment_done = True
                             break
             if not experiment_done:
+                print("Still something left to do...")
                 return False
         index += 1
+    print("Nothing left to do...")
     return True
 
 
