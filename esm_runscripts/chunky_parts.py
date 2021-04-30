@@ -45,7 +45,7 @@ def _update_chunk_date_file(config):
 
     # to be called at the end of tidy
     with open(config["general"]["chunk_date_file"], "w+") as chunk_dates:
-        chunk_dates.write(config["general"]["next_chunk_number"] + " " + config["general"]["next_setup_name"])
+        chunk_dates.write(str(config["general"]["next_chunk_number"]) + " " + config["general"]["next_setup_name"])
     config["general"]["setup_name"] = config["general"]["next_setup_name"]
     config["general"]["chunk_number"] = config["general"]["next_chunk_number"]
     return config
@@ -164,9 +164,9 @@ def _is_last_run_in_chunk(config):
 
 def _find_next_model_to_run(config):
     if config["general"]["last_run_in_chunk"]:
-        config["general"]["next_model"] = config["general"]["model_queue"][0]
+        config["general"]["next_setup_name"] = config["general"]["model_queue"][0]
     else:
-        config["general"]["next_model"] = config["general"]["setup_name"]
+        config["general"]["next_setup_name"] = config["general"]["setup_name"]
     return config
 
 
@@ -174,6 +174,6 @@ def _find_next_chunk_number(config):
     if config["general"]["last_run_in_chunk"]:
         config["general"]["next_chunk_number"] = config["general"]["chunk_number"] + 1
     else:
-        config["general"]["next_chunk_number"] = config["general"]["chunk_number"] 
+        config["general"]["next_chunk_number"] = config["general"]["chunk_number"]
     return config
 

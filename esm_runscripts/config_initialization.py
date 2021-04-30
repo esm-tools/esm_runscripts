@@ -1,3 +1,5 @@
+import os
+
 import esm_parser
 import esm_rcfile
 
@@ -13,6 +15,8 @@ def init_first_user_config(command_line_config, user_config):
         user_config = chunky_parts.setup_correct_chunk_config(user_config)
         next_model = user_config["general"]["original_config"]["general"]["model_queue"][1]
         scriptname = user_config["general"]["original_config"][next_model]["runscript"]
+        os.chdir(user_config["general"]["started_from"])
+        print(os.listdir("."))
         command_line_config["scriptname"] = scriptname
         model_config = get_user_config_from_command_line(command_line_config)
         user_config = esm_parser.new_deep_update(user_config, model_config)
