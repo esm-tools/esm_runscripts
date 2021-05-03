@@ -286,7 +286,7 @@ class PrevRunInfo(dict):
     A dictionary subclass to access information from the previous run. The object is
     created in the ``SimulationSetup`` class in ``self.config["prev_run"]``. The idea
     behind this class is that variables from the previous run can be called from the
-    yaml files with a very similar syntax as one would do for the current run.
+    yaml files with the same syntax as one would do for the current run.
 
     The syntax is as follows:
 
@@ -309,12 +309,15 @@ class PrevRunInfo(dict):
        ``last_start_date``, ``parent_start_date``, etc.
     """
 
-    def __init__(self, config = {"general": {}}):
+
+    def __init__(self, config={}, prev_config=None):
         """
-        Links the current ``config`` to the object.
+        Links the current ``config`` and ``prev_config`` to the object.
         """
-        self._config = config
-        self._prev_config = None
+        self._last_run_datestamp = config.get("general", {}).get("last_run_datestamp")
+        self._experiment_config_dir = config.get("general", {}).get("experiment_config_dir")
+        self._expid = config.get("general", {}).get("expid")
+        self._prev_config = prev_config
         self.__setitem__("NONE_YET", {})
 
 
@@ -325,23 +328,19 @@ class PrevRunInfo(dict):
         loaded returns the value of the ``key``. Otherwise, it tries to load
         ``_prev_config`` and if not possible yet, returns a ``PrevRunInfo`` instance.
         """
-        # If the previous config is loaded return the key
+        # If the previous config is not loaded yet, try to load it
+        if not self._prev_config:
+            self.prev_run_config()
+        # If the previous config was loaded return the key
         if self._prev_config:
-            return self._prev_config[key]
-        # Otherwise, try to find the value
+            value = self._prev_config[key]
+        # If the previous config is not loaded yet, return an instance of
+        # ``PrevRunInfo``
         else:
-            # Try getting the value in the standard way
-            try:
-                value = super().__getitem__(key)
-            except KeyError:
-                # If the key does not exist try to find the previous config file and
-                # return the value
-                value = self.value_in_prev_run_config(key)
-                # If the value is still not found return an instance of ``PrevRunInfo``
-                if not value:
-                    value = PrevRunInfo()
+            value = PrevRunInfo(prev_config=self._prev_config)
 
-            return value
+        #self.__setitem__(key, value)
+        return value #super().__getitem__(key)
 
 
     def get(self, *args, **kwargs):
@@ -353,48 +352,42 @@ class PrevRunInfo(dict):
         ``None`` if no second argument is defined for the ``get``, or it returns the
         second argument, just as a standard ``<dict>.get`` would do.
         """
-
         key = args[0]
-        prev_config = {}
-        prev_value = None
-        # If the previous configuration is already loaded use the standard ``get``
+        # If the previous config is not loaded yet, try to load it
+        if not self._prev_config:
+            self.prev_run_config()
+        # If the previous config was loaded, use get
         if self._prev_config:
-            prev_config = self._prev_config
-        # If the previous config is not yet loaded try to load it from the previous
-        # config file
+            value = self._prev_config.get(*args, **kwargs)
+        # If the previous config is not loaded yet, return an instance of
+        # ``PrevRunInfo``
         else:
-            try:
-                prev_value = self.value_in_prev_run_config(key)
-            except KeyError:
-                # This is a get, so if the key does not exists that's ok
-                pass
-        # Define the value
-        value = prev_config.get(*args, **kwargs)
-        if prev_value:
-            value = prev_value
+           value = PrevRunInfo(prev_config=self._prev_config)
 
-        return value
+        #self.__setitem__(key, value)
+        return value # super().get(*args, **kwargs)
 
 
-    def value_in_prev_run_config(self, key):
+    def prev_run_config(self):
         """
         If the ``last_run_datestamp`` exists at this poing in the current ``config``,
-        tries to load the previous config file to access the ``key``.
+        tries to load the previous config file into ``_prev_run_config``.
         """
-
-        value = None
-        general = self._config.get("general")
         # If the config already includes the date stamp then load the previous config
         # file and return the corresponding value to the key
-        if "last_run_datestamp" in general:
+        if all([
+            self._last_run_datestamp,
+            self._experiment_config_dir,
+            self._expid
+        ]):
             # Build name of the file
             prev_run_config_file = (
-                general["experiment_config_dir"] +
-                general["expid"] +
+                self._experiment_config_dir +
+                self._expid +
                 "_finished_config.yaml_" +
-                general["last_run_datestamp"]
+                self._last_run_datestamp
             )
-            # If the file exist, load the file content
+            # If the file exists, load the file content
             if os.path.isfile(prev_run_config_file):
                 with open(prev_run_config_file, "r") as prev_file:
                     prev_config = yaml.load(prev_file, Loader=yaml.FullLoader)
@@ -408,13 +401,11 @@ class PrevRunInfo(dict):
                 this_run_number = self._config["general"]["run_number"]
                 prev_run_number = self._prev_config["general"]["run_number"]
                 if this_run_number - 1 != prev_run_number:
-                    print(
-                        "Error: incorrect file loaded as previous configuration:\n"
-                        + f"    File loaded: {prev_run_config_file}\n"
-                        + f"    This run number: {this_run_number}\n"
-                        + f"    Previous run number: {prev_run_number}\n"
+                    esm_parser.user_error(
+                        "Incorrect file loaded as previous configuration:",
+                        (
+                            f"    File loaded: {prev_run_config_file}\n"
+                            + f"    This run number: {this_run_number}\n"
+                            + f"    Previous run number: {prev_run_number}\n"
+                        )
                     )
-                    sys.exit(1)
-                value = self._prev_config[key]
-
-        return value
