@@ -93,17 +93,37 @@ class batch_system:
         ]
         if config["general"]["jobtype"] in ["compute", "tidy_and_resume"]:
             conditional_flags.append("exclusive_flag")
+
         for flag in conditional_flags:
-            if flag in this_batch_system and not this_batch_system[flag].strip() == "":
-                all_flags.append(flag)
-        for flag in all_flags:
+            if flag in this_batch_system:
+                values_in_flag = []
+                flag_value = this_batch_system[flag]
+                # deniz: added support for lists
+                if isinstance(flag_value, str):
+                    values_in_flag.append(flag_value)
+                elif isinstance(flag_value, list):
+                    values_in_flag.extend(flag_value)
+                
+                # checking whether we have any empty values
+                any_empty_values = any([item.strip() == "" for item in values_in_flag])
+                if not any_empty_values:
+                    all_flags.append(flag)
+
+        # some items in `all_values` list might be lists, so flatten it
+        all_values = [this_batch_system[flag] for flag in all_flags]
+        all_values_flat = []
+        for value in all_values:
+            if isinstance(value, str):
+                all_values_flat.append(value)
+            elif isinstance(value, list):
+                all_values_flat.extend(value)
+        
+        # loop over all batch flag values and replace the tags
+        for value in all_values_flat:
             for (tag, repl) in replacement_tags:
-                this_batch_system[flag] = this_batch_system[flag].replace(
-                    tag, str(repl)
-                )
-            header.append(
-                this_batch_system["header_start"] + " " + this_batch_system[flag]
-            )
+                value = value.replace(tag, str(repl))
+            header.append(this_batch_system["header_start"] + " " + value)
+        
         return header
 
     @staticmethod
