@@ -94,11 +94,13 @@ class batch_system:
         if config["general"]["jobtype"] in ["compute", "tidy_and_resume"]:
             conditional_flags.append("exclusive_flag")
 
+        # avoid using empty conditional flags (strings and list of strings are
+        # supported)
         for flag in conditional_flags:
             if flag in this_batch_system:
                 values_in_flag = []
                 flag_value = this_batch_system[flag]
-                # deniz: added support for lists
+
                 if isinstance(flag_value, str):
                     values_in_flag.append(flag_value)
                 elif isinstance(flag_value, list):
