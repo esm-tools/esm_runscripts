@@ -335,9 +335,9 @@ def _write_finalized_config(config):
         "w",
     ) as config_file:
         # Avoid saving ``prev_run`` information in the config file
-        config_final = copy.deepcopy(config)
-        del config_final["prev_run"]
-        out = yaml.dump(config_final)
+        config_final = copy.deepcopy(config) #PrevRunInfo
+        del config_final["prev_run"]         #PrevRunInfo
+        out = yaml.dump(config_final)        #PrevRunInfo
         out = strip_python_tags(out)
         config_file.write(out)
     return config
