@@ -20,6 +20,7 @@ def setup_correct_chunk_config(config):
 #        chunk_config = _update_chunk_date_file(chunk_config)
     
     chunk_config = _set_model_queue(chunk_config)
+    #chunk_config = set_runs_per_chunk(chunk_config)
     config = _store_original_config(chunk_config)
 
     return config
@@ -39,13 +40,106 @@ def _update_run_in_chunk(config):
         
 
 
+def set_chunk_calendar(config):
+    if not config["general"].get("iterative_coupling", False):
+        return config
+    
+    delta_date = (
+            config["general"]["nyear"],
+            config["general"]["nmonth"],
+            config["general"]["nday"],
+            config["general"]["nhour"],
+            config["general"]["nminute"],
+            config["general"]["nsecond"],
+            )
+
+    nyear, nmonth, nday, nhour, nminute, nsecond = 0, 0, 0, 0, 0, 0
+    chunk_unit = config["general"].get("this_chunk_unit", "years") 
+
+    if chunk_unit in ["years", "yrs", "a"]:
+        nyear = int(config["general"].get("this_chunk_size"))
+    elif chunk_unit in ["kiloyears", "kyrs", "ka"]:
+        nyear = int(config["general"].get("this_chunk_size") * 1000)
+    elif chunk_unit in ["months"]:
+        nmonth = int(config["general"].get("this_chunk_size"))
+    elif chunk_unit in ["days"]:
+        nday = int(config["general"].get("this_chunk_size"))
+    if (
+        not nyear
+        and not nmonth
+        and not nday
+        and not nhour
+        and not nminute
+        and not nsecond
+    ):
+        nyear = 1
+
+    chunk_delta_date = (
+        nyear,
+        nmonth,
+        nday,
+        nhour,
+        nminute,
+        nsecond
+        )
+
+    number_of_models = config["general"]["number_of_ic_models"]
+    this_chunk_number = int(config["general"]["next_chunk_number"]) - 1
+    initial_date = config["general"]["initial_date"]
+    next_date = config["general"]["next_date"]
+
+    number_of_chunks_done = this_chunk_number // number_of_models
+    
+    passed_time = ( 
+            number_of_chunks_done * delta_date[0],
+            number_of_chunks_done * delta_date[1],
+            number_of_chunks_done * delta_date[2],
+            number_of_chunks_done * delta_date[3],
+            number_of_chunks_done * delta_date[4],
+            number_of_chunks_done * delta_date[5],
+            )
+    
+    chunk_start_date = initial_date + passed_time
+    chunk_end_date = chunk_start_date + chunk_delta_date
+
+    config["general"]["chunk_start_date"] = chunk_start_date
+    config["general"]["chunk_end_date"] = chunk_end_date
+
+
+    start_date = chunk_start_date
+    while start_date < chunk_end_date:
+        start_date = start_date + delta_date
+
+    if not start_date == chunk_end_date:
+        setup_name = config["general"]["setup_name"]
+        print(f"Chunk_size is not a multiple of run size for model {setup_name}.")
+        sys.exit(-1)
+
+    if config["general"]["last_run_in_chunk"]:
+        config["general"]["next_run_in_chunk"] = "first"
+    elif next_date + delta_date >= chunk_end_date:
+        config["general"]["next_run_in_chunk"] = "last"
+    else:
+        config["general"]["next_run_in_chunk"] = "middle"
+
+
+    return config
+
+
 def _update_chunk_date_file(config):
+
     if not config["general"].get("iterative_coupling", False):
         return config
 
     # to be called at the end of tidy
     with open(config["general"]["chunk_date_file"], "w+") as chunk_dates:
-        chunk_dates.write(str(config["general"]["next_chunk_number"]) + " " + config["general"]["next_setup_name"])
+        chunk_dates.write(
+                str(config["general"]["next_chunk_number"]) 
+                + " " 
+                + config["general"]["next_setup_name"] 
+                + " " 
+                + config["general"]["next_run_in_chunk"]
+                )
     config["general"]["setup_name"] = config["general"]["next_setup_name"]
     config["general"]["chunk_number"] = config["general"]["next_chunk_number"]
     return config
@@ -55,6 +149,9 @@ def _update_chunk_date_file(config):
 
 
 ########################################   END OF API ###############################################
+
+
+
 
 
 
@@ -68,6 +165,8 @@ def _called_from_tidy_job(config):
         if "run_number" in config["general"]:
             return True
     return False
+
+    
 
 
 
@@ -100,10 +199,11 @@ def _read_chunk_date_file_if_exists(config):
 
     if os.path.isfile(config["general"]["chunk_date_file"]):
         with open(config["general"]["chunk_date_file"], "r") as chunk_dates:
-            chunk_number, setup_name = chunk_dates.read().split()
+            chunk_number, setup_name, run_in_chunk = chunk_dates.read().split()
 
         config["general"]["setup_name"] = setup_name
         config["general"]["chunk_number"] = int(chunk_number)
+        config["general"]["run_in_chunk"] = run_in_chunk
 
         index = 1
 
@@ -111,6 +211,9 @@ def _read_chunk_date_file_if_exists(config):
             if config["model" + str(index)]["setup_name"] == setup_name:
                 config["general"]["this_chunk_size"] = int(
                         config["model" + str(index)]["chunk_size"]
+                        )
+                config["general"]["this_chunk_unit"] = (
+                        config["model" + str(index)]["chunk_unit"]
                         )
                 break
             index += 1
@@ -121,8 +224,12 @@ def _read_chunk_date_file_if_exists(config):
 def _initialize_chunk_date_file(config):
     config["general"]["setup_name"] = config["model1"]["setup_name"]
     config["general"]["chunk_number"] = 1
+    config["general"]["run_in_chunk"] = "first"
     config["general"]["this_chunk_size"] = int(
             config["model1"]["chunk_size"]
+            )
+    config["general"]["this_chunk_unit"] = (
+            config["model1"]["chunk_unit"]
             )
     return config
 
@@ -137,6 +244,11 @@ def _set_model_queue(config):
         model_named_queue += [config["model" +  str(index)]["setup_name"]]
         index += 1
 
+    config["general"]["number_of_ic_models"] = index - 1
+
+    esm_parser.pprint_config(config)
+    print(model_named_queue)
+
     index = model_named_queue.index(config["general"]["setup_name"]) + 1
     index = index % len(model_queue)
 
@@ -147,7 +259,7 @@ def _set_model_queue(config):
 
     
 def _is_first_run_in_chunk(config):
-    if int(config["general"]["run_number"]) % int(config["general"]["this_chunk_size"]) == 1:
+    if config["general"]["run_in_chunk"] == "first":
         config["general"]["first_run_in_chunk"] = True
     else:
         config["general"]["first_run_in_chunk"] = False
@@ -155,7 +267,7 @@ def _is_first_run_in_chunk(config):
 
 
 def _is_last_run_in_chunk(config):
-    if int(config["general"]["run_number"]) % int(config["general"]["this_chunk_size"]) == 0:
+    if config["general"]["run_in_chunk"] == "last":
         config["general"]["last_run_in_chunk"] = True
     else:
         config["general"]["last_run_in_chunk"] = False
@@ -164,7 +276,7 @@ def _is_last_run_in_chunk(config):
 
 def _find_next_model_to_run(config):
     if config["general"]["last_run_in_chunk"]:
-        config["general"]["next_setup_name"] = config["general"]["model_queue"][0]
+        config["general"]["next_setup_name"] = config["general"]["model_named_queue"][0]
     else:
         config["general"]["next_setup_name"] = config["general"]["setup_name"]
     return config
