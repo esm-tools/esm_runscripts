@@ -544,6 +544,14 @@ def set_prev_date(config):
                 0,
                 int(config[model]["time_step"]),
             )
+            config[model]["last_parent_date"] = config[model]["prev_date"] - (
+                0,
+                0,
+                0,
+                0,
+                0,
+                int(config[model]["time_step"]),
+            )
 
         # NOTE(PG, MAM): Here we check if the time step still has a variable which might be set in a different model, and resolve this case
         elif "time_step" in config[model] and (
@@ -554,6 +562,14 @@ def set_prev_date(config):
                 model, config[model]["time_step"], config, [], []
             )
             config[model]["prev_date"] = config["general"]["current_date"] - (
+                0,
+                0,
+                0,
+                0,
+                0,
+                int(dt),
+            )
+            config[model]["last_parent_date"] = config[model]["prev_date"] - (
                 0,
                 0,
                 0,

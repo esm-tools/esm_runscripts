@@ -5,6 +5,7 @@ import sys
 import esm_environment
 import six
 
+from esm_parser import user_error
 from . import helpers
 from .slurm import Slurm
 from .pbs import Pbs
@@ -70,7 +71,7 @@ class batch_system:
         tasks, nodes = batch_system.calculate_requirements(config)
 
         replacement_tags = [("@tasks@", tasks), ("@nodes@", nodes)]
-        if config["general"].get("heterogeneous_parallelization", False):
+        if config["computer"].get("heterogeneous_parallelization", False):
             tasks_nodes_flag = "nodes_flag"
         elif config["computer"]["batch_system"] in ["pbs"]:
             tasks_nodes_flag = "nodes_flag"
@@ -139,7 +140,7 @@ class batch_system:
                     cores_per_node = config['computer']['cores_per_node']
                     tasks += nproc
                     # If heterogeneous MPI-OMP
-                    if config["general"].get("heterogeneous_parallelization", False):
+                    if config["computer"].get("heterogeneous_parallelization", False):
                         omp_num_threads = config[model].get("omp_num_threads", 1)
                     # If only MPI
                     else:
@@ -214,6 +215,32 @@ class batch_system:
             extras.append("source "+config["general"]["experiment_dir"]+"/.venv_esmtools/bin/activate")
         if config["general"].get("funny_comment", True):
             extras.append("# 3...2...1...Liftoff!")
+        # Search for ``pre_run_commands``s in the components
+        for component in config.keys():
+            pre_run_commands = config[component].get("pre_run_commands")
+            if isinstance(pre_run_commands, list):
+                for pr_command in pre_run_commands:
+                    if isinstance(pr_command, str):
+                        extras.append(pr_command)
+                    else:
+                        user_error('Invalid type for "pre_run_commands"', (
+                            f'"{type(pr_command)}" type is not supported for ' +
+                            f'elements of the "pre_run_commands", defined in ' +
+                            f'"{component}". Please, define ' +
+                            '"pre_run_commands" as a "list" of "strings" or a "list".'
+                        )
+                        )
+            elif isinstance(pre_run_commands, str):
+                extras.append(pre_run_commands)
+            elif pre_run_commands==None:
+                continue
+            else:
+                user_error('Invalid type for "pre_run_commands"', (
+                    f'"{type(pre_run_commands)}" type is not supported for ' +
+                    f'"pre_run_commands" defined in "{component}". Please, define ' +
+                    '"pre_run_commands" as a "string" or a "list" of "strings".'
+                )
+                )
         return extras
 
     @staticmethod
