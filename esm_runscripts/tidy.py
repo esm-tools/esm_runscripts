@@ -120,7 +120,7 @@ def assemble_error_list(config):
     gconfig = config["general"]
     known_methods = ["warn", "kill"]
     stdout = (
-        gconfig["thisrun_scripts_dir"]
+        gconfig["experiment_scripts_dir"]
         + "/"
         + gconfig["expid"]
         + "_compute_"
