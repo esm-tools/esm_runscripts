@@ -359,13 +359,11 @@ class PrevRunInfo(dict):
         # If the previous config was loaded, use get
         if self._prev_config:
             value = self._prev_config.get(*args, **kwargs)
-        # If the previous config is not loaded yet, return an instance of
-        # ``PrevRunInfo``
+        # If the previous config is not loaded yet, return get of an empty dict
         else:
-           value = PrevRunInfo(prev_config=self._prev_config)
+           value = {}.get(*args, **kwargs)
 
-        #self.__setitem__(key, value)
-        return value # super().get(*args, **kwargs)
+        return value
 
 
     def prev_run_config(self):
