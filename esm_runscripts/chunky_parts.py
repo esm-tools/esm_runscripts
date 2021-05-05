@@ -140,12 +140,39 @@ def _update_chunk_date_file(config):
                 + " " 
                 + config["general"]["next_run_in_chunk"]
                 )
-    config["general"]["setup_name"] = config["general"]["next_setup_name"]
-    config["general"]["chunk_number"] = config["general"]["next_chunk_number"]
+    #config["general"]["setup_name"] = config["general"]["next_setup_name"]
+    #config["general"]["chunk_number"] = config["general"]["next_chunk_number"]
     return config
 
 
 
+
+def update_command_line_config(config):
+    if not config["general"].get("iterative_coupling", False):
+        return config
+
+    next_log_file = (
+            config["general"]["experiment_scripts_dir"] +
+            "/" + 
+            config["general"]["expid"] + 
+            "_" + 
+            config["general"]["next_setup_name"] + 
+            ".date"
+            )
+
+    if config["general"]["next_run_in_chunk"] == "first":
+        if os.path.isfile(next_log_file):
+            with open(next_log_file, "r") as date_file:
+                next_start_date, next_run_number = datefile.read().split()
+            
+                config["general"]["command_line_config"]["current_date"] = next_start_date
+                config["general"]["command_line_config"]["run_number"] = int(next_run_number) 
+        else:
+            config["general"]["command_line_config"]["current_date"] = None
+            config["general"]["command_line_config"]["run_number"] = 1 
+
+
+    return config
 
 
 ########################################   END OF API ###############################################
@@ -155,7 +182,7 @@ def _update_chunk_date_file(config):
 
 
 
-def _called_from_tidy_job(config):
+def _called_from_tidy_job(config): # not called from anywhere
     """
     At the beginning of a prepare job, the date file isn't read yet,
     so run_number doesn't exist. At the end of a tidy job it does...

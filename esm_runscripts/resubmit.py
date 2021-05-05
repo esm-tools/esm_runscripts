@@ -5,6 +5,7 @@ import six
 from . import batch_system
 from . import logfiles
 from . import helpers
+from . import chunky_parts
 import esm_parser
 
 def submit(config):
@@ -175,6 +176,9 @@ def _increment_date_and_run_number(config):
             )
 
     config["general"]["command_line_config"]["run_number"] = config["general"]["run_number"] 
+
+    config = chunky_parts.update_command_line_config(config)
+
 
     return config
 
