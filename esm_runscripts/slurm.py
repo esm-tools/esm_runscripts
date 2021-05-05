@@ -87,7 +87,7 @@ class Slurm:
             return start_proc, start_core, end_proc, end_core
 
         scriptfolder = config["general"]["thisrun_scripts_dir"] + "../work/"
-        if config["general"].get("heterogeneous_parallelization", False):
+        if config["computer"].get("heterogeneous_parallelization", False):
             command = "./" + config[model].get(
                 "execution_command",config[model]["executable"]
             )
@@ -109,7 +109,7 @@ class Slurm:
             os.chmod(scriptfolder+progname, 0o755)
             execution_command_het_par = f"prog_{model}.sh %o %t"
 
-        if config["general"].get("heterogeneous_parallelization", False):
+        if config["computer"].get("heterogeneous_parallelization", False):
             command = "./" + execution_command_het_par
         elif "execution_command" in config[model]:
             command = "./" + config[model]["execution_command"]
@@ -177,7 +177,7 @@ class Slurm:
             File wrapper object for writing of the lines
             (``sadfile.write("<your_line_here>")``).
         """
-        if config["general"].get("heterogeneous_parallelization", False):
+        if config["computer"].get("heterogeneous_parallelization", False):
             self.add_hostlist_file_gen_lines(config, sadfile)
 
 
