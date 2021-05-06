@@ -243,9 +243,11 @@ class SimulationSetup(object):
 
             self.config["general"]["monitor_file"] = monitor_file
             if os.path.isfile(monitor_file_path):
-                os.symlink(monitor_file_path, monitor_file_in_run)
+                # os.symlink(monitor_file_path, monitor_file_in_run)
+                helpers.symlink(monitor_file_path, monitor_file_in_run, overwrite=True)
             if os.path.isfile(exp_log_path):
-                os.symlink(exp_log_path, log_in_run)
+                # os.symlink(exp_log_path, log_in_run)
+                helpers.symlink(exp_log_path, log_in_run, overwrite=True)
             self.config = tidy.run_job(self.config)
 
         helpers.end_it_all(self.config)
