@@ -7,6 +7,7 @@ import esm_rcfile
 
 import esm_plugin_manager
 import esm_tools
+import esm_parser
 
 
 def symlink(target, link_name, overwrite=False):
@@ -20,7 +21,12 @@ def symlink(target, link_name, overwrite=False):
     '''
 
     if not overwrite:
-        os.symlink(target, link_name)
+        try:
+            os.symlink(target, link_name)
+        except FileExistsError:
+            error_type = "File Exists"
+            error_text = f"{link_name} already exists. Use overwrite=True"
+            esm_parser.user_error(error_type, error_text, exit_code=1)
         return
 
     # os.replace() may fail if files are on different filesystems
@@ -45,10 +51,13 @@ def symlink(target, link_name, overwrite=False):
         if not os.path.islink(link_name) and os.path.isdir(link_name):
             raise IsADirectoryError(f"Cannot symlink over existing directory: '{link_name}'")
         os.replace(temp_link_name, link_name)
-    except:
+    except Exception as e:
         if os.path.islink(temp_link_name):
             os.remove(temp_link_name)
-        raise
+        error_type = "Error"
+        error_text = repr(e)
+        esm_parser.user_error(error_type, error_text, exit_code=1)
+        
 
 
 def vprint(message, config):
