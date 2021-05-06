@@ -57,7 +57,6 @@ def symlink(target, link_name, overwrite=False):
         error_type = "Error"
         error_text = repr(e)
         esm_parser.user_error(error_type, error_text, exit_code=1)
-        
 
 
 def vprint(message, config):
