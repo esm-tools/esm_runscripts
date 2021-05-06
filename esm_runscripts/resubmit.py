@@ -88,7 +88,7 @@ def end_of_experiment(config):
         monitor_file = logfiles.logfile_handle
         monitor_file.write("Reached the end of the simulation, quitting...\n")
         config["general"]["experiment_over"] = True
-        #helpers.write_to_log(config, ["# Experiment over"], message_sep="")
+        helpers.write_to_log(config, ["# Experiment over"], message_sep="")
         return True
     return False
 

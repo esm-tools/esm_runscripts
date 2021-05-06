@@ -83,6 +83,15 @@ def set_chunk_calendar(config):
         nsecond
         )
 
+    oneday = (
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+        )
+
     number_of_models = config["general"]["number_of_ic_models"]
     this_chunk_number = int(config["general"]["next_chunk_number"]) - 1
     initial_date = config["general"]["initial_date"]
@@ -103,24 +112,35 @@ def set_chunk_calendar(config):
     chunk_end_date = chunk_start_date + chunk_delta_date
 
     config["general"]["chunk_start_date"] = chunk_start_date
-    config["general"]["chunk_end_date"] = chunk_end_date
+    config["general"]["chunk_end_date"] = chunk_end_date - oneday
 
 
+    runs_per_chunk = 0
     start_date = chunk_start_date
     while start_date < chunk_end_date:
         start_date = start_date + delta_date
+        runs_per_chunk += 1
 
     if not start_date == chunk_end_date:
         setup_name = config["general"]["setup_name"]
         print(f"Chunk_size is not a multiple of run size for model {setup_name}.")
         sys.exit(-1)
 
+    print(f">>>>>>>>>>>>> RUNS PER CHUNK: {runs_per_chunk}")
+
+    if runs_per_chunk == 1:
+        print(f"reached this line")
+        config["general"]["run_in_chunk"] = "first_and_last"
+        
+    config = _update_run_in_chunk(config)
     if config["general"]["last_run_in_chunk"]:
         config["general"]["next_run_in_chunk"] = "first"
     elif next_date + delta_date >= chunk_end_date:
         config["general"]["next_run_in_chunk"] = "last"
     else:
         config["general"]["next_run_in_chunk"] = "middle"
+
+    esm_parser.pprint_config(config)
 
 
     return config
@@ -163,7 +183,7 @@ def update_command_line_config(config):
     if config["general"]["next_run_in_chunk"] == "first":
         if os.path.isfile(next_log_file):
             with open(next_log_file, "r") as date_file:
-                next_start_date, next_run_number = datefile.read().split()
+                next_start_date, next_run_number = date_file.read().split()
             
                 config["general"]["command_line_config"]["current_date"] = next_start_date
                 config["general"]["command_line_config"]["run_number"] = int(next_run_number) 
@@ -273,9 +293,6 @@ def _set_model_queue(config):
 
     config["general"]["number_of_ic_models"] = index - 1
 
-    esm_parser.pprint_config(config)
-    print(model_named_queue)
-
     index = model_named_queue.index(config["general"]["setup_name"]) + 1
     index = index % len(model_queue)
 
@@ -286,7 +303,7 @@ def _set_model_queue(config):
 
     
 def _is_first_run_in_chunk(config):
-    if config["general"]["run_in_chunk"] == "first":
+    if config["general"]["run_in_chunk"] in ["first", "first_and_last"]:
         config["general"]["first_run_in_chunk"] = True
     else:
         config["general"]["first_run_in_chunk"] = False
@@ -294,7 +311,7 @@ def _is_first_run_in_chunk(config):
 
 
 def _is_last_run_in_chunk(config):
-    if config["general"]["run_in_chunk"] == "last":
+    if config["general"]["run_in_chunk"] in ["last", "first_and_last"]:
         config["general"]["last_run_in_chunk"] = True
     else:
         config["general"]["last_run_in_chunk"] = False
