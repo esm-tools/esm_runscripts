@@ -28,11 +28,6 @@ def handle_sigint(signum, stack_frame):
     print()  # print a new line after ^C character (CTRL-C)
     sys.stderr.write('ctrl c is pressed. Terminating\n')
 
-    # these can be moved into a `if verbose` block
-    sys.stderr.write(f'- file:     {os.path.realpath(stack_frame.f_code.co_filename)}\n')
-    sys.stderr.write(f'- line:     {stack_frame.f_code.co_firstlineno}\n')
-    sys.stderr.write(f'- function: {stack_frame.f_code.co_name}\n')
-    
     # exit with 2 according to https://en.wikipedia.org/wiki/Signal_(IPC) 
     sys.exit(signal.SIGINT.value)  
             
