@@ -1,6 +1,35 @@
 import sys, copy, os
 import esm_parser
 
+
+
+def skip_cluster(cluster, config):
+    gw_config = config["general"]["workflow"]
+    clusterconf = gw_config["subjob_clusters"][cluster]
+
+    """
+    print(f"run_only {clusterconf.get('run_only', 'Error') }")
+    print(f"skip_chunk_number {clusterconf.get('skip_chunk_number', -999)}")
+    print(f"skip_run_number {clusterconf.get('skip_run_number', -999)}")
+    print(f"chunk_number {config['general'].get('chunk_number', -998)}")
+    print(f"run_number {config['general'].get('run_number', -998)}")
+    print(f"last_run_in_chunk {config['general']['last_run_in_chunk']}")
+    print(f"first_run_in_chunk {config['general']['first_run_in_chunk']}")
+    """
+
+    if clusterconf.get("run_only", "Error") == "last_run_in_chunk" and not config["general"].get("last_run_in_chunk", False):
+        return True
+    if clusterconf.get("run_only", "Error") == "first_run_in_chunk" and not config["general"].get("first_run_in_chunk", False):
+        return True
+    if clusterconf.get("skip_chunk_number", -999) == config["general"].get("chunk_number", -998):
+        return True
+    if clusterconf.get("skip_run_number", -999) == config["general"].get("run_number", -998):
+        return True
+    
+    return False
+
+
+
 def assemble_workflow(config):
 #
     config = init_total_workflow(config)
@@ -172,6 +201,9 @@ def complete_clusters(config):
             clusterconf = merge_single_entry_if_possible("run_on_queue", subjobconf, clusterconf)
             clusterconf = merge_single_entry_if_possible("run_after", subjobconf, clusterconf)
             clusterconf = merge_single_entry_if_possible("run_before", subjobconf, clusterconf)
+            clusterconf = merge_single_entry_if_possible("run_only", subjobconf, clusterconf)
+            clusterconf = merge_single_entry_if_possible("skip_run_number", subjobconf, clusterconf)
+            clusterconf = merge_single_entry_if_possible("skip_chunk_number", subjobconf, clusterconf)
 
             nproc_sum += subjobconf.get("nproc", 1)
             nproc_max = max(subjobconf.get("nproc", 1), nproc_max)

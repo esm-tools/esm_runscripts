@@ -242,6 +242,17 @@ def _initialize_calendar(config):
     if config["general"]["reset_calendar_to_last"]:
         config = find_last_prepared_run(config)
     config = set_most_dates(config)
+    if not "iterative_coupling" in config["general"]:
+        config["general"]["chunk_number"] = 1
+
+        if config["general"]["run_number"] == 1:
+            config["general"]["first_run_in_chunk"] = True
+        else:
+            config["general"]["first_run_in_chunk"] = False
+        if config["general"]["next_date"] >= config["general"]["final_date"]:
+            config["general"]["last_run_in_chunk"] = True
+        else:
+            config["general"]["last_run_in_chunk"] = False
     return config
 
 

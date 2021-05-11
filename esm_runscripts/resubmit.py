@@ -6,6 +6,7 @@ from . import batch_system
 from . import logfiles
 from . import helpers
 from . import chunky_parts
+from . import workflow
 import esm_parser
 
 def submit(config):
@@ -97,7 +98,6 @@ def end_of_experiment(config):
 def end_of_experiment_all_models(config):
     index = 1
     expid = config["general"]["expid"]
-    esm_parser.pprint_config(config)
     while "model" + str(index) in config["general"]["original_config"]:
         if not config["model" + str(index)]["setup_name"] == config["general"]["setup_name"]:
             experiment_done = False
@@ -135,34 +135,54 @@ def check_if_check(config):
 def maybe_resubmit(config):
 
     jobtype = config["general"]["jobtype"]
-    for cluster in config["general"]["workflow"]["subjob_clusters"][jobtype]["next_submit"]:
-        if not cluster == config["general"]["workflow"]["first_task_in_queue"]:
-            submission_type = get_submission_type(cluster, config)
-            if submission_type == "SimulationSetup":
-                resubmit_SimulationSetup(config, cluster)
-            elif submission_type in ["batch", "shell"]:
-                resubmit_batch_or_shell(config, submission_type, cluster)
-    
-    for cluster in config["general"]["workflow"]["subjob_clusters"][jobtype]["next_submit"]:
-        if cluster == config["general"]["workflow"]["first_task_in_queue"]:
-            # count up the calendar here, skip job submission if end of
-            # experiment is reached. all other clusters will still be 
-            # submitted though
-            config = _increment_date_and_run_number(config)
-            config = _write_date_file(config)
 
-            if end_of_experiment(config):
-                if config["general"].get("iterative_coupling", False):
-                    if end_of_experiment_all_models(config):
-                        continue
+    nextrun = resubmit_recursively(config, jobtype = jobtype)
 
-            submission_type = get_submission_type(cluster, config)
-            if submission_type == "SimulationSetup":
-                resubmit_SimulationSetup(config, cluster)
-            elif submission_type in ["batch", "shell"]:
-                resubmit_batch_or_shell(config, submission_type, cluster)
+    if nextrun: # submit list contains stuff from next run
+        
+        config = _increment_date_and_run_number(config)
+        config = _write_date_file(config)
+
+        if end_of_experiment(config):
+            if config["general"].get("iterative_coupling", False):
+                if end_of_experiment_all_models(config):
+                    return config
+            else:
+                #config = chunky_parts._update_chunk_date_file(config)
+                return config
+
+        cluster = config["general"]["workflow"]["first_task_in_queue"]
+        nextrun = resubmit_recursively(config, list_of_clusters = [cluster], nextrun_in = True)
 
     return config
+
+
+
+
+def resubmit_recursively(config, jobtype = None, list_of_clusters= None, nextrun_in = False):
+    nextrun = False
+
+    if not list_of_clusters:
+        list_of_clusters = config["general"]["workflow"]["subjob_clusters"][jobtype].get("next_submit", [])
+
+    for cluster in list_of_clusters:
+        if cluster == config["general"]["workflow"]["first_task_in_queue"] and not nextrun_in:
+            nextrun = True
+        else:
+            if not workflow.skip_cluster(cluster, config):
+                submission_type = get_submission_type(cluster, config)
+                if submission_type == "SimulationSetup":
+                    resubmit_SimulationSetup(config, cluster)
+                elif submission_type in ["batch", "shell"]:
+                    resubmit_batch_or_shell(config, submission_type, cluster)
+            else:
+                print(f"Skipping {cluster}")
+                nextrun = resubmit_recursively(config, jobtype = cluster, nextrun_in = nextrun_in) or nextrun
+    return nextrun
+
+
+
+
 
 
 def _increment_date_and_run_number(config):

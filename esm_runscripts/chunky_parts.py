@@ -126,10 +126,7 @@ def set_chunk_calendar(config):
         print(f"Chunk_size is not a multiple of run size for model {setup_name}.")
         sys.exit(-1)
 
-    print(f">>>>>>>>>>>>> RUNS PER CHUNK: {runs_per_chunk}")
-
     if runs_per_chunk == 1:
-        print(f"reached this line")
         config["general"]["run_in_chunk"] = "first_and_last"
         
     config = _update_run_in_chunk(config)
@@ -139,9 +136,6 @@ def set_chunk_calendar(config):
         config["general"]["next_run_in_chunk"] = "last"
     else:
         config["general"]["next_run_in_chunk"] = "middle"
-
-    esm_parser.pprint_config(config)
-
 
     return config
 
@@ -191,6 +185,7 @@ def update_command_line_config(config):
             config["general"]["command_line_config"]["current_date"] = None
             config["general"]["command_line_config"]["run_number"] = 1 
 
+        config = _update_chunk_date_file(config)
 
     return config
 
