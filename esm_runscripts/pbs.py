@@ -170,13 +170,6 @@ class Pbs:
         #    self.calc_requirements_multi_aprun(config)
         #    return
 
-        # Calculates the left justification for the prepend of stdout and stderr
-        model_name_lengths = [
-            len(model) for model in config["general"]["valid_model_names"]
-            if "execution_command" in config[model] or "executable" in config[model]
-        ]
-        prep_just = max(model_name_lengths) + 3
-
         component_lines = []
         # Read in the separator to be used in between component calls in the job
         # launcher
@@ -193,13 +186,9 @@ class Pbs:
             if command:
                 launcher = config["computer"].get("launcher")
                 launcher_flags = self.calc_launcher_flags(config, model)
-                # stdout and stderr modifications to prepend [MODEL] to each line
-                prep_str = f"[{model}]".upper().ljust(prep_just)
-                prep_model_std_oe = (
-                    f"1> >(sed 's/^/{prep_str}/' >&1) " +
-                    f"2> >(sed 's/^/{prep_str}/' >&2)"
-                )
-                component_lines.append(f'{launcher_flags} bash -c "./{command} {prep_model_std_oe}" ')
+                # Substitute @MODEL@ with the model name
+                launcher_flags = launcher_flags.replace("@MODEL@", model.upper())
+                component_lines.append(f'{launcher_flags} ./{command} ')
 
         # Merge each component flags and commands into a single string
         components = sep.join(component_lines)
