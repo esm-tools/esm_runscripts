@@ -1,6 +1,6 @@
 from . import database
 from datetime import datetime
-
+import sqlalchemy
 
 def database_entry(config):
     if config["general"]["check"]:
@@ -28,25 +28,32 @@ def database_basic_entry(config):
     return thisrun
 
 
+def try_to_commit():
+    try:
+        database.session.commit()
+    except sqlalchemy.exc.OperationalError as e:
+        print("Sorry, there was some SQL Error!")
+        print(e)
+
 def database_entry_check(config):
     thisrun = database_basic_entry(config)
     thisrun.outcome = "check"
-    database.session.commit()
+    try_to_commit()
 
 
 def database_entry_start(config):
     thisrun = database_basic_entry(config)
     thisrun.outcome = "started"
-    database.session.commit()
+    try_to_commit()
 
 def database_entry_success(config):
     thisrun = database_basic_entry(config)
     thisrun.outcome = "success"
-    database.session.commit()
-    
+    try_to_commit()
+
 
 def database_entry_crashed(config):
     thisrun = database_basic_entry(config)
     thisrun.outcome = "crashed"
-    database.session.commit()
+    try_to_commit()
 

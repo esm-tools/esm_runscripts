@@ -182,10 +182,12 @@ class Pbs:
                 command = config[model]["execution_command"]
             elif "executable" in config[model]:
                 command = config[model]["executable"]
-            # Calculate launcher flags
+            # Prepare the MPMD commands
             if command:
                 launcher = config["computer"].get("launcher")
                 launcher_flags = self.calc_launcher_flags(config, model)
+                # Substitute @MODEL@ with the model name
+                launcher_flags = launcher_flags.replace("@MODEL@", model.upper())
                 component_lines.append(f"{launcher_flags} ./{command} ")
 
         # Merge each component flags and commands into a single string
