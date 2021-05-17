@@ -538,6 +538,7 @@ def copy_tools_to_thisrun(config):
             + "; "
             + "esm_runscripts "
             + gconfig["original_command"].replace("-U", "")
+            + " --no-motd "
         )
         if config["general"]["verbose"]:
             print(restart_command)
