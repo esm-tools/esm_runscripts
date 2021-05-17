@@ -23,7 +23,9 @@ def handle_sigint(signum, stack_frame):
     stack_frame : Python frame object
         current stack frame
     
-    More info: https://docs.python.org/3/library/signal.html
+    Notes
+    -----
+        More info: https://docs.python.org/3/library/signal.html
     """
     print()  # print a new line after ^C character (CTRL-C)
     sys.stderr.write('ctrl c is pressed. Terminating\n')
