@@ -34,7 +34,7 @@ class SimulationSetup(object):
         if "verbose" not in self.config["general"]:
             self.config["general"]["verbose"] = False
 
-        if command_line_config["no_motd"]:
+        if self.command_line_config.get("no_motd", False):
             self.config["general"]["no_motd"] = True
             
         # read the prepare recipe
