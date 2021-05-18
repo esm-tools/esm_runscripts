@@ -309,6 +309,7 @@ class batch_system:
                 + " -t tidy_and_resubmit -p ${process} -j "
                 + config["general"]["jobtype"]
                 + " -v "
+                + " --no-motd "
             )
             if "--open-run" in config["general"]["original_command"] or not config["general"].get("use_venv"):
                 tidy_call += " --open-run"

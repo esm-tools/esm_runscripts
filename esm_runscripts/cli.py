@@ -114,6 +114,13 @@ def parse_shargs():
         default=False,
         action="store_true",
     )
+    
+    parser.add_argument(
+        "--no-motd",
+        help = "supress the printing of MOTD",
+        default = False,
+        action = "store_true" 
+    )
 
     return parser.parse_args()
 
@@ -133,6 +140,7 @@ def main():
     inspect = None
     use_venv = None
     modify_config_file = None
+    no_motd = False
 
     parsed_args = vars(ARGS)
 
@@ -166,6 +174,8 @@ def main():
         use_venv = not parsed_args["open_run"]
     if "modify" in parsed_args:
         modify_config_file = parsed_args["modify"]
+    if "no_motd" in parsed_args:
+        no_motd = parsed_args["no_motd"]
 
     command_line_config = {}
     command_line_config["check"] = check
@@ -179,6 +189,7 @@ def main():
     command_line_config["verbose"] = verbose
     command_line_config["inspect"] = inspect
     command_line_config["use_venv"] = use_venv
+    command_line_config["no_motd"] = no_motd
     if modify_config_file:
         command_line_config["modify_config_file"] = modify_config_file
 
@@ -199,6 +210,7 @@ def main():
         logger.debug("starting : ", jobtype)
 
     Setup = SimulationSetup(command_line_config)
-    if not Setup.config['general']['submitted']:
+    # if not Setup.config['general']['submitted']:
+    if not Setup.config['general']['submitted'] and not no_motd:
         check_all_esm_packages()
     Setup()
