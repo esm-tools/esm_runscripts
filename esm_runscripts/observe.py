@@ -29,8 +29,8 @@ def init_monitor_file(config):
         called_from + 
         "_" +
         config["general"]["run_datestamp"] +
-        "_" +
-        str(config["general"]["jobid"]) +
+        #"_" +
+        #str(config["general"]["jobid"]) +
         ".log"
     )
     log_in_run = (
@@ -38,8 +38,8 @@ def init_monitor_file(config):
         config["general"]["expid"] +
         "_" + 
         called_from +
-        "_" + 
-        str(config["general"]["jobid"]) +
+        #"_" + 
+        #str(config["general"]["jobid"]) +
         ".log"
     )
 
@@ -117,8 +117,8 @@ def assemble_error_list(config):
         + gconfig["expid"]
         + "_compute_"
         + gconfig["run_datestamp"]
-        + "_"
-        + gconfig["jobid"]
+        #+ "_"
+        #+ gconfig["jobid"]
         + ".log"
     )
 

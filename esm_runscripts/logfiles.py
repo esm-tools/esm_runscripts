@@ -68,10 +68,32 @@ def set_logfile_name(config, jobtype = None):
     if not jobtype:
         jobtype = config["general"]["jobtype"]
 
+    filejobtype = jobtype
+    if "observe" in filejobtype:
+        filejobtype = filejobtype.replace("observe_", "")
+
+    if "newrun" in filejobtype:
+        filejobtype = config["general"]["workflow"]["subjob_clusters"][jobtype].get("next_submit")[0]
+
+    if filejobtype == "prepcompute":
+        filejobtype = "compute"
+
+    if "_" + config["general"]["setup_name"] in filejobtype:
+        filejobtype = filejobtype.replace("_" + config["general"]["setup_name"], "")
+
+    #called_from = config["general"]["workflow"]["subjob_clusters"][jobtype].get("called_from", "SOMETHINgUSELESS")
+
+    #if "_" + called_from in filejobtype:
+    #    filejobtype = filejobtype.replace("_" + called_from, "")
+
+
+
     filename = (
             config["general"]["expid"] +
             "_" +
-            jobtype +
+            config["general"]["setup_name"] +
+            "_" +
+            filejobtype +
             "_" +
             config["general"]["run_datestamp"] +
             ".log"
@@ -89,12 +111,12 @@ def set_logfile_name(config, jobtype = None):
         filename
     )
 
-    if os.path.isfile(config["general"]["logfile_path"]):
-        if not os.path.isfile(config["general"]["logfile_path_in_run"]):
-            os.symlink(
-                config["general"]["logfile_path"],
-                config["general"]["logfile_path_in_run"]
-                )
+    #if os.path.isfile(config["general"]["logfile_path"]):
+    #    if not os.path.isfile(config["general"]["logfile_path_in_run"]):
+    #        os.symlink(
+    #            config["general"]["logfile_path"],
+    #            config["general"]["logfile_path_in_run"]
+    #            )
 
     return config
 

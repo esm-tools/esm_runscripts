@@ -271,13 +271,13 @@ class batch_system:
             if config["general"].get("submit_to_batch_system", True):
                 batch_system = config["computer"]
                 if "execution_command" in batch_system:
-                    commands.append("time " + batch_system["execution_command"] + " &")
+                    commands.append("time " + batch_system["execution_command"] + " 2>&1 &")
             else:
                 for model in config:
                     if model == "computer":
                         continue
                     if "execution_command" in config[ model ]:
-                        commands.append("time ./" + config[model]["execution_command"] + " &")
+                        commands.append("time ./" + config[model]["execution_command"] + " 2>&1 &")
         else:
             subjob_tasks = dataprocess.subjob_tasks(config, subjob)
             for task in subjob_tasks: 

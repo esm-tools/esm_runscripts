@@ -67,9 +67,16 @@ def all_files_to_copy_append(
             config[model][filetype + "_intermediate"] = {}
         config[model][filetype + "_intermediate"][categ] = file_interm
     if file_target:
-        if not filetype + "_targets" in config[model]:
-            config[model][filetype + "_targets"] = {}
-        config[model][filetype + "_targets"][categ] = file_target
+        if filetype in config["general"]["in_filetypes"] and filetype + "_in_work" in config[model]:
+            config[model][filetype + "_in_work"][categ] = file_target
+        else:    
+            print (filetype)
+            print (file_target)
+            print (categ)
+            print (config["general"]["out_filetypes"])
+            if not filetype + "_targets" in config[model]:
+                config[model][filetype + "_targets"] = {}
+            config[model][filetype + "_targets"][categ] = file_target
 
     if filetype + "_files" in config[model]:
         config[model][filetype + "_files"][categ] = categ

@@ -86,6 +86,7 @@ def rename_sources_to_targets(config):
                             + "_in_work in model "
                             + model
                         )
+                        esm_parser.pprint_config(config[model])
                         sys.exit(-1)
 
                 elif sources and targets and not in_work:

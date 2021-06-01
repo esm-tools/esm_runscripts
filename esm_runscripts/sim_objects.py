@@ -52,7 +52,9 @@ class SimulationSetup(object):
 
         if self.config["general"]["submitted"]:
             old_stdout = sys.stdout
+            old_stderr = sys.stderr
             sys.stdout = logfiles.logfile_handle
+            sys.stderr = logfiles.logfile_handle
 
         if self.config["general"]["jobtype"] == "prepcompute":
             self.prepcompute()
@@ -75,6 +77,7 @@ class SimulationSetup(object):
         
         if self.config["general"]["submitted"]:
             sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
         if kill_after_submit:
             if self.config["general"].get("experiment_over", False):
