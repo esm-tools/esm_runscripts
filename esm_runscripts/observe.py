@@ -23,7 +23,7 @@ def init_monitor_file(config):
     del config["general"]["command_line_config"]["launcher_pid"]
 
     exp_log_path = (
-        config["general"]["experiment_scripts_dir"] +
+        config["general"]["experiment_log_dir"] +
         config["general"]["expid"] +
         "_" +
         called_from + 
@@ -34,7 +34,7 @@ def init_monitor_file(config):
         ".log"
     )
     log_in_run = (
-        config["general"]["thisrun_scripts_dir"] +
+        config["general"]["thisrun_log_dir"] +
         config["general"]["expid"] +
         "_" + 
         called_from +
@@ -112,7 +112,7 @@ def assemble_error_list(config):
     known_methods = ["warn", "kill"]
 
     stdout = (
-        gconfig["thisrun_scripts_dir"]
+        gconfig["thisrun_log_dir"]
         + "/"
         + gconfig["expid"]
         + "_compute_"

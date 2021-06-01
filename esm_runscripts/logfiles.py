@@ -100,13 +100,13 @@ def set_logfile_name(config, jobtype = None):
     )
 
     config["general"]["logfile_path"] = (
-        config["general"]["experiment_scripts_dir"] +
+        config["general"]["experiment_log_dir"] +
         "/" +
         filename
     )
 
     config["general"]["logfile_path_in_run"] = (
-        config["general"]["thisrun_scripts_dir"] +
+        config["general"]["thisrun_log_dir"] +
         "/" +
         filename
     )
