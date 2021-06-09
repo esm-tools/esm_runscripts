@@ -20,6 +20,18 @@ def run_job(config):
     return config
 
 
+
+def color_diff(diff):
+    for line in diff:
+        if line.startswith('+'):
+            yield Fore.GREEN + line + Fore.RESET
+        elif line.startswith('-'):
+            yield Fore.RED + line + Fore.RESET
+        elif line.startswith('^'):
+            yield Fore.BLUE + line + Fore.RESET
+        else:
+            yield line
+
 def copy_tools_to_thisrun(config):
     """
     Copies the tools, namelists and runscripts to the experiment directory,
@@ -59,21 +71,14 @@ def copy_tools_to_thisrun(config):
     # In case there is no esm_tools or namelists in the experiment folder,
     # copy from the default esm_tools path
     if not os.path.isdir(tools_dir):
-        if config['general'].get("use_venv") or esm_rcfile.FUNCTION_PATH.startswith("NONE_YET"):
-            if config["general"]["verbose"]:
-                print("Copying standard yamls from: package interal configs")
-            esm_tools.copy_config_folder(tools_dir)
-        else:
-            if config["general"]["verbose"]:
-                print("Copying from: ", esm_rcfile.FUNCTION_PATH)
-            shutil.copytree(esm_rcfile.FUNCTION_PATH, tools_dir)
+        print("Copying standard yamls from: ", esm_rcfile.EsmToolsDir("FUNCTION_PATH"))
+        esm_tools.copy_config_folder(tools_dir)
     if not os.path.isdir(namelists_dir):
-        if esm_rcfile.get_rc_entry("NAMELIST_PATH", "NONE_YET").startswith("NONE_YET"):
-            if config["general"]["verbose"]:
-                print("Copying standard namelists from: package internal namelists")
-            esm_tools.copy_namelist_folder(namelists_dir)
-        else:
-            shutil.copytree(esm_rcfile.get_rc_entry("NAMELIST_PATH"), namelists_dir)
+        print(
+            "Copying standard namelists from: ",
+            esm_rcfile.EsmToolsDir("NAMELIST_PATH"),
+        )
+        esm_tools.copy_namelist_folder(namelists_dir)
 
     # If ``fromdir`` and ``scriptsdir`` are the same, this is already a computing
     # simulation which means we want to use the script in the experiment folder,
@@ -96,14 +101,6 @@ def copy_tools_to_thisrun(config):
             fromdir, scriptsdir, gconfig["scriptname"], gconfig, "runscript"
         )
 
-        if gconfig.get("iterative_coupling", False):
-            index = 1
-            while "model" + str(index) in config:
-                update_runscript(
-                        fromdir, scriptsdir, config["model" + str(index)]["runscript"], gconfig, "runscript"
-                        )
-                index += 1
-
         # Update the ``additional_files`` if necessary
         for tfile in gconfig["additional_files"]:
             update_runscript(
@@ -116,6 +113,7 @@ def copy_tools_to_thisrun(config):
             + "; "
             + "esm_runscripts "
             + gconfig["original_command"].replace("-U", "")
+            + " --no-motd "
         )
         if config["general"]["verbose"]:
             print(restart_command)
@@ -123,6 +121,7 @@ def copy_tools_to_thisrun(config):
 
         gconfig["profile"] = False
         end_it_all(config)
+
 
 
 def _create_folders(config, filetypes):
@@ -225,6 +224,7 @@ def initialize_experiment_logfile(config):
     return config
 
 
+
 def update_runscript(fromdir, scriptsdir, tfile, gconfig, file_type):
     """
     Updates the script ``tfile`` in the directory ``scriptdir`` with the file in
@@ -276,7 +276,7 @@ def update_runscript(fromdir, scriptsdir, tfile, gconfig, file_type):
                 f"{fromdir + '/' + tfile} differs from "
                 + f"{scriptsdir + '/' + tfile}:\n"
             )
-            for line in difflib.unified_diff(script_t, script_o):
+            for line in color_diff(difflib.unified_diff(script_t, script_o)):
                 differences += line
 
             # If the --update flag is used, notify that the target script will

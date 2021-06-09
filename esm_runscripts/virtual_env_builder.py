@@ -59,30 +59,100 @@ def _source_and_run_bin_in_venv(venv_context, command, shell):
     return subprocess.check_call(command, shell=shell)
 
 def _install_tools(venv_context, config):
-    #_run_bin_in_venv(venv_context, ['pip', 'install', 'git+https://github.com/esm-tools/esm_tools'])
+    """
+    Installs the ESM-Tools packages for a virtual environment, taking into account
+    the user's specifications for editable packages and desired branches.
+
+    To control which packages are installed in editable mode the user can add the
+    following to their runscript:
+
+    .. code-block:: yaml
+
+       general:
+           install_<esm_package>_editable: True/False
+
+    To control which package branch is installed (compatible with editable mode and
+    non-editable mode) the user can add the following to their runscript:
+
+    .. code-block:: yaml
+
+       general:
+           install_<esm_package>_branch: <branch_name>
+
+    Parameters
+    ----------
+    venv_context : type
+        Some description
+    config : dict
+        Configuration dictionary for this run
+    """
+
+    # First installation of all packages, with the desired mode (editable/non-editable),
+    # and branches, together with all their dependencies
+    _install_tools_general(venv_context, config)
+    # Some packages, such as `esm_tools` have other packages as dependencies (i.e.
+    # `esm_parser`). In the previous step, if a package is installed for which a
+    # dependency is editable and/or branched, this dependency gets back to non-editable
+    # realese-branch. The following line resinstalls all the editable/branched packages
+    # again, this time without dependencies.
+    _install_tools_general(venv_context, config, deps=False)
+
+def _install_tools_general(venv_context, config, deps=True):
+    '''
+    Actual installer of ESM-Tools packages for virtual environments. Used by
+    `_install_tools` method to correctly install packages with the user's requested
+    options for each package (editable/non-editable and branch). See `_install_tools`
+    documentation for more information.
+
+    Parameters
+    ----------
+    venv_context : type
+        Some description
+    config : dict
+        Configuration dictionary for this run
+    deps : bool
+        Boolean indicating whether dependencies should be installed or not
+    '''
+    # Setup the --no-deps flag if necessary
+    if not deps:
+        no_deps_flag = ["--no-deps"]
+    else:
+        no_deps_flag = []
+    # Loop through the esm_tools packages to be installed
     for tool in esm_tools_modules:
+        # Module info (url, editable install, branch...)
         url = f"https://github.com/esm-tools/{tool}"
         user_wants_editable = config["general"].get(f"install_{tool}_editable", False)
         user_wants_branch = config["general"].get(f"install_{tool}_branch")
+        # If the package is editable install it in <EXP_PATH>/src/esm-tools/
         if user_wants_editable:
             # Make sure the directory exists:
             src_dir = pathlib.Path(config['general']['experiment_dir'] + f"/src/esm-tools/{tool}")
-            src_dir.mkdir(parents=True, exist_ok=True)
+            if not src_dir.exists():
+                src_dir.mkdir(parents=True, exist_ok=True)
+            # Select branch if necessary
             if user_wants_branch:
                 branch_command = f" -b {user_wants_branch} "
             else:
                 branch_command = ""
-            subprocess.check_call(f"git clone --quiet {branch_command} {url} {src_dir}", shell=True)
-            _run_bin_in_venv(venv_context, ["pip", "install", "-q", f"--find-links={os.environ.get('HOME')}/.cache/pip/wheels", "-e", src_dir])
-            _run_bin_in_venv(venv_context, ["pip", "wheel", "-q", f"--wheel-dir={os.environ.get('HOME')}/.cache/pip/wheels", src_dir])
-        else:
+            # Clone from git
+            if deps:
+                subprocess.check_call(f"git clone --quiet {branch_command} {url} {src_dir}", shell=True)
+            # Carry out the editable installation (with or without dependencies)
+            _run_bin_in_venv(venv_context, ["pip", "install", "-q", f"--find-links={os.environ.get('HOME')}/.cache/pip/wheels", "-e", src_dir] + no_deps_flag)
+            _run_bin_in_venv(venv_context, ["pip", "wheel", "-q", f"--wheel-dir={os.environ.get('HOME')}/.cache/pip/wheels", "-e", src_dir] + no_deps_flag)
+        # If the package is not editable then do a standard installation.
+        # Note: this step only runs with the `--no-deps` flag if the user has specified
+        # a branch, as this flags means also that is the second time passing through
+        # here, and we don't want to waste time on installing everything a second time
+        # if not necessary.
+        elif deps or (not deps and user_wants_branch):
             url = f"git+{url}"
             if user_wants_branch:
                 url += f"@{user_wants_branch}"
             # NOTE(PG): We need the -U flag to ensure the branch is actually installed.
-            _run_bin_in_venv(venv_context, ["pip", "install", '-q', f"--find-links={os.environ.get('HOME')}/.cache/pip/wheels", "-U", url])
-            _run_bin_in_venv(venv_context, ["pip", "wheel", '-q', f"--wheel-dir={os.environ.get('HOME')}/.cache/pip/wheels", url])
-
+            _run_bin_in_venv(venv_context, ["pip", "install", '-q', f"--find-links={os.environ.get('HOME')}/.cache/pip/wheels", "-U", url] + no_deps_flag)
+            _run_bin_in_venv(venv_context, ["pip", "wheel", '-q', f"--wheel-dir={os.environ.get('HOME')}/.cache/pip/wheels", url] + no_deps_flag)
 
 def _install_required_plugins(venv_context, config):
     required_plugins = []
@@ -109,15 +179,20 @@ def venv_bootstrap(config):
             config["general"]["command_line_config"]["use_venv"] = config["general"]["use_venv"]
     if config["general"].get("use_venv", False):
         if not in_virtualenv():
-            print(f"Building virtual env, please be patient (this takes about 3 minutes)...")
-            start_time = datetime.datetime.now()
             venv_path = pathlib.Path(config['general']['experiment_dir']).joinpath('.venv_esmtools')
-            venv_context = _venv_create(venv_path)
-            _run_python_in_venv(venv_context, ['-m', 'pip', '-q', 'install', '-U', 'pip'])
-            _run_python_in_venv(venv_context, ['-m', 'pip', '-q', 'install', '-U', 'wheel'])
-            _install_tools(venv_context, config)
-            _install_required_plugins(venv_context, config)
-            print(f"...finished {datetime.datetime.now() - start_time}, restarting your job in the virtual env")
+            if venv_path.exists():
+                print(f"{venv_path} already exists, reusing...")
+                venv_context = _EnvBuilder(with_pip=True).ensure_directories(venv_path)
+            else:
+                print(f"Building virtual env, please be patient (this takes about 3 minutes)...")
+                start_time = datetime.datetime.now()
+                venv_path = pathlib.Path(config['general']['experiment_dir']).joinpath('.venv_esmtools')
+                venv_context = _venv_create(venv_path)
+                _run_python_in_venv(venv_context, ['-m', 'pip', '-q', 'install', '-U', 'pip'])
+                _run_python_in_venv(venv_context, ['-m', 'pip', '-q', 'install', '-U', 'wheel'])
+                _install_tools(venv_context, config)
+                _install_required_plugins(venv_context, config)
+                print(f"...finished {datetime.datetime.now() - start_time}, restarting your job in the virtual env")
             sys.argv[0] = pathlib.Path(sys.argv[0]).name
             # NOTE(PG): This next line allows the job to restart itself in the
             # virtual environment.
@@ -180,7 +255,10 @@ def _integorate_user_venv(config):
             choices=[
                 'Run in virtualenv (You may set the flag `--contained-run` during your run call or set `general.use_venv: True`)',
                 'Run using default installation (You may set the flag `--open-run` during your run call or set `general.use_venv: False`)',
+                "Quit right now to adapt your runscript",
             ]).ask()  # returns value of selection
+        if "Quit" in response:
+            sys.exit(0)
         config['general']['use_venv'] = "Run in virtualenv" in response
         user_confirmed = questionary.confirm("Are you sure?").ask()
     if "Run in virtualenv" in response:

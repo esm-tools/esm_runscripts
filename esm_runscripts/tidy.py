@@ -268,43 +268,6 @@ def _clean_old_runs_size(config):
 
 
 
-#def all_done(config):
-#    helpers.write_to_log(
-#        config,
-#        [
-#            str(config["general"]["jobtype"]),
-#            str(config["general"]["run_number"]),
-#            str(config["general"]["current_date"]),
-#            str(config["general"]["jobid"]),
-#            "- done",
-#        ],
-#    )
-#
-#    database_actions.database_entry_success(config)
-#    return config
-#
-#def signal_tidy_completion(config):
-#    helpers.write_to_log(
-#        config,
-#        [
-#            str(config["general"]["jobtype"]),
-#            str(config["general"]["run_number"]),
-#            str(config["general"]["current_date"]),
-#            str(config["general"]["jobid"]),
-#            "- done",
-#        ],
-#    )
-#    return config
-
-
-# DONT LIKE THE FOLLOWING PART...
-# I wish it was closer to the copy_files routine in filelists,
-# but as it is really a different thing - moving everything
-# found compared to copying everything in filelists - a second
-# implementation might be OK... (DB)
-
-
-
 def throw_away_some_infiles(config):
     if config["general"]["run_number"] == 1:
         return config

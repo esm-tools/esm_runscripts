@@ -15,41 +15,61 @@ def run_job(config):
     return config
 
 
+def mini_resolve_variable_date_file(date_file, config):
+    while "${" in date_file:
+        pre, post = date_file.split("${", 1)
+        variable, post = post.split("}", 1)
+        if "." in variable:
+            variable_section, variable = variable.split(".")
+            answer = config[variable_section].get(variable)
+        else:
+            answer = config["general"].get(variable)
+            if not answer:
+                answer = config.get("env", {}).get(variable)
+                if not answer:
+                    try:
+                        assert (variable.startswith("env.") or variable.startswith("general."))
+                    except AssertionError:
+                        print("The date file contains a variable which is not in the >>env<< or >>general<< section. This is not allowed!")
+                        print(f"date_file = {date_file}")
+                        sys.exit(1)
+        date_file = pre + answer + post
+    return date_file
 
 
 def _read_date_file(config):
-    if not (
-            config["general"].get("current_date", None) and 
-            config["general"].get("run_number", None)
-            ):
+    import os
+    import logging
 
-                date_file = (
-                    config["general"]["experiment_dir"]
-                    + "/scripts/"
-                    + config["general"]["expid"]
-                    + "_"
-                    + config["general"]["setup_name"]
-                    + ".date"
-                )
-                if os.path.isfile(date_file):
-                    logging.info("Date file read from %s", date_file)
-                    with open(date_file) as date_file:
-                        date, run_number = date_file.readline().strip().split()
-                        run_number = int(run_number)
-                    write_file = False
-                else:
-                    logging.info("No date file found %s", date_file)
-                    logging.info("Initializing run_number=1 and date=18500101")
-                    date = config["general"].get("initial_date", "18500101")
-                    run_number = 1
-                    write_file = True
+    date_file = (
+        config["general"]["experiment_dir"]
+        + "/scripts/"
+        + config["general"]["expid"]
+        + "_"
+        + config["general"]["setup_name"]
+        + ".date"
+    )
 
-                config["general"]["run_number"] = run_number
-                config["general"]["current_date"] = date
-    
-    logging.info("current_date = %s", config["general"]["current_date"])
-    logging.info("run_number = %s", config["general"]["run_number"])
+    date_file = mini_resolve_variable_date_file(date_file, config)
+
+    if os.path.isfile(date_file):
+        logging.info("Date file read from %s", date_file)
+        with open(date_file) as date_file:
+            date, run_number = date_file.readline().strip().split()
+            run_number = int(run_number)
+        write_file = False
+    else:
+        logging.info("No date file found %s", date_file)
+        logging.info("Initializing run_number=1 and date=18500101")
+        date = config["general"].get("initial_date", "18500101")
+        run_number = 1
+        write_file = True
+    config["general"]["run_number"] = run_number
+    config["general"]["current_date"] = date
+    logging.info("current_date = %s", date)
+    logging.info("run_number = %s", run_number)
     return config
+
 
 
 
@@ -520,6 +540,7 @@ def _add_all_folders(config):
 
 
 def set_prev_date(config):
+    import esm_parser
 
     """Sets several variables relevant for the previous date. Loops over all models in ``valid_model_names``, and sets model variables for:
     * ``prev_date``
@@ -537,6 +558,14 @@ def set_prev_date(config):
                 0,
                 int(config[model]["time_step"]),
             )
+            config[model]["last_parent_date"] = config[model]["prev_date"] - (
+                0,
+                0,
+                0,
+                0,
+                0,
+                int(config[model]["time_step"]),
+            )
 
         # NOTE(PG, MAM): Here we check if the time step still has a variable which might be set in a different model, and resolve this case
         elif "time_step" in config[model] and (
@@ -547,6 +576,14 @@ def set_prev_date(config):
                 model, config[model]["time_step"], config, [], []
             )
             config[model]["prev_date"] = config["general"]["current_date"] - (
+                0,
+                0,
+                0,
+                0,
+                0,
+                int(dt),
+            )
+            config[model]["last_parent_date"] = config[model]["prev_date"] - (
                 0,
                 0,
                 0,

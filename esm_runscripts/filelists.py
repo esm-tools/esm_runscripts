@@ -1,3 +1,4 @@
+import datetime
 import os
 import sys
 import shutil
@@ -37,8 +38,10 @@ def rename_sources_to_targets(config):
                             + "_sources and "
                             + filetype
                             + "_in_work in model "
-                            + model
+                            + model,
+                            flush=True
                         )
+                        print(datetime.datetime.now(), flush=True)
                         sys.exit(-1)
 
                 elif sources and targets and not in_work:
@@ -51,8 +54,10 @@ def rename_sources_to_targets(config):
                             "Renaming sources to targets for filetype "
                             + filetype
                             + " in model "
-                            + model
+                            + model,
+                            flush=True
                         )
+                        print(datetime.datetime.now(), flush=True)
                     config[model][filetype + "_targets"] = copy.deepcopy(
                         config[model][filetype + "_sources"]
                     )
@@ -84,9 +89,10 @@ def rename_sources_to_targets(config):
                             + "_targets and "
                             + filetype
                             + "_in_work in model "
-                            + model
+                            + model,
+                            flush=True
                         )
-                        esm_parser.pprint_config(config[model])
+                        print(datetime.datetime.now(), flush=True)
                         sys.exit(-1)
 
                 elif sources and targets and not in_work:
@@ -94,7 +100,8 @@ def rename_sources_to_targets(config):
                     pass
 
                 elif (not sources and in_work) or (not sources and targets):
-                    print(filetype + "_sources missing in model " + model)
+                    print(filetype + "_sources missing in model " + model, flush=True)
+                    print(datetime.datetime.now(), flush=True)
                     sys.exit(-1)
 
                 elif sources and not targets:
@@ -131,7 +138,8 @@ def complete_targets(config):
 
 def complete_sources(config):
     if config["general"]["verbose"]:
-        print("Complete sources")
+        print("Complete sources", flush=True)
+        print(datetime.datetime.now(), flush=True)
     for filetype in config["general"]["out_filetypes"]:
         for model in config["general"]["valid_model_names"] + ["general"]:
             if filetype + "_sources" in config[model]:
@@ -148,9 +156,28 @@ def complete_sources(config):
 def reuse_sources(config):
     if config["general"]["run_number"] == 1:
         return config
-    for filetype in config["general"]["reusable_filetypes"]:
+
+    # MA: the changes below are to be able to specify model specific reusable_filetypes
+    # without changing the looping order (a model loop nested inside a file-type loop)
+
+    # Put together all the possible reusable file types
+    all_reusable_filetypes = []
+    for model in config["general"]["valid_model_names"] + ["general"]:
+         all_reusable_filetypes = list(
+            set(all_reusable_filetypes + config[model].get("reusable_filetypes", []))
+        )
+    # Loop through all the reusable file types
+    for filetype in all_reusable_filetypes:
         for model in config["general"]["valid_model_names"] + ["general"]:
-            if filetype + "_sources" in config[model]:
+            # Get the model-specific reusable_filetypes, if not existing, get the
+            # general ones
+            model_reusable_filetypes = config[model].get(
+                "reusable_filetypes",
+                config["general"]["reusable_filetypes"]
+            )
+            # If <filetype>_sources dictionary exists and filetype is in the
+            # model-specific filetype list then add the sources
+            if filetype + "_sources" in config[model] and filetype in model_reusable_filetypes:
                 for categ in config[model][filetype + "_sources"]:
                     config[model][filetype + "_sources"][categ] = (
                         config[model]["experiment_" + filetype + "_dir"]
@@ -179,10 +206,12 @@ def choose_needed_files(config):
                         + " not found for filetype "
                         + filetype
                         + " of model "
-                        + model
+                        + model,
+                        flush=True
                     )
-                    print(config[model][filetype + "_files"])
-                    print(config[model][filetype + "_sources"])
+                    print(config[model][filetype + "_files"], flush=True)
+                    print(config[model][filetype + "_sources"], flush=True)
+                    print(datetime.datetime.now(), flush=True)
                     sys.exit(-1)
                 new_sources.update({categ: config[model][filetype + "_sources"][name]})
 
@@ -209,6 +238,12 @@ def globbing(config):
                 ):  # * only in targets if denotes subfolder
                     if "*" in filename:
                         del config[model][filetype + "_sources"][descr]
+                        # Save the wildcard string for later use when copying to target
+                        wild_card = config[model].get(
+                            f"{filetype}_sources_wild_card", {}
+                        )
+                        wild_card[descr] = filename.split("/")[-1]
+                        config[model][filetype + "_sources_wild_card"] = wild_card
                         # skip subdirectories in file list, otherwise they
                         # will be listed as missing files later on
                         all_filenames = [f for f in glob.glob(filename) if not os.path.isdir(f)]
@@ -244,8 +279,10 @@ def target_subfolders(config):
                 ):  # * only in targets if denotes subfolder
                     if not descr in config[model][filetype + "_sources"]:
                         print(
-                            "no source found for target " + name + " in model " + model
+                            "no source found for target " + name + " in model " + model,
+                            flush=True
                         )
+                        print(datetime.datetime.now(), flush=True)
                         sys.exit(-1)
                     if "*" in filename:
                         source_filename = os.path.basename(
@@ -260,13 +297,43 @@ def target_subfolders(config):
                                 descr
                             ] = filename.replace("*", source_filename)
                         elif "/" in filename:
-                            config[model][filetype + "_targets"][
-                                descr
-                            ] = "/".join(filename.split("/")[:-1]) + "/" + source_filename.split("/")[-1]
+                            config[model][filetype + "_targets"][descr] = (
+                                "/".join(filename.split("/")[:-1])
+                                + "/"
+                                + source_filename.split("/")[-1]
+                            )
                         else:
-                            config[model][filetype + "_targets"][
-                                descr
-                            ] = source_filename.split("/")[-1]
+                            # Get the general description of the filename
+                            gen_descr = descr.split("_glob_")[0]
+                            # Load the wild cards from source and target and split them
+                            # at the *
+                            wild_card_source_all = config[model][
+                                f"{filetype}_sources_wild_card"
+                            ]
+                            wild_card_source = wild_card_source_all[gen_descr].split(
+                                "*"
+                            )
+                            wild_card_target = filename.split("*")
+                            # Check for syntax mistakes
+                            if len(wild_card_target) != len(wild_card_source):
+                                esm_parser.user_error(
+                                    "Wild card",
+                                    (
+                                        "The wild card pattern of the source "
+                                        + f"{wild_card_source} does not match with the "
+                                        + f"target {wild_card_target}. Make sure the "
+                                        + f"that the number of * are the same in both "
+                                        + f"sources and targets."
+                                    ),
+                                )
+                            # Loop through the pieces of the wild cards to create
+                            # the correct target name by substituting in the source
+                            # name
+                            target_name = source_filename
+                            for wcs, wct in zip(wild_card_source, wild_card_target):
+                                target_name = target_name.replace(wcs, wct)
+                            # Return the correct target name
+                            config[model][filetype + "_targets"][descr] = target_name
                     elif filename.endswith("/"):
                         source_filename = os.path.basename(
                             config[model][filetype + "_sources"][descr]
@@ -418,6 +485,8 @@ def replace_year_placeholder(config):
 
 
 def log_used_files(config):
+    if config["general"]["verbose"]:
+        print("\n::: Logging used files", flush=True)
     filetypes = config["general"]["relevant_filetypes"]
     for model in config["general"]["valid_model_names"] + ["general"]:
         with open(
@@ -456,12 +525,12 @@ def log_used_files(config):
                             + config[model][filetype + "_targets"][category]
                         )
                         if config["general"]["verbose"]:
-                            print(
-                                "-  "
-                                + config[model][filetype + "_targets"][category]
-                                + " : "
-                                + config[model][filetype + "_sources"][category]
-                            )
+                            print(flush=True)
+                            print((f'- source: '
+                                f'{config[model][filetype + "_sources"][category]}'), flush=True)
+                            print((f'- target: '
+                                f'{config[model][filetype + "_targets"][category]}'), flush=True)
+                            print(datetime.datetime.now(), flush=True)
                         flist.write("\n")
                 flist.write("\n")
                 flist.write(80 * "-")
@@ -518,7 +587,8 @@ def check_for_unknown_files(config):
         unknown_files.append(os.path.realpath(thisfile))
 
         index += 1
-        print("Unknown file in work: " + os.path.realpath(thisfile))
+        print("Unknown file in work: " + os.path.realpath(thisfile), flush=True)
+        print(datetime.datetime.now(), flush=True)
 
     return config
 
@@ -528,11 +598,12 @@ def resolve_symlinks(file_source):
     if os.path.islink(file_source):
         points_to = os.path.realpath(file_source)
 
-        # deniz: check if file links to itself. In UNIX 
+        # deniz: check if file links to itself. In UNIX
         # ln -s endless_link endless_link is a valid command
         if os.path.abspath(file_source) == points_to:
             if config["general"]["verbose"]:
-                print(f"file {file_source} links to itself")
+                print(f"file {file_source} links to itself", flush=True)
+                print(datetime.datetime.now(), flush=True)
             return file_source
         
         # recursively find the file that the link is pointing to
@@ -543,6 +614,9 @@ def resolve_symlinks(file_source):
 
 
 def copy_files(config, filetypes, source, target):
+    if config["general"]["verbose"]:
+        print("\n::: Copying files", flush=True)
+        print(datetime.datetime.now(), flush=True)
 
     successful_files = []
     missing_files = {}
@@ -568,31 +642,19 @@ def copy_files(config, filetypes, source, target):
                 targetblock = config[model][filetype + "_" + text_target]
                 for categ in sourceblock:
                     file_source = os.path.normpath(sourceblock[categ])
-                    # NOTE(PG): This is a really, really, REALLY bad hack and it
-                    # makes me physically ill to look at:
-                    # NOTE(MA): The previous implementation was not able to include
-                    # namelists that have no ``namelist`` in their name. This is a more
-                    # general implementation but it enforces the use of the
-                    # ``namelists`` list to be defined for each model with namelists.
-                    namelist_candidates = (
-                        [item for item in config[model].get("namelists", [])]
-                        + ["namelist"]
-                    )
-                    isnamelist = any(map(file_source.__contains__, namelist_candidates))
-                    if source == "init":
-                        if isnamelist and file_source.startswith("NONE_YET"):
-                            file_source = esm_tools.get_namelist_filepath(
-                                file_source.replace("NONE_YET/", "")
-                            )
                     file_target = os.path.normpath(targetblock[categ])
                     if config["general"]["verbose"]:
-                        print(f"source: {file_source}")
-                        print(f"   --> target: {file_target}")
+                        print(flush=True)
+                        print(f"- source: {file_source}", flush=True)
+                        print(f"- target: {file_target}", flush=True)
+                        print(datetime.datetime.now(), flush=True)
                     if file_source == file_target:
                         if config["general"]["verbose"]:
                             print(
-                                f"Source and target paths are identical, skipping {file_source}"
+                                f"Source and target paths are identical, skipping {file_source}",
+                                flush=True
                             )
+                            print(datetime.datetime.now(), flush=True)
                         continue
                     dest_dir = os.path.dirname(file_target)
                     file_source = resolve_symlinks(file_source)
@@ -604,7 +666,8 @@ def copy_files(config, filetypes, source, target):
                                 # (same as with ``mkdir -p <directory>>``)
                                 os.makedirs(dest_dir)
                             if not os.path.isfile(file_source):
-                                print(f"File not found: {file_source}...")
+                                print(f"WARNING: File not found: {file_source}", flush=True)
+                                print(datetime.datetime.now(), flush=True)
                                 missing_files.update({file_target: file_source})
                                 continue
                             if os.path.isfile(file_target) and filecmp.cmp(
@@ -612,43 +675,49 @@ def copy_files(config, filetypes, source, target):
                             ):
                                 if config["general"]["verbose"]:
                                     print(
-                                        f"Source and target file are identical, skipping {file_source}"
+                                        f"Source and target file are identical, skipping {file_source}",
+                                        flush=True
                                     )
+                                    print(datetime.datetime.now(), flush=True)
                                 continue
                             movement_method(file_source, file_target)
                             #shutil.copy2(file_source, file_target)
                             successful_files.append(file_source)
                         except IOError:
                             print(
-                                f"Could not copy {file_source} to {file_target} for unknown reasons."
+                                f"Could not copy {file_source} to {file_target} for unknown reasons.",
+                                flush=True
                             )
+                            print(datetime.datetime.now(), flush=True)
                             missing_files.update({file_target: file_source})
 
     if missing_files:
         if not "files_missing_when_preparing_run" in config["general"]:
             config["general"]["files_missing_when_preparing_run"] = {}
         if config["general"]["verbose"]:
-            six.print_("--- WARNING: These files were missing:")
+            six.print_("\n\nWARNING: These files were missing:")
             for missing_file in missing_files:
-                print("  - " + missing_file + ": " + missing_files[missing_file])
+                print(f'- missing source: {missing_files[missing_file]}', flush=True)
+                print(f'- missing target: {missing_file}', flush=True)
+                print(datetime.datetime.now(), flush=True)
         config["general"]["files_missing_when_preparing_run"].update(missing_files)
     return config
 
 
 def report_missing_files(config):
+    # this list is populated by the ``copy_files`` function in filelists.py
     if "files_missing_when_preparing_run" in config["general"]:
         config = _check_fesom_missing_files(config)
         if not config["general"]["files_missing_when_preparing_run"] == {}:
-            six.print_(80 * "=")
-            print("MISSING FILES:")
+            print("MISSING FILES:", flush=True)
         for missing_file in config["general"]["files_missing_when_preparing_run"]:
-            print("--  " + missing_file + ": ")
-            print(
-                "        --> "
-                + config["general"]["files_missing_when_preparing_run"][missing_file]
-            )
+            print(flush=True)
+            print(f'- missing source: {config["general"]["files_missing_when_preparing_run"][missing_file]}', flush=True)
+            print(f'- missing target: {missing_file}', flush=True)
+            print(datetime.datetime.now(), flush=True)
         if not config["general"]["files_missing_when_preparing_run"] == {}:
             six.print_(80 * "=")
+        print()
     return config
 
 
@@ -710,21 +779,23 @@ def get_method(movement):
         return os.symlink
     elif movement == "move":
         return os.rename
-    print ("Unknown file movement type, using copy (safest option).")
+    print("Unknown file movement type, using copy (safest option).", flush=True)
     return shutil.copy2
 
 
 def complete_all_file_movements(config):
+
+    mconfig = config["general"]
+    if "defaults.yaml" in mconfig:
+        if "per_model_defaults" in mconfig["defaults.yaml"]:
+            if "file_movements" in mconfig["defaults.yaml"]["per_model_defaults"]:
+                mconfig["file_movements"] = copy.deepcopy(mconfig["defaults.yaml"]["per_model_defaults"]["file_movements"])
+                del mconfig["defaults.yaml"]["per_model_defaults"]["file_movements"]
+
     config = create_missing_file_movement_entries(config)
 
     for model in config["general"]["valid_model_names"] + ["general"]:
         mconfig = config[model]
-        if model == "general":
-            if "defaults.yaml" in mconfig:
-                if "per_model_defaults" in mconfig["defaults.yaml"]:
-                    if "file_movements" in mconfig["defaults.yaml"]["per_model_defaults"]:
-                        mconfig["file_movements"] = mconfig["defaults.yaml"]["per_model_defaults"]["file_movements"]
-                        del mconfig["defaults.yaml"]["per_model_defaults"]["file_movements"]
         if "file_movements" in mconfig:
             for filetype in config["general"]["all_model_filetypes"] + ["scripts", "unknown"]:
                 if filetype in mconfig["file_movements"]:
@@ -733,7 +804,7 @@ def complete_all_file_movements(config):
                         for movement in ['init_to_exp', 'exp_to_run', 'run_to_work', 'work_to_run']:
                             config = complete_one_file_movement(config, model, filetype, movement, movement_type)
                         del mconfig["file_movements"][filetype]["all_directions"]
-            
+
             if "default" in mconfig["file_movements"]:
                 if "all_directions" in mconfig["file_movements"]["default"]:
                     movement_type = mconfig["file_movements"]["default"]["all_directions"]
@@ -751,7 +822,13 @@ def complete_all_file_movements(config):
 
 def get_movement(config, model, filetype, source, target):
     if source == "init":
-        if config["general"]["run_number"] == 1 or filetype not in config["general"]["reusable_filetypes"]:
+        # Get the model-specific reusable_filetypes, if not existing, get the
+        # general ones
+        model_reusable_filetypes = config[model].get(
+            "reusable_filetypes",
+            config["general"]["reusable_filetypes"]
+        )
+        if config["general"]["run_number"] == 1 or filetype not in model_reusable_filetypes:
             return config[model]["file_movements"][filetype]["init_to_exp"]
         else:
             return config[model]["file_movements"][filetype]["exp_to_run"]
@@ -761,7 +838,8 @@ def get_movement(config, model, filetype, source, target):
         return config[model]["file_movements"][filetype]["run_to_work"]
     else:
         # This should NOT happen
-        print (f"Error: Unknown file movement from {source} to {target}")
+        print(f"Error: Unknown file movement from {source} to {target}", flush=True)
+        print(datetime.datetime.now(), flush=True)
         sys.exit(42)
 
 

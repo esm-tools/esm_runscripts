@@ -207,8 +207,8 @@ class Namelist:
             else:
                 disturbance_file = None
                 if config["general"]["verbose"]:
-                    print(
-                        config["general"]["experiment_scripts_dir"]
+                    print("WARNING: "
+                        + config["general"]["experiment_scripts_dir"]
                         + "/disturb_years.dat",
                         "was not found",
                     )
@@ -288,9 +288,12 @@ class Namelist:
         for nml_name, nml_obj in six.iteritems(mconfig.get("namelists", {})):
             all_nmls[nml_name] = nml_obj  # PG: or a string representation?
         for nml_name, nml in all_nmls.items():
-            six.print_("Final Contents of ", nml_name, ":")
+            message = f'\nFinal Contents of {nml_name}:'
+            six.print_(message)
+            six.print_(len(message) * '-')
             nml.write(sys.stdout)
-            six.print_("\n", 40 * "+ ")
+            print('-' * 80)
+            print(f'::: end of the contents of {nml_name}\n')
         return mconfig
 
     

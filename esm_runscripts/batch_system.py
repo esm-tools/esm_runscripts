@@ -1,4 +1,5 @@
 import os
+import textwrap
 import sys
 import stat
 import shutil
@@ -6,11 +7,13 @@ import shutil
 import esm_environment
 import six
 
+from esm_parser import user_error
 from . import helpers
 from . import dataprocess
 from .slurm import Slurm
+from .pbs import Pbs
 
-known_batch_systems = ["slurm"]
+known_batch_systems = ["slurm", "pbs"]
 reserved_jobtypes = ["prepcompute", "compute", "prepare", "tidy", "inspect"]
 
 
@@ -24,9 +27,10 @@ class batch_system:
     # should be written independent of actual batch system
     def __init__(self, config, name):
         self.name = name
-
         if name == "slurm":
             self.bs = Slurm(config)
+        elif name == "pbs":
+            self.bs = Pbs(config)
         else:
             raise UnknownBatchSystemError(name)
 
@@ -35,6 +39,18 @@ class batch_system:
 
     def get_jobid(self):
         return self.bs.get_jobid()
+
+    def get_job_state(self, jobid):
+        return self.bs.get_job_state(jobid)
+
+    def job_is_still_running(self, jobid):
+        return self.bs.job_is_still_running(jobid)
+
+    def add_pre_launcher_lines(self, config, sadfile):
+        self.bs.add_pre_launcher_lines(config, sadfile)
+
+    # methods that actually do something
+
 
     def write_hostfile(self, config):
         self.bs.write_hostfile(config)
@@ -45,14 +61,6 @@ class batch_system:
                 ) 
         shutil.copyfile(self.bs.path, hostfile_in_work)
         return config
-
-    def get_job_state(self, jobid):
-        return self.bs.get_job_state(jobid)
-
-    def job_is_still_running(self, jobid):
-        return self.bs.job_is_still_running(jobid)
-
-    # methods that actually do something
 
 
     @staticmethod
@@ -92,8 +100,17 @@ class batch_system:
         this_batch_system = config["computer"]
         if "sh_interpreter" in this_batch_system:
             header.append("#!" + this_batch_system["sh_interpreter"])
-        tasks = config["general"]["resubmit_tasks"]
 
+        tasks = config["general"]["resubmit_tasks"]
+        nodes = config["general"]["resubmit_nodes"]
+
+        if config["computer"].get("heterogeneous_parallelization", False):
+            tasks_nodes_flag = "nodes_flag"
+        elif config["computer"]["batch_system"] in ["pbs"]:
+            tasks_nodes_flag = "nodes_flag"
+        else:
+            tasks_nodes_flag = "tasks_flag"
+        
         if cluster == "compute":
             partition = config["computer"]["partitions"]["compute"]["name"]
         else:
@@ -101,6 +118,7 @@ class batch_system:
 
         replacement_tags = [
                 ("@tasks@", tasks),
+                ("@nodes@", nodes),
                 ("@partition@", partition),
                 ("@jobtype@", cluster),
                 ]
@@ -108,7 +126,7 @@ class batch_system:
         all_flags = [
             "partition_flag",
             "time_flag",
-            "tasks_flag",
+            tasks_nodes_flag,
             "output_flags",
             "name_flag",
         ]
@@ -117,21 +135,41 @@ class batch_system:
             "notification_flag",
             "hyperthreading_flag",
             "additional_flags",
+            "overcommit_flag"
         ]
         #??? Do we need the exclusive flag?
         if config["general"]["jobtype"] in ["compute", "tidy"]:
             conditional_flags.append("exclusive_flag")
         for flag in conditional_flags:
-            if flag in this_batch_system and not this_batch_system[flag].strip() == "":
-                all_flags.append(flag)
-        for flag in all_flags:
+            if flag in this_batch_system:
+                values_in_flag = []
+                flag_value = this_batch_system[flag]
+
+                if isinstance(flag_value, str):
+                    values_in_flag.append(flag_value)
+                elif isinstance(flag_value, list):
+                    values_in_flag.extend(flag_value)
+                
+                # checking whether we have any empty values
+                any_empty_values = any([item.strip() == "" for item in values_in_flag])
+                if not any_empty_values:
+                    all_flags.append(flag)
+
+        # some items in `all_values` list might be lists, so flatten it
+        all_values = [this_batch_system[flag] for flag in all_flags]
+        all_values_flat = []
+        for value in all_values:
+            if isinstance(value, str):
+                all_values_flat.append(value)
+            elif isinstance(value, list):
+                all_values_flat.extend(value)
+        
+        # loop over all batch flag values and replace the tags
+        for value in all_values_flat:
             for (tag, repl) in replacement_tags:
-                this_batch_system[flag] = this_batch_system[flag].replace(
-                    tag, str(repl)
-                )
-            header.append(
-                this_batch_system["header_start"] + " " + this_batch_system[flag]
-            )
+                value = value.replace(tag, str(repl))
+            header.append(this_batch_system["header_start"] + " " + value)
+        
         return header
 
 
@@ -143,8 +181,11 @@ class batch_system:
         # component (in case a hostfile needs to be written)
 
         tasks = 0
+        nodes = 0
         start_proc = 0
         end_proc = 0
+        start_core = 0
+        end_core = 0
 
         # if not explicitly stated for which cluster we need the
         # requirements, calculate them for the job we are already in
@@ -154,28 +195,41 @@ class batch_system:
 
         if cluster in reserved_jobtypes:
             for model in config["general"]["valid_model_names"]:
+                omp_num_threads = int(config[model].get("omp_num_threads", 1))
                 if "nproc" in config[model]:
                     config[model]["tasks"] = config[model]["nproc"]
-                    end_proc = start_proc + int(config[model]["nproc"]) - 1
+                    
+                    cores_per_node = config['computer']['cores_per_node']
+                    # If heterogeneous MPI-OMP
+                    nodes += (
+                        int(nproc * omp_num_threads / cores_per_node)
+                        + ((nproc * omp_num_threads) % cores_per_node > 0)
+                    )
+                # KH 30.04.20: nprocrad is replaced by more flexible
+                # partitioning using nprocar and nprocbr
+                if (
+                    config[model].get("nprocar", "remove_from_namelist") != "remove_from_namelist" 
+                    and 
+                    config[model].get("nprocbr", "remove_from_namelist") != "remove_from_namelist" 
+                    ):
+                        config[model]["tasks"] = config[model]["nprocar"] * config[model]["nprocbr"]
+                
                 elif "nproca" in config[model] and "nprocb" in config[model]:
                     config[model]["tasks"] = config[model]["nproca"] * config[model]["nprocb"]
                     end_proc = start_proc + int(config[model]["nproca"])*int(config[model]["nprocb"]) - 1
 
-                    # KH 30.04.20: nprocrad is replaced by more flexible
-                    # partitioning using nprocar and nprocbr
-                    if "nprocar" in config[model] and "nprocbr" in config[model]:
-                        if (
-                            config[model]["nprocar"] != "remove_from_namelist"
-                            and config[model]["nprocbr"] != "remove_from_namelist"
-                        ):
-                            config[model]["tasks"] = config[model]["nprocar"] * config[model]["nprocbr"]
-                            end_proc += config[model]["nprocar"] * config[model]["nprocbr"]
                 else:
                     continue
+
+
+                config[model]["threads"] = config[model]["tasks"] * omp_num_threads
                 tasks += config[model]["tasks"]
-                config[model]["end_proc"] = end_proc
+                config[model]["end_proc"] = start_proc + config[model]["tasks"] - 1
+                config[model]["end_core"] = start_core + config[model]["threads"] - 1
                 config[model]["start_proc"] = start_proc
+                config[model]["start_core"] = start_core
                 start_proc = end_proc + 1
+                start_core = start_core + 1
 
 
         else:
@@ -190,6 +244,7 @@ class batch_system:
             tasks = config["general"]["workflow"]["subjob_clusters"][cluster][nproc]
 
         config["general"]["resubmit_tasks"] = tasks
+        config["general"]["resubmit_nodes"] = nodes
 
         return config
 
@@ -208,7 +263,6 @@ class batch_system:
         return commands
 
 
-
     @staticmethod
     def get_extra(config):
         extras = []
@@ -220,7 +274,35 @@ class batch_system:
             extras.append("source "+config["general"]["experiment_dir"]+"/.venv_esmtools/bin/activate")
         if config["general"].get("funny_comment", True):
             extras.append("# 3...2...1...Liftoff!")
+        # Search for ``pre_run_commands``s in the components
+        for component in config.keys():
+            pre_run_commands = config[component].get("pre_run_commands")
+            if isinstance(pre_run_commands, list):
+                for pr_command in pre_run_commands:
+                    if isinstance(pr_command, str):
+                        extras.append(pr_command)
+                    else:
+                        user_error('Invalid type for "pre_run_commands"', (
+                            f'"{type(pr_command)}" type is not supported for ' +
+                            f'elements of the "pre_run_commands", defined in ' +
+                            f'"{component}". Please, define ' +
+                            '"pre_run_commands" as a "list" of "strings" or a "list".'
+                        )
+                        )
+            elif isinstance(pre_run_commands, str):
+                extras.append(pre_run_commands)
+            elif pre_run_commands==None:
+                continue
+            else:
+                user_error('Invalid type for "pre_run_commands"', (
+                    f'"{type(pre_run_commands)}" type is not supported for ' +
+                    f'"pre_run_commands" defined in "{component}". Please, define ' +
+                    '"pre_run_commands" as a "string" or a "list" of "strings".'
+                )
+                )
         return extras
+
+
 
 
 
@@ -272,6 +354,8 @@ class batch_system:
                 batch_system = config["computer"]
                 if "execution_command" in batch_system:
                     commands.append("time " + batch_system["execution_command"] + " 2>&1 &")
+                    if config['general'].get('multi_srun'):
+                        return self.bs.get_run_commands_multisrun(config, commands)
             else:
                 for model in config:
                     if model == "computer":
@@ -369,6 +453,7 @@ class batch_system:
 
                     # environment for each subjob of a cluster
                     environment = batch_system.get_environment(config, subjob)
+                    batch_system.write_env(config, environment, sadfilename)
                     for line in environment:
                         sadfile.write(line + "\n")
 
@@ -425,6 +510,10 @@ class batch_system:
                     print("ERROR -- See write_simple_runscript for the code causing this.")
                     sys.exit(1)
 
+                if "modify_config_file_abspath" in config["general"]:
+                    if config["general"]["modify_config_file_abspath"]:
+                        observe_call += " -m " + config["general"]["modify_config_file_abspath"]
+
                 subjobs_to_launch = config["general"]["workflow"]["subjob_clusters"][cluster]["next_submit"]
 
                 sadfile.write("\n")
@@ -458,7 +547,27 @@ class batch_system:
                 six.print_("Contents of ", self.bs.filename, ":")
                 with open(self.bs.filename, "r") as fin:
                     print(fin.read())
+
+
         return config
+    
+
+    @staticmethod
+    def write_env(config, environment, sadfilename):
+        folder = config["general"]["thisrun_scripts_dir"]
+        this_batch_system = config["computer"]
+        sadfilename_short = sadfilename.split("/")[-1]
+        envfilename = folder + "/env.sh"
+
+        with open(envfilename, "w") as envfile:
+            if "sh_interpreter" in this_batch_system:
+                envfile.write("#!" + this_batch_system["sh_interpreter"] + "\n")
+            envfile.write(f"# ENVIRONMENT used in {sadfilename_short}\n")
+            envfile.write("# Use this file to source the environment in your\n")
+            envfile.write("# preprocessing or postprocessing scripts\n\n")
+            for line in environment:
+                envfile.write(line + "\n")
+
 
 def submits_another_job(config, cluster):
     clusterconf = config["general"]["workflow"]["subjob_clusters"][cluster]

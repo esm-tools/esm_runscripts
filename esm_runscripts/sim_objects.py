@@ -28,7 +28,7 @@ class SimulationSetup(object):
 
         #self.config = workflow.assemble(self.config)
             
-        
+        self.config = config_initialization.PrevRunInfo(self.config) 
         self.config = prepare.run_job(self.config)
 
 

@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import copy
 
 import esm_rcfile
 import six
@@ -8,6 +9,7 @@ import yaml
 import stat
 
 from esm_calendar import Date
+from colorama import Fore, Back, Style, init
 
 import esm_tools
 
@@ -175,9 +177,9 @@ def modify_namelists(config):
 
     if config["general"]["verbose"]:
         six.print_("\n" "- Setting up namelists for this run...")
-        for model in config["general"]["valid_model_names"]:
-            six.print_("-" * 80)
-            six.print_("* %s" % config[model]["model"], "\n")
+        for index, model in enumerate(config["general"]["valid_model_names"]):
+            print(f'{index+1}) {config[model]["model"]}')
+        print()
 
     for model in config["general"]["valid_model_names"]:
         config[model] = Namelist.nmls_load(config[model])
@@ -190,13 +192,13 @@ def modify_namelists(config):
         )
 
     if config["general"]["verbose"]:
-        print("end of namelist section")
+        print("::: end of namelist section\n")
     return config
+
 
 
 def copy_files_to_thisrun(config):
     if config["general"]["verbose"]:
-        six.print_("=" * 80, "\n")
         six.print_("PREPARING EXPERIMENT")
         # Copy files:
         six.print_("\n" "- File lists populated, proceeding with copy...")
@@ -213,12 +215,12 @@ def copy_files_to_thisrun(config):
 
 def copy_files_to_work(config):
     if config["general"]["verbose"]:
-        six.print_("=" * 80, "\n")
         six.print_("PREPARING WORK FOLDER")
     config = copy_files(
         config, config["general"]["in_filetypes"], source="thisrun", target="work"
     )
     return config
+
 
 
 
@@ -248,7 +250,10 @@ def _write_finalized_config(config):
         + "_finished_config.yaml",
         "w",
     ) as config_file:
-        out = yaml.dump(config)
+        # Avoid saving ``prev_run`` information in the config file
+        config_final = copy.deepcopy(config) #PrevRunInfo
+        del config_final["prev_run"]         #PrevRunInfo
+        out = yaml.dump(config_final)        #PrevRunInfo
         out = strip_python_tags(out)
         config_file.write(out)
     return config

@@ -11,6 +11,7 @@ from .database_actions import *
 from .prepcompute import *
 from .tidy import *
 from .prepare import *
+from .last_minute import *
 from .dataprocess import *
 from .filelists import *
 from .chunky_parts import *

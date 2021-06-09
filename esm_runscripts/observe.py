@@ -59,23 +59,6 @@ def init_monitor_file(config):
     return config
 
 
-#def get_last_jobid(config):
-#    # which job am I spying on?
-#    thisjob = config["general"]["jobtype"]
-#    called_from = thisjob.replace("observe_", "")
-#    #called_from = config["general"]["last_jobtype"]
-#    last_jobid = "UNKNOWN"
-#    if called_from == "compute":
-#        with open(config["general"]["experiment_log_file"], "r") as logfile:
-#            lastline = [
-#                l for l in logfile.readlines() if "compute" in l and "start" in l
-#            ][-1]
-#            last_jobid = lastline.split(" - ")[0].split()[-1]
-#    config["general"]["last_jobid"] = last_jobid
-#    return config
-
-
-
 def wait_and_observe(config):
     if config["general"]["submitted"]:
         monitor_file = logfiles.logfile_handle
