@@ -593,20 +593,20 @@ def check_for_unknown_files(config):
 
 
 
-def resolve_symlinks(file_source):
+def resolve_symlinks(file_source,verbose):
     if os.path.islink(file_source):
         points_to = os.path.realpath(file_source)
 
         # deniz: check if file links to itself. In UNIX
         # ln -s endless_link endless_link is a valid command
         if os.path.abspath(file_source) == points_to:
-            if config["general"]["verbose"]:
+            if verbose:
                 print(f"file {file_source} links to itself", flush=True)
                 print(datetime.datetime.now(), flush=True)
             return file_source
 
         # recursively find the file that the link is pointing to
-        return resolve_symlinks(points_to)
+        return resolve_symlinks(points_to,verbose)
     else:
         return(file_source)
 
@@ -656,7 +656,7 @@ def copy_files(config, filetypes, source, target):
                             print(datetime.datetime.now(), flush=True)
                         continue
                     dest_dir = os.path.dirname(file_target)
-                    file_source = resolve_symlinks(file_source)
+                    file_source = resolve_symlinks(file_source,config["general"]["verbose"])
                     if not os.path.isdir(file_source):
                         try:
                             if not os.path.isdir(dest_dir):
