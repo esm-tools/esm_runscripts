@@ -538,8 +538,12 @@ def copy_tools_to_thisrun(config):
             + "; "
             + "esm_runscripts "
             + gconfig["original_command"].replace("-U", "")
-            + " --no-motd "
         )
+        
+        # prevent continuous addition of --no-motd
+        if not "--no-motd" in restart_command:
+            restart_command += " --no-motd "
+            
         if config["general"]["verbose"]:
             print(restart_command)
         os.system(restart_command)
