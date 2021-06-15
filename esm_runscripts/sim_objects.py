@@ -320,9 +320,8 @@ class PrevRunInfo(dict):
         """
         Links the current ``config`` and ``prev_config`` to the object.
         """
-        self._last_run_datestamp = config.get("general", {}).get("last_run_datestamp")
-        self._experiment_config_dir = config.get("general", {}).get("experiment_config_dir")
-        self._expid = config.get("general", {}).get("expid")
+        self._config = config
+        self._general = config.get("general", {})
         self._prev_config = prev_config
         self.__setitem__("NONE_YET", {})
 
@@ -334,6 +333,10 @@ class PrevRunInfo(dict):
         loaded returns the value of the ``key``. Otherwise, it tries to load
         ``_prev_config`` and if not possible yet, returns a ``PrevRunInfo`` instance.
         """
+        self._last_run_datestamp = self._general.get("last_run_datestamp")
+        self._experiment_config_dir = self._general.get("experiment_config_dir")
+        self._expid = self._general.get("expid")
+
         # If the previous config is not loaded yet, try to load it
         if not self._prev_config:
             self.prev_run_config()
@@ -358,6 +361,10 @@ class PrevRunInfo(dict):
         ``None`` if no second argument is defined for the ``get``, or it returns the
         second argument, just as a standard ``<dict>.get`` would do.
         """
+        self._last_run_datestamp = self._general.get("last_run_datestamp")
+        self._experiment_config_dir = self._general.get("experiment_config_dir")
+        self._expid = self._general.get("expid")
+
         key = args[0]
         # If the previous config is not loaded yet, try to load it
         if not self._prev_config:
@@ -391,6 +398,16 @@ class PrevRunInfo(dict):
                 "_finished_config.yaml_" +
                 self._last_run_datestamp
             )
+            # If there are no time-stamped files try without time-stamp
+            config_file_no_date = (
+                self._experiment_config_dir +
+                self._expid +
+                "_finished_config.yaml")
+            if (
+                not os.path.isfile(prev_run_config_file)
+                and os.path.isfile(config_file_no_date)
+            ):
+                prev_run_config_file = config_file_no_date
             # If the file exists, load the file content
             if os.path.isfile(prev_run_config_file):
                 with open(prev_run_config_file, "r") as prev_file:

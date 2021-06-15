@@ -1,6 +1,7 @@
 import os
 import textwrap
 import sys
+import copy
 
 import esm_environment
 import six
@@ -374,9 +375,16 @@ class batch_system:
         return config
 
     @staticmethod
-    def write_env(config, environment, sadfilename):
-        folder = config["general"]["thisrun_scripts_dir"]
-        this_batch_system = config["computer"]
+    def write_env(config, environment=[], sadfilename=""):
+        # Ensures that the config is not modified in this method
+        local_config = copy.deepcopy(config)
+        # Allows to run it from a recipe (i.e. before a preprocessing job)
+        if len(environment)==0 or len(sadfilename)==0:
+            sadfilename = batch_system.get_sad_filename(local_config)
+            environment = batch_system.get_environment(local_config)
+
+        folder = local_config["general"]["thisrun_scripts_dir"]
+        this_batch_system = local_config["computer"]
         sadfilename_short = sadfilename.split("/")[-1]
         envfilename = folder + "/env.sh"
 
@@ -388,6 +396,8 @@ class batch_system:
             envfile.write("# preprocessing or postprocessing scripts\n\n")
             for line in environment:
                 envfile.write(line + "\n")
+
+        return config
 
     @staticmethod
     def submit(config):
