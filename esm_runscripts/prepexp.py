@@ -101,6 +101,14 @@ def copy_tools_to_thisrun(config):
             fromdir, scriptsdir, gconfig["scriptname"], gconfig, "runscript"
         )
 
+        if gconfig.get("iterative_coupling", False):
+            index = 1
+            while "model" + str(index) in config:
+                update_runscript(
+                        fromdir, scriptsdir, config["model" + str(index)]["runscript"], gconfig, "runscript"
+                        )
+                index += 1
+
         # Update the ``additional_files`` if necessary
         for tfile in gconfig["additional_files"]:
             update_runscript(
