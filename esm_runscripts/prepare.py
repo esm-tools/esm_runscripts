@@ -655,6 +655,7 @@ def set_parent_info(config):
 
 
 def finalize_config(config):
+    esm_parser.pprint_config(config)
     config.finalize()
     return config
 
