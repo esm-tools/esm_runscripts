@@ -69,17 +69,17 @@ def set_logfile_name(config, jobtype = None):
         jobtype = config["general"]["jobtype"]
 
     filejobtype = jobtype
-    if "observe" in filejobtype:
-        filejobtype = filejobtype.replace("observe_", "")
+    #if "observe" in filejobtype:
+    #    filejobtype = filejobtype.replace("observe_", "")
 
-    if "newrun" in filejobtype:
-        filejobtype = config["general"]["workflow"]["subjob_clusters"][jobtype].get("next_submit")[0]
+    #if "newrun" in filejobtype:
+    #    filejobtype = config["general"]["workflow"]["subjob_clusters"][jobtype].get("next_submit")[0]
 
-    if filejobtype == "prepcompute":
-        filejobtype = "compute"
+    #if filejobtype == "prepcompute":
+    #    filejobtype = "compute"
 
-    if "_" + config["general"]["setup_name"] in filejobtype:
-        filejobtype = filejobtype.replace("_" + config["general"]["setup_name"], "")
+    #if "_" + config["general"]["setup_name"] in filejobtype:
+    #    filejobtype = filejobtype.replace("_" + config["general"]["setup_name"], "")
 
     #called_from = config["general"]["workflow"]["subjob_clusters"][jobtype].get("called_from", "SOMETHINgUSELESS")
 

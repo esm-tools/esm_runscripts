@@ -196,17 +196,6 @@ class batch_system:
         if cluster in reserved_jobtypes:
             for model in config["general"]["valid_model_names"]:
                 omp_num_threads = int(config[model].get("omp_num_threads", 1))
-                if "nproc" in config[model]:
-                    config[model]["tasks"] = config[model]["nproc"]
-                    
-                    cores_per_node = config['computer']['cores_per_node']
-                    # If heterogeneous MPI-OMP
-                    nodes += (
-                        int(nproc * omp_num_threads / cores_per_node)
-                        + ((nproc * omp_num_threads) % cores_per_node > 0)
-                    )
-                # KH 30.04.20: nprocrad is replaced by more flexible
-                # partitioning using nprocar and nprocbr
                 if (
                     config[model].get("nprocar", "remove_from_namelist") != "remove_from_namelist" 
                     and 
@@ -216,14 +205,32 @@ class batch_system:
                 
                 elif "nproca" in config[model] and "nprocb" in config[model]:
                     config[model]["tasks"] = config[model]["nproca"] * config[model]["nprocb"]
-                    end_proc = start_proc + int(config[model]["nproca"])*int(config[model]["nprocb"]) - 1
+                    #end_proc = start_proc + int(config[model]["nproca"])*int(config[model]["nprocb"]) - 1
+                elif "nproc" in config[model]:
+                    print(f"nproc: {config[model]['nproc']}")
+                    config[model]["tasks"] = config[model]["nproc"]
 
+                    #cores_per_node = config['computer']['cores_per_node']
+                    # If heterogeneous MPI-OMP
+                # KH 30.04.20: nprocrad is replaced by more flexible
+                # partitioning using nprocar and nprocbr
                 else:
-                    continue
+                        continue
 
+                    
+                nproc = config[model]["tasks"]
+                if cluster == "compute":
+                    cores_per_node = config['computer']['partitions']['compute']['cores_per_node']
+                else:
+                    cores_per_node = config['computer']['partitions']['pp']['cores_per_node']
+                nodes += (
+                    int(nproc * omp_num_threads / cores_per_node)
+                    + ((nproc * omp_num_threads) % cores_per_node > 0)
+                )
 
                 config[model]["threads"] = config[model]["tasks"] * omp_num_threads
                 tasks += config[model]["tasks"]
+                print (f"tasks: {tasks}")
                 config[model]["end_proc"] = start_proc + config[model]["tasks"] - 1
                 config[model]["end_core"] = start_core + config[model]["threads"] - 1
                 config[model]["start_proc"] = start_proc
@@ -241,9 +248,10 @@ class batch_system:
                 print(f"Unknown or unset cluster: {cluster}.")
                 sys.exit(-1)
             # user defined jobtype doing dataprocessing
-            tasks = config["general"]["workflow"]["subjob_clusters"][cluster][nproc]
+            tasks = config["general"]["workflow"]["subjob_clusters"][cluster]["nproc"]
 
         config["general"]["resubmit_tasks"] = tasks
+        print(f"resubmit tasks: {config['general']['resubmit_tasks']}")
         config["general"]["resubmit_nodes"] = nodes
 
         return config

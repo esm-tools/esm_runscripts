@@ -61,7 +61,7 @@ class Slurm:
                 current_hostfile = self.path+"_"+run_type
                 write_one_hostfile(current_hostfile, config)
         else:
-            write_one_hostfile(self.path, config)
+            self.write_one_hostfile(self.path, config)
         return config
 
 
@@ -140,6 +140,8 @@ class Slurm:
 
 
     def write_het_par_wrappers(self, config):
+        cores_per_node = config['computer']['partitions']['compute']['cores_per_node']
+
         scriptfolder = config["general"]["thisrun_scripts_dir"] + "../work/"
         for model in config["general"]["valid_model_names"]:
             if config["computer"].get("heterogeneous_parallelization", False):
@@ -162,7 +164,7 @@ class Slurm:
                     f.write("#!/bin/sh"+"\n")
                     f.write("(( init = "+str(start_core)+" + $1 ))"+"\n")
                     f.write("(( index = init * "+str(config[model]["omp_num_threads"])+" ))"+"\n")
-                    f.write("(( slot = index % "+str(config["computer"]["cores_per_node"])+" ))"+"\n")
+                    f.write("(( slot = index % "+str(cores_per_node)+" ))"+"\n")
                     f.write("echo "+model+" taskset -c $slot-$((slot + "+str(config[model]["omp_num_threads"])+" - 1"+"))"+"\n")
                     f.write("taskset -c $slot-$((slot + "+str(config[model]["omp_num_threads"])+" - 1)) ./script_"+model+".ksh"+"\n")
                 os.chmod(scriptfolder+progname, 0o755)
@@ -174,6 +176,7 @@ class Slurm:
 
     @staticmethod
     def add_hostlist_file_gen_lines(config, sadfile):
+        cores_per_node = config['computer']['partitions']['compute']['cores_per_node']
         sadfile.write("\n"+"#Creating hostlist for MPI + MPI&OMP heterogeneous parallel job" + "\n")
         sadfile.write("rm -f ./hostlist" + "\n")
         sadfile.write(f"export SLURM_HOSTFILE={config['general']['thisrun_work_dir']}/hostlist\n")
@@ -193,9 +196,9 @@ class Slurm:
         sadfile.write("    eval nb_of_cores=\${mpi_tasks_${model}}" + "\n")
         sadfile.write("    eval nb_of_cores=$((${nb_of_cores}-1))" + "\n")
         sadfile.write("    for nb_proc_mpi in `seq 0 ${nb_of_cores}`; do" + "\n")
-        sadfile.write("        (( index_host = current_core / " + str(config["computer"]["cores_per_node"]) +" ))" + "\n")
+        sadfile.write("        (( index_host = current_core / " + str(cores_per_node) +" ))" + "\n")
         sadfile.write("        host_value=${listnodes[${index_host}]}" + "\n")
-        sadfile.write("        (( slot =  current_core % " + str(config["computer"]["cores_per_node"]) +" ))" + "\n")
+        sadfile.write("        (( slot =  current_core % " + str(cores_per_node) +" ))" + "\n")
         sadfile.write("        echo $host_value >> hostlist" + "\n")
         sadfile.write("        (( current_core = current_core + omp_threads_${model} ))" + "\n")
         sadfile.write("    done" + "\n")
@@ -335,10 +338,11 @@ def get_run_commands_multisrun(config, commands):
 
 
     commands.append(textwrap.dedent(job_node_extraction))
+    cores_per_node = config['computer']['partitions']['compute']['cores_per_node']
     for idx, run_type in enumerate(config['general']['multi_srun']):
         if idx == 0:
             start_node = run_type
-            num_nodes_first_model = config['general']['multi_srun'][run_type]['total_tasks'] / config['computer']['cores_per_node']
+            num_nodes_first_model = config['general']['multi_srun'][run_type]['total_tasks'] / cores_per_node
             num_nodes_first_model = int(num_nodes_first_model)
             nodes = assign_nodes(run_type, need_length=False, num_nodes_first_model=num_nodes_first_model)
         else:
