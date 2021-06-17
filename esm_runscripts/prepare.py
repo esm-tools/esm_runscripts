@@ -188,7 +188,8 @@ def model_env_into_computer(config):
         # need of the solving of later ``choose_`` blocks.
         for key, value in modelconfig["environment_changes"].items():
             if (
-                key not in ["export_vars", "module_actions", "add_export_vars", "add_module_actions"]
+                key not in ["export_vars", "module_actions", "unset_vars",
+                            "add_export_vars", "add_module_actions", "add_unset_vars"]
                 and "computer" in config
                 and not overwrite
                 #and run_or_compile=="runtime"
