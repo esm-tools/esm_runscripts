@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 import copy
+import pathlib
 
 import esm_rcfile
 import six
@@ -505,10 +506,18 @@ def copy_tools_to_thisrun(config):
         )
         esm_tools.copy_namelist_folder(namelists_dir)
 
+    # check for recursive creation of the file tree. This prevents the risk of
+    # creating a run directory tree inside the `scriptsdir`
+    scriptsdir_inside_fromdir = pathlib.Path(fromdir) in pathlib.Path(scriptsdir).parents
+    if scriptsdir_inside_fromdir and config["general"]["verbose"]:
+        print("WARNING: scriptsdir is inside fromdir")
+        print(f"  - scriptsdir: {scriptsdir}")
+        print(f"  - fromdir:    {fromdir}")
+    
     # If ``fromdir`` and ``scriptsdir`` are the same, this is already a computing
     # simulation which means we want to use the script in the experiment folder,
     # so no copying is needed
-    if (fromdir == scriptsdir) and not gconfig["update"]:
+    if (fromdir == scriptsdir) or scriptsdir_inside_fromdir and not gconfig["update"]:
         if config["general"]["verbose"]:
             print("Started from the experiment folder, continuing...")
         return config
@@ -532,13 +541,13 @@ def copy_tools_to_thisrun(config):
                 fromdir, scriptsdir, tfile, gconfig, "additional file"
             )
 
-        restart_command = (
-            "cd "
-            + scriptsdir
-            + "; "
-            + "esm_runscripts "
-            + gconfig["original_command"].replace("-U", "")
-        )
+        # remove the update option otherwise it will enter an infinite loop
+        original_command = gconfig["original_command"]
+        options_to_remove = [" -U ", " --update "]
+        for option in options_to_remove:
+            original_command = original_command.replace(option, " ")
+        
+        restart_command = f"cd {scriptsdir}; esm_runscripts {original_command}"
         
         # prevent continuous addition of --no-motd
         if not "--no-motd" in restart_command:
