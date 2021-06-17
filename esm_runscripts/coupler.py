@@ -255,11 +255,8 @@ class coupler_class:
                                 if not found_left or not found_right:
                                     sys.exit(0)
 
-                            if "export_mode" in full_config[self.name]:
-                                export_mode = full_config[self.name]["export_mode"]
-                            else:
-                                export_mode = "DEFAULT"
-                            
+                            export_mode = full_config[self.name].get("export_mode", "DEFAULT")
+
                             # Use export_mode from coupling_directions if set. Required for NEMO-AGRIF
                             direction_info = None
                             if "coupling_directions" in full_config[self.name]:
