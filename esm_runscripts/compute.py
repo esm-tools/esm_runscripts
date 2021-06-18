@@ -279,11 +279,10 @@ def initialize_experiment_logfile(config):
     if config["general"]["run_number"] == 1:
         if os.path.isfile(config["general"]["experiment_log_file"]):
             os.remove(config["general"]["experiment_log_file"])
-        write_to_log(
-            config,
-            ["# Beginning of Experiment " + config["general"]["expid"]],
-            message_sep="",
-        )
+
+        log_msg = f"# Beginning of Experiment {config['general']['expid']}"
+        write_to_log(config, [log_msg], message_sep="")
+        
     write_to_log(
         config,
         [
@@ -297,14 +296,12 @@ def initialize_experiment_logfile(config):
 
     # Write trace-log file now that we know where to do that
     if "trace_sink" in dir(logger):
-        logger.trace_sink.def_path(
-            config["general"]["experiment_dir"] +
-            "/log/" +
-            config["general"]["expid"] +
-            "_esm_runscripts_" +
-            config["general"]["run_datestamp"] +
-            ".log"
-        )
+        logfile_path = \
+            f"{config['general']['experiment_dir']}/log" \
+            f"/{config['general']['expid']}_esm_runscripts_" \
+            f"{config['general']['run_datestamp']}.log"
+        
+        logger.trace_sink.def_path(logfile_path)
 
     return config
 
@@ -328,13 +325,10 @@ def _write_finalized_config(config):
     yaml.add_representer(Date, date_representer)
     yaml.add_representer(batch_system, batch_system_representer)
 
-    with open(
-        config["general"]["thisrun_config_dir"]
-        + "/"
-        + config["general"]["expid"]
-        + "_finished_config.yaml",
-        "w",
-    ) as config_file:
+    config_file_path = \
+        f"{config['general']['thisrun_config_dir']}"\
+        f"/{config['general']['expid']}_finished_config.yaml"
+    with open(config_file_path, "w") as config_file:
         # Avoid saving ``prev_run`` information in the config file
         config_final = copy.deepcopy(config) #PrevRunInfo
         del config_final["prev_run"]         #PrevRunInfo
@@ -563,16 +557,12 @@ def copy_tools_to_thisrun(config):
 
 def _copy_preliminary_files_from_experiment_to_thisrun(config):
     # I don't like this one bit. DB
-    filelist = [
-        (
-            "scripts",
-            config["general"]["expid"]
-            + "_"
-            + config["general"]["setup_name"]
-            + ".date",
-            "copy",
-        )
-    ]
+    filelist = [(
+        "scripts",
+        f"{config['general']['expid']}_{config['general']['setup_name']}.date",
+        "copy",
+    )]
+    
     for filetype, filename, copy_or_link in filelist:
         source = config["general"]["experiment_" + filetype + "_dir"]
         dest = config["general"]["thisrun_" + filetype + "_dir"]
@@ -594,16 +584,17 @@ def _show_simulation_info(config):
     six.print_()
     six.print_(80 * "=")
     six.print_("STARTING SIMULATION JOB!")
-    six.print_("Experiment ID = %s" % config["general"]["expid"])
-    six.print_("Setup = %s" % config["general"]["setup_name"])
+    six.print_(f"Experiment ID = {config['general']['expid']}")
+    six.print_(f"Setup = {config['general']['setup_name']}")
     if "coupled_setup" in config["general"]:
         six.print_("This setup consists of:")
         for model in config["general"]["valid_model_names"]:
-            six.print_("- %s" % model)
+            six.print_(f"- {model}")
     six.print_("Experiment is installed in:")
     six.print_(
-        "       %s" % config["general"]["base_dir"] + "/" + config["general"]["expid"]
+        f"       {config['general']['base_dir']}/{config['general']['expid']}"
     )
     six.print_(80 * "=")
     six.print_()
     return config
+    
