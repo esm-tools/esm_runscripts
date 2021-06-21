@@ -113,13 +113,19 @@ class SimulationSetup(object):
 
     def get_user_config_from_command_line(self, command_line_config):
         try:
-            user_config = esm_parser.initialize_from_yaml(command_line_config["scriptname"])
+            # use the full absolute path instead of CWD
+            user_config = esm_parser.initialize_from_yaml(
+                command_line_config["runscript_abspath"]
+            )
             if "additional_files" not in user_config["general"]:
                 user_config["general"]["additional_files"] = []
         except esm_parser.EsmConfigFileError as error:
             raise error
         except:
-            user_config = esm_parser.initialize_from_shell_script(command_line_config["scriptname"])
+            # use the full absolute path instead of CWD
+            user_config = esm_parser.initialize_from_shell_script(
+                command_line_config["runscript_abspath"]
+            )
 
         # NOTE(PG): I really really don't like this. But I also don't want to
         # re-introduce black/white lists

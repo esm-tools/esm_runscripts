@@ -377,6 +377,9 @@ def update_runscript(fromdir, scriptsdir, tfile, gconfig, file_type):
         ``esm_runscripts``, returns an error.
     """
 
+    # if `tfile` contains a full path of the runscript then remove the leading path
+    tfile = os.path.basename(tfile)
+    
     # If the target file in ``scriptsdir`` does not exist, then copy the file
     # to the target.
     if not os.path.isfile(scriptsdir + "/" + tfile):
@@ -541,7 +544,22 @@ def copy_tools_to_thisrun(config):
         for option in options_to_remove:
             original_command = original_command.replace(option, " ")
         
-        restart_command = f"cd {scriptsdir}; esm_runscripts {original_command}"
+        # Before resubmitting the esm_runscripts, the path of the runscript
+        # needs to be modified. Remove the absolute/relative path
+        runscript_absdir, runscript = os.path.split(gconfig['runscript_abspath'])
+        original_command_list = original_command.split()
+        new_command_list = []
+        for command in original_command_list:
+            # current command will contain the full path, so replace it with
+            # the YAML file only since we are going to execute it from the 
+            # `scriptsdir` now
+            if runscript in command:
+                # gconfig['scriptname'] or `runscript` only contains the YAML file name
+                command = runscript 
+            new_command_list.append(command)
+
+        new_command = " ".join(new_command_list)
+        restart_command = f"cd {scriptsdir}; esm_runscripts {new_command}"
         
         # prevent continuous addition of --no-motd
         if not "--no-motd" in restart_command:
