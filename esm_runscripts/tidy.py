@@ -119,16 +119,10 @@ def wake_up_call(config):
 def assemble_error_list(config):
     gconfig = config["general"]
     known_methods = ["warn", "kill"]
-    stdout = (
-        gconfig["experiment_scripts_dir"]
-        + "/"
-        + gconfig["expid"]
-        + "_compute_"
-        + gconfig["run_datestamp"]
-        + "_"
-        + gconfig["jobid"]
-        + ".log"
-    )
+    # experiment outputs are written to this log file
+    stdout = \
+        f"{gconfig['experiment_scripts_dir']}/{gconfig['expid']}"\
+        f"_compute_{gconfig['run_datestamp']}_{gconfig['jobid']}.log"
 
     error_list = [
         ("error", stdout, "warn", 60, 60, "keyword error detected, watch out")
@@ -226,14 +220,10 @@ def _increment_date_and_run_number(config):
 def _write_date_file(config):  # self, date_file=None):
     monitor_file = config["general"]["monitor_file"]
     # if not date_file:
-    date_file = (
-        config["general"]["experiment_scripts_dir"]
-        + "/"
-        + config["general"]["expid"]
-        + "_"
-        + config["general"]["setup_name"]
-        + ".date"
-    )
+    date_file = \
+        f"{config['general']['experiment_scripts_dir']}"\
+        f"/{config['general']['expid']}_{config['general']['setup_name']}.date"
+    
     with open(date_file, "w") as date_file:
         date_file.write(
             config["general"]["current_date"].output()
