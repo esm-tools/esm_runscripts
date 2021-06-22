@@ -76,20 +76,10 @@ def inspect_file(config):
     if config["general"]["inspect"] == "lastlog":
         maybe_file = config["computer"]["thisrun_logfile"].replace("%j", "*")
     elif config["general"]["inspect"] == "explog":
-        maybe_file = (
-            config["general"]["expid"]
-            + "_"
-            + config["general"]["setup_name"]
-            + ".log"
-        )
+        maybe_file = f"{config['general']['expid']}_{config['general']['setup_name']}.log"
         search_dir = config["general"]["experiment_dir"]
     elif config["general"]["inspect"] == "datefile":
-        maybe_file = (
-            config["general"]["expid"]
-            + "_"
-            + config["general"]["setup_name"]
-            + ".date"
-        )
+        maybe_file = f"{config['general']['expid']}_{config['general']['setup_name']}.date"
         search_dir = config["general"]["experiment_dir"]
     else:
         maybe_file = config["general"]["inspect"]
