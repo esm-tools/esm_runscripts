@@ -702,8 +702,8 @@ def copy_files(config, filetypes, source, target):
 
 def report_missing_files(config):
     # this list is populated by the ``copy_files`` function in filelists.py
+    config = _check_fesom_missing_files(config)
     if "files_missing_when_preparing_run" in config["general"]:
-        config = _check_fesom_missing_files(config)
         if not config["general"]["files_missing_when_preparing_run"] == {}:
             print("MISSING FILES:", flush=True)
         for missing_file in config["general"]["files_missing_when_preparing_run"]:
