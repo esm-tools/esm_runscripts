@@ -49,7 +49,7 @@ class experiment(base):
 
     @staticmethod
     def nicer_output(run):
-        print('ID: ' + str(run.id)  + ", EXPID: " + run.expid + ":")
+        print('ID: ' + str(run.id)  + ", EXPID: " + str(run.expid) + ":")
         print('     Timestamp: ' + run.timestamp.strftime("%x %X"))
         print('     Runtime: ' + run.runtime)
         print('     Setup: ' + run.setup_name)
@@ -68,7 +68,7 @@ class experiment(base):
                 str(self.id), 
                 str(self.timestamp.strftime("%x-%X")),
                 str(self.runtime),
-                self.expid, 
+                str(self.expid), 
                 str(self.run_timestamp), 
                 setup, 
                 self.outcome,
