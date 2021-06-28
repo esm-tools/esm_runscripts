@@ -52,16 +52,10 @@ class batch_system:
         expid = config["general"]["expid"]
         startdate = config["general"]["current_date"]
         enddate = config["general"]["end_date"]
-        return (
-            folder
-            + "/"
-            + expid
-            + "_"
-            + config["general"]["jobtype"]
-            + "_"
-            + config["general"]["run_datestamp"]
-            + ".sad"
-        )
+        sad_filename = \
+            f"{folder}/{expid}_{config['general']['jobtype']}" \
+            f"_{config['general']['run_datestamp']}.sad" 
+        return sad_filename
 
     @staticmethod
     def get_batch_header(config):
@@ -302,16 +296,12 @@ class batch_system:
 
         if config["general"]["jobtype"] == "compute":
             commands = batch_system.get_run_commands(config)
-            tidy_call = (
-                "esm_runscripts "
-                + config["general"]["scriptname"]
-                + " -e "
-                + config["general"]["expid"]
-                + " -t tidy_and_resubmit -p ${process} -j "
-                + config["general"]["jobtype"]
-                + " -v "
-                + " --no-motd "
-            )
+            tidy_call = \
+                f"esm_runscripts {config['general']['scriptname']}" \
+                f" -e {config['general']['expid']}" \
+                f" -t tidy_and_resubmit -p ${{process}}" \
+                f" -j {config['general']['jobtype']} -v --no-motd "
+            
             if "--open-run" in config["general"]["original_command"] or not config["general"].get("use_venv"):
                 tidy_call += " --open-run"
             elif "--contained-run" in config['general']['original_command'] or config["general"].get("use_venv"):

@@ -32,14 +32,9 @@ def _read_date_file(config):
     import os
     import logging
 
-    date_file = (
-        config["general"]["experiment_dir"]
-        + "/scripts/"
-        + config["general"]["expid"]
-        + "_"
-        + config["general"]["setup_name"]
-        + ".date"
-    )
+    date_file = \
+        f"{config['general']['experiment_dir']}/scripts"\
+        f"/{config['general']['expid']}_{config['general']['setup_name']}.date"
 
     date_file = mini_resolve_variable_date_file(date_file, config)
 
@@ -369,13 +364,17 @@ def find_last_prepared_run(config):
             )
         )
 
-        if os.path.isdir(config["general"]["base_dir"] + config["general"]["expid"] + "/run_" + datestamp):
+        directory = \
+            f"{config['general']['base_dir']}"\
+            f"/{config['general']['expid']}/run_{datestamp}"
+            
+        if os.path.isdir(directory):
             config["general"]["current_date"] = current_date
             return config
 
         current_date = current_date - delta_date
 
-    print("Could not find a prepared run.")
+    print("ERROR: Could not find a prepared run.")
     sys.exit(42)
 
 
@@ -679,16 +678,11 @@ def initialize_coupler(config):
 
         for model in list(config):
             if model in coupler.known_couplers:
-                config["general"]["coupler_config_dir"] = (
-                    config["general"]["base_dir"]
-                    + "/"
-                    + config["general"]["expid"]
-                    + "/run_"
-                    + config["general"]["run_datestamp"]
-                    + "/config/"
-                    + model
-                    + "/"
-                )
+                config["general"]["coupler_config_dir"] = \
+                    f"{config['general']['base_dir']}"\
+                    f"/{config['general']['expid']}"\
+                    f"/run_{config['general']['run_datestamp']}"\
+                    f"/config/{model}/"
                 config["general"]["coupler"] = coupler.coupler_class(config, model)
                 break
         config["general"]["coupler"].add_files(config)
@@ -696,13 +690,11 @@ def initialize_coupler(config):
 
 
 def set_logfile(config):
+    log_file_path = \
+        f"{config['general']['experiment_log_dir']}"\
+        f"/{config['general']['expid']}"\
+        f"_{config['general']['setup_name']}.log"\
+        
     config["general"]["experiment_log_file"] = config["general"].get(
-        "experiment_log_file",
-        config["general"]["experiment_log_dir"]
-        + "/"
-        + config["general"]["expid"]
-        + "_"
-        + config["general"]["setup_name"]
-        + ".log",
-    )
+        "experiment_log_file", log_file_path)
     return config
