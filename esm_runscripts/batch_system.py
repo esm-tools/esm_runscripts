@@ -196,28 +196,31 @@ class batch_system:
         if cluster in reserved_jobtypes:
             for model in config["general"]["valid_model_names"]:
                 omp_num_threads = int(config[model].get("omp_num_threads", 1))
-                if "nproca" in config[model] and "nprocb" in config[model]:
-                    config[model]["tasks"] = config[model]["nproca"] * config[model]["nprocb"]
+                # KH 30.04.20: nprocrad is replaced by more flexible
+                # partitioning using nprocar and nprocbr
+                no_nprocr = ["remove_from_namelist", 0]
+                if (
+                    config[model].get("nprocar", no_nprocr[0]) not in no_nprocr
+                    and
+                    config[model].get("nprocbr", no_nprocr[0]) not in no_nprocr
+                ):
+                    config[model]["tasks"] = \
+                        config[model]["nprocar"] * config[model]["nprocbr"]
+
+                elif "nproca" in config[model] and "nprocb" in config[model]:
+                    config[model]["tasks"] = \
+                        config[model]["nproca"] * config[model]["nprocb"]
                     #end_proc = start_proc + int(config[model]["nproca"])*int(config[model]["nprocb"]) - 1
-                    if (
-                        config[model].get("nprocar", "remove_from_namelist") not in ["remove_from_namelist", 0]
-                        and
-                        config[model].get("nprocbr", "remove_from_namelist") not in ["remove_from_namelist", 0]
-                        ):
-                            config[model]["tasks"] = config[model]["nprocar"] * config[model]["nprocbr"]
-                
+
                 elif "nproc" in config[model]:
                     print(f"nproc: {config[model]['nproc']}")
                     config[model]["tasks"] = config[model]["nproc"]
 
                     #cores_per_node = config['computer']['cores_per_node']
-                    # If heterogeneous MPI-OMP
-                # KH 30.04.20: nprocrad is replaced by more flexible
-                # partitioning using nprocar and nprocbr
                 else:
                         continue
 
-                    
+
                 nproc = config[model]["tasks"]
                 if cluster == "compute":
                     cores_per_node = config['computer']['partitions']['compute']['cores_per_node']
