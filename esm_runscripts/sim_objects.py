@@ -401,7 +401,7 @@ class PrevRunInfo(dict):
             if os.path.isfile(prev_run_config_file):
                 with open(prev_run_config_file, "r") as prev_file:
                     prev_config = yaml.load(prev_file, Loader=yaml.FullLoader)
-                self._prev_config = prev_config["dictitems"]
+                self._prev_config = prev_config
                 # In case a ``prev_run`` info exists inside the file, remove it to
                 # avoid config files from getting huge (prev_run nested inside
                 # prev_run...)
