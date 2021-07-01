@@ -309,6 +309,7 @@ def initialize_experiment_logfile(config):
 
 
 def _write_finalized_config(config):
+    """Writes <expid>_finished_config.yaml file"""
     # first define the representers for the non-built-in types, as recommended
     # here: https://pyyaml.org/wiki/PyYAMLDocumentation
     def date_representer(dumper, date):
