@@ -203,11 +203,11 @@ class batch_system:
                     #end_proc = start_proc + int(config[model]["nproca"])*int(config[model]["nprocb"]) - 1
                     # KH 30.04.20: nprocrad is replaced by more flexible
                     # partitioning using nprocar and nprocbr
-                    no_nprocr = ["remove_from_namelist", 0]
+                    remove_nprocr_options = ["remove_from_namelist", 0]
                     if (
-                        config[model].get("nprocar", no_nprocr[0]) not in no_nprocr
+                        config[model].get("nprocar", 0) not in remove_nprocr_options
                         and
-                        config[model].get("nprocbr", no_nprocr[0]) not in no_nprocr
+                        config[model].get("nprocbr", 0) not in remove_nprocr_options
                     ):
                         config[model]["tasks"] += \
                             config[model]["nprocar"] * config[model]["nprocbr"]
