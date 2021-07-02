@@ -190,9 +190,9 @@ class PrevRunInfo(dict):
         the ``get`` and ``__get__`` methods will not call this method anymore.
         """
         # Logic for interactive questions about the config file
-        fromdir = os.path.realpath(self._config["general"]["started_from"])
+        fromdir = os.path.realpath(self._config["general"].get("started_from", ""))
         scriptsdir = os.path.realpath(
-            f"{self._config['general']['experiment_dir']}/scripts/"
+            f"{self._config['general'].get('experiment_dir', '')}/scripts/"
         )
         # This is necessary to display the message only once, instead of twice
         self.warn = (
