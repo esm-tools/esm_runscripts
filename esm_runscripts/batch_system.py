@@ -196,21 +196,21 @@ class batch_system:
         if cluster in reserved_jobtypes:
             for model in config["general"]["valid_model_names"]:
                 omp_num_threads = int(config[model].get("omp_num_threads", 1))
-                # KH 30.04.20: nprocrad is replaced by more flexible
-                # partitioning using nprocar and nprocbr
-                no_nprocr = ["remove_from_namelist", 0]
-                if (
-                    config[model].get("nprocar", no_nprocr[0]) not in no_nprocr
-                    and
-                    config[model].get("nprocbr", no_nprocr[0]) not in no_nprocr
-                ):
-                    config[model]["tasks"] = \
-                        config[model]["nprocar"] * config[model]["nprocbr"]
 
-                elif "nproca" in config[model] and "nprocb" in config[model]:
+                if "nproca" in config[model] and "nprocb" in config[model]:
                     config[model]["tasks"] = \
                         config[model]["nproca"] * config[model]["nprocb"]
                     #end_proc = start_proc + int(config[model]["nproca"])*int(config[model]["nprocb"]) - 1
+                    # KH 30.04.20: nprocrad is replaced by more flexible
+                    # partitioning using nprocar and nprocbr
+                    no_nprocr = ["remove_from_namelist", 0]
+                    if (
+                        config[model].get("nprocar", no_nprocr[0]) not in no_nprocr
+                        and
+                        config[model].get("nprocbr", no_nprocr[0]) not in no_nprocr
+                    ):
+                        config[model]["tasks"] += \
+                            config[model]["nprocar"] * config[model]["nprocbr"]
 
                 elif "nproc" in config[model]:
                     print(f"nproc: {config[model]['nproc']}")
