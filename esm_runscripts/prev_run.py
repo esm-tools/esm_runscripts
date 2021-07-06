@@ -453,6 +453,13 @@ class PrevRunInfo(dict):
         # method)
         elif run_number==1:
             prev_run_config_file = user_prev_run_config_file
+            prev_run_config_path = f"{config_dir}/{prev_run_config_file}"
+            if not os.path.isfile(prev_run_config_path):
+                esm_parser.user_error(
+                    "'prev_run_config_file' incorrectly defined",
+                    f"The file defined in the '{component}.prev_run_config_path' " +
+                    f"({prev_run_config_path}) does not exist."
+                )
 
         prev_run_config_path = f"{config_dir}/{prev_run_config_file}"
         return prev_run_config_path, prev_date
