@@ -78,13 +78,13 @@ class oasis:
 
         # if a transformation method for CONSERV (e.g. GLOBAL) is set below,
         # increase seq (=number of lines describing the transformation) by 1
-        seq = int(direction.get("seq", "2"))
-        if transformation.get("postprocessing", {}).get("conserv", {}).get("method"):
-            seq += 1
+        # this part was broken, seq confused with nb of lines
+    
 
-        self.namcouple += [right + " " + left + " " + str(nb) + " " + str(time_step) + " " + str(seq) + " " + str(restart_file) + " " + export_mode]
-        if lgrid and rgrid:
-            self.namcouple += [str(rgrid["nx"]) + " " + str(rgrid["ny"]) + " " + str(lgrid["nx"]) + " " + str(lgrid["ny"]) + " " + rgrid["name"] + " " + lgrid["name"] + " LAG=" + str(lag)]
+        seq = int(direction.get("seq", "2"))
+        #if transformation.get("postprocessing", {}).get("conserv", {}).get("method"):
+        #    seq += 1
+
 
         p_rgrid = p_lgrid = "0"
         if "number_of_overlapping_points" in rgrid:
@@ -92,7 +92,6 @@ class oasis:
         if "number_of_overlapping_points" in lgrid:
             p_lgrid = str(lgrid["number_of_overlapping_points"])
 
-        self.namcouple += ["P " + p_rgrid +" P " +  p_lgrid]
 
         trafo_line = ""
         trafo_details = []
@@ -232,6 +231,13 @@ class oasis:
         if trafo_line[0]==" ":
             trafo_line = trafo_line[1:]
 
+
+        nb_of_trafo_lines = len(trafo_details)
+
+        self.namcouple += [right + " " + left + " " + str(nb) + " " + str(time_step) + " " + str(nb_of_trafo_lines) + " " + str(restart_file) + " " + export_mode]
+        if lgrid and rgrid:
+            self.namcouple += [str(rgrid["nx"]) + " " + str(rgrid["ny"]) + " " + str(lgrid["nx"]) + " " + str(lgrid["ny"]) + " " + rgrid["name"] + " " + lgrid["name"] + " LAG=" + str(lag)]
+        self.namcouple += ["P " + p_rgrid +" P " +  p_lgrid]
         self.namcouple += [trafo_line]
         for line in trafo_details:
             self.namcouple += [line]
