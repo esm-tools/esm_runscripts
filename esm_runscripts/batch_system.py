@@ -235,7 +235,7 @@ class batch_system:
                 config[model]["end_core"] = start_core + config[model]["threads"] - 1
                 config[model]["start_proc"] = start_proc
                 config[model]["start_core"] = start_core
-                start_proc = end_proc + 1
+                start_proc = config[model]["end_proc"] + 1
                 start_core = start_core + 1
 
 
