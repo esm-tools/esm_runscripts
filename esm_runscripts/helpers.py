@@ -30,6 +30,7 @@ def evaluate(config, job_type, recipe_name):
         sys.exit(1)
 
     FUNCTION_PATH = esm_rcfile.EsmToolsDir("FUNCTION_PATH")
+    print("LA DEBUG: FUNCTION_PATH = ", FUNCTION_PATH)
     recipe = FUNCTION_PATH + "esm_software/esm_runscripts/esm_runscripts.yaml"
     need_to_parse_recipe = True
     plugins_bare = FUNCTION_PATH + "/esm_software/esm_runscripts/esm_plugins.yaml"

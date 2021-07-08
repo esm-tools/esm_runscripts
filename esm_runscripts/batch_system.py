@@ -196,28 +196,31 @@ class batch_system:
         if cluster in reserved_jobtypes:
             for model in config["general"]["valid_model_names"]:
                 omp_num_threads = int(config[model].get("omp_num_threads", 1))
-                if (
-                    config[model].get("nprocar", "remove_from_namelist") != "remove_from_namelist" 
-                    and 
-                    config[model].get("nprocbr", "remove_from_namelist") != "remove_from_namelist" 
-                    ):
-                        config[model]["tasks"] = config[model]["nprocar"] * config[model]["nprocbr"]
-                
-                elif "nproca" in config[model] and "nprocb" in config[model]:
-                    config[model]["tasks"] = config[model]["nproca"] * config[model]["nprocb"]
+
+                if "nproca" in config[model] and "nprocb" in config[model]:
+                    config[model]["tasks"] = \
+                        config[model]["nproca"] * config[model]["nprocb"]
                     #end_proc = start_proc + int(config[model]["nproca"])*int(config[model]["nprocb"]) - 1
+                    # KH 30.04.20: nprocrad is replaced by more flexible
+                    # partitioning using nprocar and nprocbr
+                    remove_nprocr_options = ["remove_from_namelist", 0]
+                    if (
+                        config[model].get("nprocar", 0) not in remove_nprocr_options
+                        and
+                        config[model].get("nprocbr", 0) not in remove_nprocr_options
+                    ):
+                        config[model]["tasks"] += \
+                            config[model]["nprocar"] * config[model]["nprocbr"]
+
                 elif "nproc" in config[model]:
                     print(f"nproc: {config[model]['nproc']}")
                     config[model]["tasks"] = config[model]["nproc"]
 
                     #cores_per_node = config['computer']['cores_per_node']
-                    # If heterogeneous MPI-OMP
-                # KH 30.04.20: nprocrad is replaced by more flexible
-                # partitioning using nprocar and nprocbr
                 else:
                         continue
 
-                    
+
                 nproc = config[model]["tasks"]
                 if cluster == "compute":
                     cores_per_node = config['computer']['partitions']['compute']['cores_per_node']
@@ -231,12 +234,17 @@ class batch_system:
                 config[model]["threads"] = config[model]["tasks"] * omp_num_threads
                 tasks += config[model]["tasks"]
                 print (f"tasks: {tasks}")
-                config[model]["end_proc"] = start_proc + config[model]["tasks"] - 1
-                config[model]["end_core"] = start_core + config[model]["threads"] - 1
+                # Use the number of tasks and threads to update end_proc/core
+                end_proc = start_proc + config[model]["tasks"] - 1
+                end_core = start_core + config[model]["threads"] - 1
+                # Feed the config with the final start_proc/core and end_proc/core
+                config[model]["end_proc"] = end_proc
+                config[model]["end_core"] = end_core
                 config[model]["start_proc"] = start_proc
                 config[model]["start_core"] = start_core
-                start_proc = config[model]["end_proc"] + 1
-                start_core = start_core + 1
+                # Reset the start_proc/core variables for the next component
+                start_proc = end_proc + 1
+                start_core = end_core + 1
 
 
         else:
