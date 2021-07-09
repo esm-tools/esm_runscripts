@@ -382,7 +382,12 @@ def find_last_prepared_run(config):
             )
         )
 
-        if os.path.isdir(config["general"]["base_dir"] + config["general"]["expid"] + "/run_" + datestamp):
+        # Solve base_dir with variables
+        base_dir = esm_parser.find_variable(
+            ["general", "base_dir"], config["general"]["base_dir"], config, [], True
+        )
+
+        if os.path.isdir(base_dir + "/" + config["general"]["expid"] + "/run_" + datestamp):
             config["general"]["current_date"] = current_date
             return config
 
