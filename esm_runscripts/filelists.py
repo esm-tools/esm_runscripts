@@ -443,6 +443,7 @@ def replace_year_placeholder(config):
                                     config[model][filetype + "_targets"][new_category] = \
                                             config[model][filetype + "_targets"][file_category]
 
+                                    # replace @YEAR@ in the targets
                                     if (
                                         "@YEAR@"
                                         in config[model][filetype + "_targets"][new_category]
@@ -455,6 +456,7 @@ def replace_year_placeholder(config):
                                             new_category
                                         ] = new_target_name
                                     
+                                    # replace @YEAR@ in the sources
                                     if (
                                         "@YEAR@"
                                         in config[model][filetype + "_sources"][new_category]
@@ -466,6 +468,45 @@ def replace_year_placeholder(config):
                                         config[model][filetype + "_sources"][
                                             new_category
                                         ] = new_source_name
+
+                                # value is not a dictionary. Ie. it does not 
+                                # have `from` or `to` attributes. This else 
+                                # block preserves these sections in the config.
+                                else:
+                                    # create `new_category` from `file_category` 
+                                    config[model][filetype + "_sources"][new_category] = \
+                                        config[model][filetype + "_sources"][file_category]
+                                        
+                                    config[model][filetype + "_targets"][new_category] = \
+                                        config[model][filetype + "_targets"][file_category]
+
+                                    # replace @YEAR@ in the targets
+                                    if (
+                                        "@YEAR@"
+                                        in config[model][filetype + "_targets"][new_category]
+                                    ):
+                                        new_target_name = config[model][
+                                            filetype + "_targets"
+                                        ][new_category].replace("@YEAR@", str(year))
+                                    
+                                        config[model][filetype + "_targets"][
+                                            new_category
+                                        ] = new_target_name
+
+                                    # replace @YEAR@ in the sources
+                                    if (
+                                        "@YEAR@"
+                                        in config[model][filetype + "_sources"][new_category]
+                                    ):    
+                                        new_source_name = config[model][
+                                            filetype + "_sources"
+                                        ][new_category].replace("@YEAR@", str(year))
+
+                                        config[model][filetype + "_sources"][
+                                            new_category
+                                        ] = new_source_name
+
+                                # end if 
                             # end of the for year loop
                             
                             # deniz: new additions for @YEAR_1850@
