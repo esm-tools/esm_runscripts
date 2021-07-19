@@ -11,6 +11,7 @@ from esm_calendar import Date
 from colorama import Fore, Back, Style, init
 
 import esm_tools
+import esm_parser
 
 from .batch_system import batch_system
 from .filelists import copy_files, log_used_files
@@ -515,16 +516,23 @@ def copy_tools_to_thisrun(config):
     # protect such problems
     scriptsdir_deep_parents = list(pathlib.Path(scriptsdir).parents)[5:]
     deep_nesting_found = pathlib.Path(expdir) in scriptsdir_deep_parents
-    if deep_nesting_found and config["general"]["verbose"]:
-        print("WARNING: scriptsdir is inside fromdir")
-        print(f"  - scriptsdir:         {scriptsdir}")
-        print(f"  - fromdir:            {fromdir}")
-        print(f"  - experiment dir:     {expdir}")
+    if deep_nesting_found: 
+        error_type = "runtime error"
+        error_text = (
+            f"deep recursion is detected in {__file__}:\n"
+            f"- scriptsdir:         {scriptsdir}\n"
+            f"- fromdir:            {fromdir}\n"
+            f"- experiment dir:     {expdir}"
+        )
+        # exit right away to prevent further recursion. There might still be
+        # running instances of esmr_runscripts and something like 
+        # `killall esm_runscripts` might be required
+        esm_parser.user_error(error_type, error_text)
     
     # If ``fromdir`` and ``scriptsdir`` are the same, this is already a computing
     # simulation which means we want to use the script in the experiment folder,
     # so no copying is needed
-    if (fromdir == scriptsdir) or deep_nesting_found and not gconfig["update"]:
+    if (fromdir == scriptsdir) and not gconfig["update"]:
         if config["general"]["verbose"]:
             print("Started from the experiment folder, continuing...")
         return config
