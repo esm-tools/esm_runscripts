@@ -309,7 +309,11 @@ def initialize_experiment_logfile(config):
 
 
 def _write_finalized_config(config):
-    """Writes <expid>_finished_config.yaml file"""
+    """Writes <expid>_finished_config.yaml file
+    Parameters
+    ----------
+    config : esm-tools config object
+    """
     # first define the representers for the non-built-in types, as recommended
     # here: https://pyyaml.org/wiki/PyYAMLDocumentation
     def date_representer(dumper, date):
@@ -317,7 +321,7 @@ def _write_finalized_config(config):
         
     def calendar_representer(dumper, calendar):
         # Calendar has a __str__ method
-        return dumper.represent_str(calendar.__str__())
+        return dumper.represent_str(str(calendar))
 
     def batch_system_representer(dumper, batch_system):
         return dumper.represent_str(f"{batch_system.name}")
@@ -365,7 +369,8 @@ def _write_finalized_config(config):
         config_final = copy.deepcopy(config) #PrevRunInfo
         del config_final["prev_run"]         #PrevRunInfo
 
-        out = yaml.dump(config_final, Dumper=EsmConfigDumper, width=10000)   #PrevRunInfo
+        out = yaml.dump(config_final, Dumper=EsmConfigDumper, width=10000, 
+            indent=4)   #PrevRunInfo
         config_file.write(out)
     return config
     
