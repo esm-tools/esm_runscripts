@@ -417,6 +417,14 @@ def replace_year_placeholder(config):
                                 all_years.append(
                                     config["general"]["current_date"].year + 1
                                 )
+                                
+                                
+                            if "need_2years_before" in config[model][filetype + "_additional_information"][file_category]:
+                                all_years.append(config["general"]["current_date"].year - 2)
+
+                            if "need_2years_after" in config[model][filetype + "_additional_information" ][file_category]:
+                                all_years.append(config["general"]["current_date"].year + 2)
+                                
 
                             all_years = list(
                                 dict.fromkeys(all_years)
