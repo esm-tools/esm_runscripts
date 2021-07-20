@@ -56,6 +56,7 @@ class SimulationSetup(object):
             sys.stdout = logfiles.logfile_handle
             sys.stderr = logfiles.logfile_handle
 
+
         if self.config["general"]["jobtype"] == "prepcompute":
             self.prepcompute()
         elif self.config["general"]["jobtype"] == "tidy":
@@ -70,6 +71,9 @@ class SimulationSetup(object):
             self.config["general"]["jobtype"] = self.config["general"]["jobtype"].replace("observe_", "")
             # that last line is necessary so that maybe_resubmit knows which 
             # cluster to look up in the workflow
+
+        else: 
+            self.assembler()
 
         resubmit.maybe_resubmit(self.config)
         
@@ -95,6 +99,12 @@ class SimulationSetup(object):
         
         from . import observe
         self.config = observe.run_job(self.config)
+
+
+    def assembler(self):
+        from . import assembler
+        self.config = assembler.run_job(self.config)
+
 
 
 ###################################     TIDY      #############################################################
