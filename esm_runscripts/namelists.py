@@ -132,8 +132,8 @@ class Namelist:
                         # case, but the original Fortran namelist could be in
                         # any case combination. Here `original_key` is coming
                         # from the default namelist and may contain mixed case.
-                        # `key` is the processed variable my f90nml package and
-                        # is lowercase
+                        # `key` is the processed variable from f90nml module and
+                        # is lowercase.
                         remove_original_key = False
 
                         # traverse the namelist chapter and see if a mixed case
