@@ -509,6 +509,8 @@ def copy_tools_to_thisrun(config):
     fromdir = os.path.realpath(gconfig["started_from"])
     # Directory where the runscript is copied to
     scriptsdir = os.path.realpath(gconfig["experiment_scripts_dir"])
+    # basedir + expid
+    expdir = os.path.realpath(gconfig['experiment_dir'])
 
     # Paths inside the experiment directory where esm_tools and namelists
     # are copied to. Those are not functional but a reference to what was
@@ -543,16 +545,31 @@ def copy_tools_to_thisrun(config):
 
     # check for recursive creation of the file tree. This prevents the risk of
     # creating a run directory tree inside the `scriptsdir`
-    scriptsdir_inside_fromdir = pathlib.Path(fromdir) in pathlib.Path(scriptsdir).parents
-    if scriptsdir_inside_fromdir and config["general"]["verbose"]:
-        print("WARNING: scriptsdir is inside fromdir")
-        print(f"  - scriptsdir: {scriptsdir}")
-        print(f"  - fromdir:    {fromdir}")
+    # example:
+    # fromdir:    /mnt/lustre02/work/project/username/basedir
+    # scriptsdir: /mnt/lustre02/work/project/username/basedir/expid/scripts
+    # it is assumed that if 5th parent of the scriptsdir is inside the fromdir
+    # then probably some sort of infinite recursion is entered. These lines
+    # protect such problems
+    scriptsdir_deep_parents = list(pathlib.Path(scriptsdir).parents)[5:]
+    deep_nesting_found = pathlib.Path(expdir) in scriptsdir_deep_parents
+    if deep_nesting_found: 
+        error_type = "runtime error"
+        error_text = (
+            f"deep recursion is detected in {__file__}:\n"
+            f"- scriptsdir:         {scriptsdir}\n"
+            f"- fromdir:            {fromdir}\n"
+            f"- experiment dir:     {expdir}"
+        )
+        # exit right away to prevent further recursion. There might still be
+        # running instances of esmr_runscripts and something like 
+        # `killall esm_runscripts` might be required
+        esm_parser.user_error(error_type, error_text)
     
     # If ``fromdir`` and ``scriptsdir`` are the same, this is already a computing
     # simulation which means we want to use the script in the experiment folder,
     # so no copying is needed
-    if (fromdir == scriptsdir) or scriptsdir_inside_fromdir and not gconfig["update"]:
+    if (fromdir == scriptsdir) and not gconfig["update"]:
         if config["general"]["verbose"]:
             print("Started from the experiment folder, continuing...")
         return config
