@@ -126,7 +126,33 @@ class Namelist:
                     value = change_entries[key]
                     if value == "remove_from_namelist":
                         namelist_removes.append((namelist, change_chapter, key))
+
+                        # the key is probably coming from esm_tools config
+                        # files or from a user runscript. It can contain lower
+                        # case, but the original Fortran namelist could be in
+                        # any case combination. Here `original_key` is coming
+                        # from the default namelist and may contain mixed case.
+                        # `key` is the processed variable from f90nml module and
+                        # is lowercase.
+                        remove_original_key = False
+
+                        # traverse the namelist chapter and see if a mixed case
+                        # variable is also found
+                        for key2 in namelist_changes[namelist][change_chapter]:
+                            # take care of the MiXeD FORTRAN CaSeS
+                            if key2.lower() == key.lower() and key2 != key:
+                                original_key = key2
+                                remove_original_key = True
+                                namelist_removes.append((namelist, change_chapter, original_key))
+
+                        # remove both lowercase and mixed case variables
                         del namelist_changes[namelist][change_chapter][key]
+                        if remove_original_key:
+                            del namelist_changes[namelist][change_chapter][original_key]
+                            
+                        # mconfig instead of config, Grrrrr
+                        print(f"- NOTE: removing the variable: {key} from the namelist: {namelist}")
+
         for remove in namelist_removes:
             namelist, change_chapter, key = remove
             logging.debug("Removing from %s: %s, %s", namelist, change_chapter, key)
