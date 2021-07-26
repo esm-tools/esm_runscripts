@@ -368,6 +368,11 @@ class PrevRunInfo(dict):
                 # There is no need of prev_run for cold starts. Do nothing
                 return prev_run_config_file, ""
 
+        # Resolve config path
+        config_dir = esm_parser.find_variable(
+            ["general"], config_dir, self._config, [], True
+        )
+
         # Check for errors
         if not os.path.isdir(config_dir):
             esm_parser.user_error("Config folder not existing", (
