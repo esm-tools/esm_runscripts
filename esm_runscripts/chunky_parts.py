@@ -185,7 +185,7 @@ def update_command_line_config(config):
             config["general"]["command_line_config"]["current_date"] = None
             config["general"]["command_line_config"]["run_number"] = 1 
 
-        config = _update_chunk_date_file(config)
+    config = _update_chunk_date_file(config)
 
     return config
 
