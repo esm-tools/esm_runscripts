@@ -226,7 +226,9 @@ class PrevRunInfo(dict):
                 # Open the file and load the previous run information
                 with open(prev_run_config_file, "r") as prev_file:
                     prev_config = yaml.load(prev_file, Loader=yaml.FullLoader)
-                prev_config = prev_config["dictitems"]
+                # Back-compatibility with old config files
+                if "dictitems" in prev_config:
+                    prev_config = prev_config["dictitems"]
                 # In case a ``prev_run`` info exists inside the file, remove it to
                 # avoid config files from getting huge (prev_run nested inside
                 # prev_run...)
@@ -365,6 +367,11 @@ class PrevRunInfo(dict):
             else:
                 # There is no need of prev_run for cold starts. Do nothing
                 return prev_run_config_file, ""
+
+        # Resolve config path
+        config_dir = esm_parser.find_variable(
+            ["general"], config_dir, self._config, [], True
+        )
 
         # Check for errors
         if not os.path.isdir(config_dir):
