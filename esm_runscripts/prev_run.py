@@ -226,7 +226,9 @@ class PrevRunInfo(dict):
                 # Open the file and load the previous run information
                 with open(prev_run_config_file, "r") as prev_file:
                     prev_config = yaml.load(prev_file, Loader=yaml.FullLoader)
-                prev_config = prev_config["dictitems"]
+                # Back-compatibility with old config files
+                if "dictitems" in prev_config:
+                    prev_config = prev_config["dictitems"]
                 # In case a ``prev_run`` info exists inside the file, remove it to
                 # avoid config files from getting huge (prev_run nested inside
                 # prev_run...)
