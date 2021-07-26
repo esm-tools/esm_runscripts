@@ -134,9 +134,6 @@ def order_clusters(config):
 
         if "run_before" in gw_config["subjob_clusters"][subjob_cluster]:
             if not gw_config["subjob_clusters"][subjob_cluster]["run_before"] in gw_config["subjob_clusters"]:
-                print('gw_config["subjob_clusters"][subjob_cluster]["run_before"] = ', gw_config["subjob_clusters"][subjob_cluster]["run_before"])
-                print('gw_config["subjob_clusters"][subjob_cluster] = ', gw_config["subjob_clusters"][subjob_cluster])
-                print('gw_config["subjob_clusters"] = ', gw_config["subjob_clusters"])
                 print(f"Unknown cluster {subjob_cluster['run_before']}.")
                 sys.exit(-1)
 
