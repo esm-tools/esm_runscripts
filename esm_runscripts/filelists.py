@@ -632,11 +632,13 @@ def copy_files(config, filetypes, source, target):
 
     for filetype in [filetype for filetype in filetypes if not filetype == "ignore"]:
         for model in config["general"]["valid_model_names"] + ["general"]:
-            movement_method = get_method(get_movement(config, model, filetype, source, target))
             if filetype + "_" + text_source in config[model]:
                 sourceblock = config[model][filetype + "_" + text_source]
                 targetblock = config[model][filetype + "_" + text_target]
                 for categ in sourceblock:
+                    movement_method = get_method(
+                        get_movement(config, model, categ, filetype, source, target)
+                    )
                     file_source = os.path.normpath(sourceblock[categ])
                     file_target = os.path.normpath(targetblock[categ])
                     if config["general"]["verbose"]:
@@ -816,7 +818,29 @@ def complete_all_file_movements(config):
     return config
 
 
-def get_movement(config, model, filetype, source, target):
+def get_movement(config, model, categ, filetype, source, target):
+    # Remove globing strings from categ
+    if isinstance(categ, str):
+        categ = categ.split("_glob_")[0]
+    # Two type of directions are needed for restarts, therefore, the categories need an
+    # "_in" or "_out" at the end. They should be defined like that also in the
+    # ``file_movements`` if specific files are treated differently, in a similar way
+    # in which ``restart_in`` and ``restart_out`` need their own ``file_movements``.
+    if filetype=="restart_in":
+        categ = f"{categ}_in"
+    elif filetype=="restart_out":
+        categ = f"{categ}_out"
+        # Check for endings TODO
+    # Get file specific movements and complete with ``all_directions``
+    file_spec_movements = config[model]["file_movements"].get(categ, {})
+    if "all_directions" in file_spec_movements:
+        movement_type = file_spec_movements["all_directions"]
+        for movement in ['init_to_exp', 'exp_to_run', 'run_to_work', 'work_to_run']:
+            config = complete_one_file_movement(config, model, categ, movement, movement_type)
+        del config[model]["file_movements"][categ]["all_directions"]
+
+    # Movements associated to ``filetypes``
+    file_type_movements = config[model]["file_movements"][filetype]
     if source == "init":
         # Get the model-specific reusable_filetypes, if not existing, get the
         # general ones
@@ -825,13 +849,25 @@ def get_movement(config, model, filetype, source, target):
             config["general"]["reusable_filetypes"]
         )
         if config["general"]["run_number"] == 1 or filetype not in model_reusable_filetypes:
-            return config[model]["file_movements"][filetype]["init_to_exp"]
+            return file_spec_movements.get(
+                "init_to_exp",
+                file_type_movements["init_to_exp"]
+            )
         else:
-            return config[model]["file_movements"][filetype]["exp_to_run"]
+            return file_spec_movements.get(
+                "exp_to_run",
+                file_type_movements["exp_to_run"]
+            )
     elif source == "work":
-        return config[model]["file_movements"][filetype]["work_to_run"]
+        return file_spec_movements.get(
+            "work_to_run",
+            file_type_movements["work_to_run"]
+        )
     elif source == "thisrun" and target == "work":
-        return config[model]["file_movements"][filetype]["run_to_work"]
+        return file_spec_movements.get(
+            "run_to_work",
+            file_type_movements["run_to_work"]
+        )
     else:
         # This should NOT happen
         print(f"Error: Unknown file movement from {source} to {target}", flush=True)
