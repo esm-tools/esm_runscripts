@@ -163,6 +163,9 @@ def modify_namelists(config):
         config[model] = Namelist.nmls_remove(config[model])
         if model == "echam":
             config = Namelist.apply_echam_disturbance(config)
+            # NOTE(PG): This really doesn't belong in modify namelists, but,
+            # what the hell...
+            config = Namelist.echam_determine_streams_from_nml(config)
         config[model] = Namelist.nmls_modify(config[model])
         config[model] = Namelist.nmls_finalize(
             config[model], config["general"]["verbose"]

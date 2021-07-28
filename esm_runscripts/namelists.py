@@ -236,6 +236,24 @@ class Namelist:
         return config
 
     @staticmethod
+    def echam_determine_streams_from_nml(config):
+        if "echam" in config["general"]["valid_model_names"]:
+            nml = config["echam"]["namelists"]["namelist.echam"]
+            mvstreams = nml["mvstreamctl"]
+            mvstreams_tags = [nml["filetag"] for nml in mvstreams]
+            # NOTE(PG): There may still be warnings about missing files -- we
+            # still need to implement an "allowed missing files" feature, but
+            # this should now put all the streams away correctly.
+            if not config["echam"].get("override_streams_from_namelist", False):
+                config["echam"]["streams"] += mvstreams_tags
+            else:
+                # NOTE(PG): I honestly am not sure if this will work, maybe the
+                # restart will get messed up horribly. This just overrides
+                # whatever was there in the default. It might be dangerous.
+                config["echam"]["streams"] = mvstreams_tags
+        return config
+
+    @staticmethod
     def nmls_finalize(mconfig, verbose):
         """
         Writes namelists to disk after all modifications have finished.
