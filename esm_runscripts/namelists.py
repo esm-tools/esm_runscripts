@@ -149,7 +149,7 @@ class Namelist:
                         del namelist_changes[namelist][change_chapter][key]
                         if remove_original_key:
                             del namelist_changes[namelist][change_chapter][original_key]
-                            
+
                         # mconfig instead of config, Grrrrr
                         print(f"- NOTE: removing the variable: {key} from the namelist: {namelist}")
 
@@ -340,7 +340,7 @@ class Namelist:
             print(f'::: end of the contents of {nml_name}\n')
         return mconfig
 
-    
+
     @staticmethod
     def nmls_output_all(config):
         six.print_(
@@ -360,6 +360,6 @@ class namelist(Namelist):
             DeprecationWarning,
             stacklevel=2,
         )
-    
+
 
         super(namelist, self).__init__(*args, **kwargs)

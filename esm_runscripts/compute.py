@@ -287,7 +287,7 @@ def initialize_experiment_logfile(config):
 
         log_msg = f"# Beginning of Experiment {config['general']['expid']}"
         write_to_log(config, [log_msg], message_sep="")
-        
+
     write_to_log(
         config,
         [
@@ -305,7 +305,7 @@ def initialize_experiment_logfile(config):
             f"{config['general']['experiment_dir']}/log" \
             f"/{config['general']['expid']}_esm_runscripts_" \
             f"{config['general']['run_datestamp']}.log"
-        
+
         logger.trace_sink.def_path(logfile_path)
 
     return config
@@ -321,7 +321,7 @@ def _write_finalized_config(config):
     # here: https://pyyaml.org/wiki/PyYAMLDocumentation
     def date_representer(dumper, date):
         return dumper.represent_str(f"{date.output()}")
-        
+
     def calendar_representer(dumper, calendar):
         # Calendar has a __str__ method
         return dumper.represent_str(str(calendar))
@@ -341,29 +341,29 @@ def _write_finalized_config(config):
         pass
 
     # pyyaml does not support tuple and prints !!python/tuple
-    EsmConfigDumper.add_representer(tuple, yaml.representer.SafeRepresenter.represent_list) 
+    EsmConfigDumper.add_representer(tuple, yaml.representer.SafeRepresenter.represent_list)
 
     # Determine how non-built-in types will be printed be the YAML dumper
-    EsmConfigDumper.add_representer(esm_calendar.Date, date_representer) 
-    
-    EsmConfigDumper.add_representer(esm_calendar.esm_calendar.Calendar, 
-        calendar_representer) 
-        # yaml.representer.SafeRepresenter.represent_str) 
-        
-    EsmConfigDumper.add_representer(esm_parser.esm_parser.ConfigSetup, 
-        yaml.representer.SafeRepresenter.represent_dict) 
-        
+    EsmConfigDumper.add_representer(esm_calendar.Date, date_representer)
+
+    EsmConfigDumper.add_representer(esm_calendar.esm_calendar.Calendar,
+        calendar_representer)
+        # yaml.representer.SafeRepresenter.represent_str)
+
+    EsmConfigDumper.add_representer(esm_parser.esm_parser.ConfigSetup,
+        yaml.representer.SafeRepresenter.represent_dict)
+
     EsmConfigDumper.add_representer(batch_system, batch_system_representer)
 
     # format for the other ESM data structures
-    EsmConfigDumper.add_representer(esm_rcfile.esm_rcfile.EsmToolsDir, 
-        yaml.representer.SafeRepresenter.represent_str) 
-        
-    EsmConfigDumper.add_representer(esm_runscripts.coupler.coupler_class, 
-        coupler_representer) 
-        
-    EsmConfigDumper.add_representer(esm_runscripts.oasis.oasis, oasis_representer) 
-    
+    EsmConfigDumper.add_representer(esm_rcfile.esm_rcfile.EsmToolsDir,
+        yaml.representer.SafeRepresenter.represent_str)
+
+    EsmConfigDumper.add_representer(esm_runscripts.coupler.coupler_class,
+        coupler_representer)
+
+    EsmConfigDumper.add_representer(esm_runscripts.oasis.oasis, oasis_representer)
+
     config_file_path = \
         f"{config['general']['thisrun_config_dir']}"\
         f"/{config['general']['expid']}_finished_config.yaml"
@@ -372,11 +372,11 @@ def _write_finalized_config(config):
         config_final = copy.deepcopy(config) #PrevRunInfo
         del config_final["prev_run"]         #PrevRunInfo
 
-        out = yaml.dump(config_final, Dumper=EsmConfigDumper, width=10000, 
+        out = yaml.dump(config_final, Dumper=EsmConfigDumper, width=10000,
             indent=4)   #PrevRunInfo
         config_file.write(out)
     return config
-    
+
 
 def color_diff(diff):
     for line in diff:
@@ -420,7 +420,7 @@ def update_runscript(fromdir, scriptsdir, tfile, gconfig, file_type):
 
     # if `tfile` contains a full path of the runscript then remove the leading path
     tfile = os.path.basename(tfile)
-    
+
     # If the target file in ``scriptsdir`` does not exist, then copy the file
     # to the target.
     if not os.path.isfile(scriptsdir + "/" + tfile):
@@ -556,7 +556,7 @@ def copy_tools_to_thisrun(config):
     # protect such problems
     scriptsdir_deep_parents = list(pathlib.Path(scriptsdir).parents)[5:]
     deep_nesting_found = pathlib.Path(expdir) in scriptsdir_deep_parents
-    if deep_nesting_found: 
+    if deep_nesting_found:
         error_type = "runtime error"
         error_text = (
             f"deep recursion is detected in {__file__}:\n"
@@ -565,10 +565,10 @@ def copy_tools_to_thisrun(config):
             f"- experiment dir:     {expdir}"
         )
         # exit right away to prevent further recursion. There might still be
-        # running instances of esmr_runscripts and something like 
+        # running instances of esmr_runscripts and something like
         # `killall esm_runscripts` might be required
         esm_parser.user_error(error_type, error_text)
-    
+
     # If ``fromdir`` and ``scriptsdir`` are the same, this is already a computing
     # simulation which means we want to use the script in the experiment folder,
     # so no copying is needed
@@ -601,7 +601,7 @@ def copy_tools_to_thisrun(config):
         options_to_remove = [" -U ", " --update "]
         for option in options_to_remove:
             original_command = original_command.replace(option, " ")
-        
+
         # Before resubmitting the esm_runscripts, the path of the runscript
         # needs to be modified. Remove the absolute/relative path
         runscript_absdir, runscript = os.path.split(gconfig['runscript_abspath'])
@@ -609,20 +609,20 @@ def copy_tools_to_thisrun(config):
         new_command_list = []
         for command in original_command_list:
             # current command will contain the full path, so replace it with
-            # the YAML file only since we are going to execute it from the 
+            # the YAML file only since we are going to execute it from the
             # `scriptsdir` now
             if runscript in command:
                 # gconfig['scriptname'] or `runscript` only contains the YAML file name
-                command = runscript 
+                command = runscript
             new_command_list.append(command)
 
         new_command = " ".join(new_command_list)
         restart_command = f"cd {scriptsdir}; esm_runscripts {new_command}"
-        
+
         # prevent continuous addition of --no-motd
         if not "--no-motd" in restart_command:
             restart_command += " --no-motd "
-            
+
         if config["general"]["verbose"]:
             print(restart_command)
         os.system(restart_command)
@@ -638,7 +638,7 @@ def _copy_preliminary_files_from_experiment_to_thisrun(config):
         f"{config['general']['expid']}_{config['general']['setup_name']}.date",
         "copy",
     )]
-    
+
     for filetype, filename, copy_or_link in filelist:
         source = config["general"]["experiment_" + filetype + "_dir"]
         dest = config["general"]["thisrun_" + filetype + "_dir"]
@@ -673,4 +673,4 @@ def _show_simulation_info(config):
     six.print_(80 * "=")
     six.print_()
     return config
-    
+
