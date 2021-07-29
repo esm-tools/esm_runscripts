@@ -684,6 +684,8 @@ def initialize_batch_system(config):
     config["general"]["batch"] = batch_system.batch_system(
         config, config["computer"]["batch_system"]
     )
+
+    config = batch_system.find_openmp(config)
     return config
 
 

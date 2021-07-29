@@ -139,12 +139,13 @@ class Slurm:
 
 
 
-    def write_het_par_wrappers(self, config):
+    @staticmethod
+    def write_het_par_wrappers(config):
         cores_per_node = config['computer']['partitions']['compute']['cores_per_node']
 
         scriptfolder = config["general"]["thisrun_scripts_dir"] + "../work/"
-        for model in config["general"]["valid_model_names"]:
-            if config["computer"].get("heterogeneous_parallelization", False):
+        if config["computer"].get("heterogeneous_parallelization", False):
+            for model in config["general"]["valid_model_names"]:
                 command = "./" + config[model].get(
                     "execution_command",config[model]["executable"]
                 )

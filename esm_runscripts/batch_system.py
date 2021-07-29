@@ -47,7 +47,12 @@ class batch_system:
         return self.bs.job_is_still_running(jobid)
 
     def add_pre_launcher_lines(self, config, sadfile):
-        self.bs.add_pre_launcher_lines(config, sadfile)
+        return self.bs.add_pre_launcher_lines(config, sadfile)
+
+
+    def write_het_par_wrappers(self, config):
+        return self.bs.write_het_par_wrappers(config)
+
 
     # methods that actually do something
 
@@ -450,6 +455,8 @@ class batch_system:
             if batch_or_shell == "batch":
                 
                 config = batch_system.calculate_requirements(config, cluster)
+                if cluster in reserved_jobtypes:
+                    config = config["general"]["batch"].write_het_par_wrappers(config)
                 header = batch_system.get_batch_header(config, cluster)
                 config = add_batch_hostfile(config)
 
@@ -485,6 +492,9 @@ class batch_system:
                     sadfile.write(self.append_start_statement(config, subjob) + "\n")
                     sadfile.write("\n")
                     sadfile.write("cd " + config["general"]["thisrun_work_dir"] + "\n")
+                    if cluster in reserved_jobtypes:
+                        config["general"]["batch"].add_pre_launcher_lines(config, sadfile)
+
                     for line in commands:
                         sadfile.write(line + "\n")
 
@@ -605,6 +615,20 @@ def add_batch_hostfile(config):
     #    None,
     #    None,
     #)
+    return config
+
+
+def find_openmp(config):
+    for model in config:
+        if "omp_num_threads" in config[model]:
+            config["general"]["heterogeneous_parallelization"] = True
+            config["computer"]["heterogeneous_parallelization"] = True  # dont like this
+            if (
+                    not config[model].get("nproc", False) and
+                    not config[model].get("nproca", False) and
+                    not config[model].get("nprocar", False)
+                    ):
+                config[model]["nproc"] = 1
     return config
 
 
