@@ -302,7 +302,7 @@ def initialize_experiment_logfile(config):
             f"{config['general']['experiment_dir']}/log" \
             f"/{config['general']['expid']}_esm_runscripts_" \
             f"{config['general']['run_datestamp']}.log"
-        
+
         logger.trace_sink.def_path(logfile_path)
 
     return config
@@ -318,7 +318,7 @@ def _write_finalized_config(config):
     # here: https://pyyaml.org/wiki/PyYAMLDocumentation
     def date_representer(dumper, date):
         return dumper.represent_str(f"{date.output()}")
-        
+
     def calendar_representer(dumper, calendar):
         # Calendar has a __str__ method
         return dumper.represent_str(str(calendar))
@@ -338,29 +338,30 @@ def _write_finalized_config(config):
         pass
 
     # pyyaml does not support tuple and prints !!python/tuple
-    EsmConfigDumper.add_representer(tuple, yaml.representer.SafeRepresenter.represent_list) 
+    EsmConfigDumper.add_representer(tuple, yaml.representer.SafeRepresenter.represent_list)
 
     # Determine how non-built-in types will be printed be the YAML dumper
-    EsmConfigDumper.add_representer(esm_calendar.Date, date_representer) 
-    
-    EsmConfigDumper.add_representer(esm_calendar.esm_calendar.Calendar, 
-        calendar_representer) 
-        # yaml.representer.SafeRepresenter.represent_str) 
-        
-    EsmConfigDumper.add_representer(esm_parser.esm_parser.ConfigSetup, 
-        yaml.representer.SafeRepresenter.represent_dict) 
-        
+    EsmConfigDumper.add_representer(esm_calendar.Date, date_representer)
+
+    EsmConfigDumper.add_representer(esm_calendar.esm_calendar.Calendar,
+        calendar_representer)
+        # yaml.representer.SafeRepresenter.represent_str)
+
+    EsmConfigDumper.add_representer(esm_parser.esm_parser.ConfigSetup,
+        yaml.representer.SafeRepresenter.represent_dict)
+
     EsmConfigDumper.add_representer(batch_system, batch_system_representer)
 
     # format for the other ESM data structures
-    EsmConfigDumper.add_representer(esm_rcfile.esm_rcfile.EsmToolsDir, 
-        yaml.representer.SafeRepresenter.represent_str) 
-        
-    EsmConfigDumper.add_representer(esm_runscripts.coupler.coupler_class, 
-        coupler_representer) 
-        
-    EsmConfigDumper.add_representer(esm_runscripts.oasis.oasis, oasis_representer) 
-    
+    EsmConfigDumper.add_representer(esm_rcfile.esm_rcfile.EsmToolsDir,
+        yaml.representer.SafeRepresenter.represent_str)
+
+    EsmConfigDumper.add_representer(esm_runscripts.coupler.coupler_class,
+        coupler_representer)
+
+    if "oasis3mct" in config:
+        EsmConfigDumper.add_representer(esm_runscripts.oasis.oasis, oasis_representer)
+
     config_file_path = \
         f"{config['general']['thisrun_config_dir']}"\
         f"/{config['general']['expid']}_finished_config.yaml"
@@ -369,11 +370,11 @@ def _write_finalized_config(config):
         config_final = copy.deepcopy(config) #PrevRunInfo
         del config_final["prev_run"]         #PrevRunInfo
 
-        out = yaml.dump(config_final, Dumper=EsmConfigDumper, width=10000, 
+        out = yaml.dump(config_final, Dumper=EsmConfigDumper, width=10000,
             indent=4)   #PrevRunInfo
         config_file.write(out)
     return config
-    
+
 
 def color_diff(diff):
     for line in diff:
