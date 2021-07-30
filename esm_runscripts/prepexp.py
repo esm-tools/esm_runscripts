@@ -6,6 +6,7 @@ import esm_rcfile
 import six
 import yaml
 from esm_calendar import Date
+from colorama import Fore, Back, Style, init
 
 import esm_tools
 

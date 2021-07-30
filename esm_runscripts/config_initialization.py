@@ -127,6 +127,9 @@ def add_esm_runscripts_defaults_to_config(config):
 
 def distribute_per_model_defaults(config):
     default_config = config["general"]["defaults.yaml"]
+    if "general" in default_config:
+        config["general"] = esm_parser.new_deep_update(config["general"], default_config["general"])
+        
     if "per_model_defaults" in default_config:
         for model in config["general"]["valid_model_names"]:
             config[model] = esm_parser.new_deep_update(config[model], default_config["per_model_defaults"])
