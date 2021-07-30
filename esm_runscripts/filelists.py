@@ -807,6 +807,40 @@ def complete_all_file_movements(config):
                             config = complete_one_file_movement(config, model, filetype, movement, movement_type)
                         del mconfig["file_movements"][filetype]["all_directions"]
 
+            # Complete file specific movements with ``all_directions``
+            for file_in_fm in mconfig["file_movements"]:
+                # If it is a specific file, and not a file type
+                if file_in_fm not in (
+                    config["general"]["all_model_filetypes"]
+                    + ["scripts", "unknown"]
+                ):
+                    # Check syntax for restart files
+                    if (
+                        file_in_fm in mconfig.get("restart_in_files", {})
+                        or file_in_fm in mconfig.get("restart_out_files", {})
+                    ):
+                        esm_parser.user_error(
+                            "Movement direction not specified",
+                            f"'{model}.file_movements.{file_in_fm}' refers to a "
+                            + "restart file which can be moved/copied/link in two "
+                            + "directions, into the 'work' folder and out of the "
+                            + "'work' folder. Please, add the direction '_in' or "
+                            + f"'_out' to '{file_in_fm}':\n\n{model}:\n    "
+                            + f"file_movements:\n        {file_in_fm}_<in/out>:\n"
+                            + f"            [ ... ]"
+                        )
+                    # Solve ``all_directions``
+                    file_spec_movements = mconfig["file_movements"][file_in_fm]
+                    if "all_directions" in file_spec_movements:
+                        movement_type = file_spec_movements["all_directions"]
+                        for movement in [
+                            'init_to_exp', 'exp_to_run', 'run_to_work', 'work_to_run'
+                        ]:
+                            config = complete_one_file_movement(
+                                config, model, file_in_fm, movement, movement_type
+                            )
+                        del mconfig["file_movements"][file_in_fm]["all_directions"]
+
             if "default" in mconfig["file_movements"]:
                 if "all_directions" in mconfig["file_movements"]["default"]:
                     movement_type = mconfig["file_movements"]["default"]["all_directions"]
@@ -827,22 +861,13 @@ def get_movement(config, model, categ, filetype, source, target):
     if isinstance(categ, str):
         categ = categ.split("_glob_")[0]
     # Two type of directions are needed for restarts, therefore, the categories need an
-    # "_in" or "_out" at the end. They should be defined like that also in the
-    # ``file_movements`` if specific files are treated differently, in a similar way
-    # in which ``restart_in`` and ``restart_out`` need their own ``file_movements``.
+    # "_in" or "_out" at the end.
     if filetype=="restart_in":
         categ = f"{categ}_in"
     elif filetype=="restart_out":
         categ = f"{categ}_out"
-        # Check for endings TODO
-    # Get file specific movements and complete with ``all_directions``
+    # File specific movements
     file_spec_movements = config[model]["file_movements"].get(categ, {})
-    if "all_directions" in file_spec_movements:
-        movement_type = file_spec_movements["all_directions"]
-        for movement in ['init_to_exp', 'exp_to_run', 'run_to_work', 'work_to_run']:
-            config = complete_one_file_movement(config, model, categ, movement, movement_type)
-        del config[model]["file_movements"][categ]["all_directions"]
-
     # Movements associated to ``filetypes``
     file_type_movements = config[model]["file_movements"][filetype]
     if source == "init":
