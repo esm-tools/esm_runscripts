@@ -70,7 +70,7 @@ def all_files_to_copy_append(
     if file_target:
         if filetype in config["general"]["in_filetypes"] and filetype + "_in_work" in config[model]:
             config[model][filetype + "_in_work"][categ] = file_target
-        else:    
+        else:
             #print (filetype)
             #print (file_target)
             #print (categ)
@@ -127,7 +127,7 @@ def create_new_files(config):
         for filetype in config["general"]["all_filetypes"]:
             if "create_" + filetype in config[model]:
                 filenames = config[model]["create_" + filetype].keys()
-            
+
                 for filename in filenames:
 
 
@@ -185,6 +185,7 @@ def modify_namelists(config):
         config[model] = Namelist.nmls_remove(config[model])
         if model == "echam":
             config = Namelist.apply_echam_disturbance(config)
+            config = Namelist.echam_transient_forcing(config)
         config[model] = Namelist.nmls_modify(config[model])
         config[model] = Namelist.nmls_finalize(
             config[model], config["general"]["verbose"]

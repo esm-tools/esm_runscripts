@@ -24,6 +24,7 @@ requirements = ["esm_parser @ git+https://github.com/esm-tools/esm_parser.git",
                 "tqdm",
                 "sqlalchemy",
                 "questionary",
+                "pandas",
                ]
 
 setup_requirements = [ ]
