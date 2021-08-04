@@ -289,7 +289,7 @@ class Namelist:
             #       "[[streams-->STREAM]]_codes": ${general.expid}_${start_date!syear}*.${start_date!sday}_STREAM.codes
             #       "[[streamsnc-->STREAM]]_nc": ${general.expid}_${start_date!syear!smonth}.${start_date!sday}_STREAM.nc
             for stream in config['echam']['streams']:
-                config['echam']['outdata_files'][f'{stream}_codes'][stream] = f'{stream}'_codes
+                config['echam']['outdata_files'][f'{stream}_codes'][stream] = f'{stream}_codes'
                 config['echam']['outdata_files'][f'{stream}_nc'][stream] = f'{stream}_nc'
                 config['echam']['outdata_sources'][f'{stream}'] = config['general']['expid']+"_*_"+stream
                 config['echam']['outdata_sources'][f'{stream}_codes'] = config['general']['expid']+"_*_"+stream+".codes"
