@@ -294,6 +294,13 @@ class Namelist:
                 config['echam']['outdata_sources'][f'{stream}'] = config['general']['expid']+"_*_"+stream
                 config['echam']['outdata_sources'][f'{stream}_codes'] = config['general']['expid']+"_*_"+stream+".codes"
                 config['echam']['outdata_sources'][f'{stream}_nc'] = config['general']['expid']+"_*_"+stream+".nc"
+            print("Hey bro, we need some debugging:")
+            print("We write the config as it is right now to the current working directory as >> stream_config.yaml <<")
+            import yaml
+            with open("stream_config.yaml", "w") as f:
+                yaml.dump(config, f)
+            print(config['echam']['outdata_files'])
+            print(config['echam']['outdata_sources'])
         return config
 
     @staticmethod
