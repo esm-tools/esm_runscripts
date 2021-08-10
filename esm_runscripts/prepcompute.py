@@ -210,9 +210,9 @@ def copy_files_to_thisrun(config):
     count_max = 30
     if config["general"]["iterative_coupling"]:
         six.print_("Going into while loop")
-        while counter < count_max:
-            counter = counter + 1
-            if "wait_for_file" in config[config["general"]["setup_name"]]:
+        if "wait_for_file" in config[config["general"]["setup_name"]]:
+            while counter < count_max:
+                counter = counter + 1
                 if os.path.isfile(config[config["general"]["setup_name"]]["wait_for_file"]):
                     break
                 else:
