@@ -1,4 +1,5 @@
 import os
+import time
 import shutil
 import subprocess
 import copy
@@ -204,6 +205,20 @@ def copy_files_to_thisrun(config):
         six.print_("\n" "- File lists populated, proceeding with copy...")
         six.print_("- Note that you can see your file lists in the config folder")
         six.print_("- You will be informed about missing files")
+
+    counter = 0
+    count_max = 30
+    if config["general"]["iterative_coupling"]:
+        six.print_("Going into while loop")
+        while counter < count_max:
+            counter = counter + 1
+            if "wait_for_file" in config[config["general"]["setup_name"]]:
+                if os.path.isfile(config[config["general"]["setup_name"]]["wait_for_file"]):
+                    break
+                else:
+                    six.print_("Waiting for files: ", config[config["general"]["setup_name"]]["wait_for_file"])
+                    six.print_("Sleep for 10 seconds...")
+                    time.sleep(10)
 
     log_used_files(config)
 
