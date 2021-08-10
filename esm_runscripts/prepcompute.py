@@ -209,16 +209,17 @@ def copy_files_to_thisrun(config):
     counter = 0
     count_max = 30
     if config["general"]["iterative_coupling"]:
-        six.print_("Going into while loop")
-        if "wait_for_file" in config[config["general"]["setup_name"]]:
-            while counter < count_max:
-                counter = counter + 1
-                if os.path.isfile(config[config["general"]["setup_name"]]["wait_for_file"]):
-                    break
-                else:
-                    six.print_("Waiting for files: ", config[config["general"]["setup_name"]]["wait_for_file"])
-                    six.print_("Sleep for 10 seconds...")
-                    time.sleep(10)
+        for model in config["general"]["valid_model_names"]: 
+            if "wait_for_file" in config[model]:
+                while counter < count_max:
+                    counter = counter + 1
+                    if os.path.isfile(config[model]["wait_for_file"]):
+                        six.print_("File found: ", config[model]["wait_for_file"])
+                        break
+                    else:
+                        six.print_("Waiting for file: ", config[model]["wait_for_file"])
+                        six.print_("Sleep for 10 seconds...")
+                        time.sleep(10)
 
     log_used_files(config)
 
