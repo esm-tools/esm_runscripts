@@ -209,15 +209,16 @@ def copy_files_to_thisrun(config):
     counter = 0
     count_max = 30
     if config["general"]["iterative_coupling"]:
-        for model in config["general"]["valid_model_names"]: 
-            if "wait_for_file" in config[model]:
+        for file in config['general'].get('files_to_wait_for'):
+        #for model in config["general"]["valid_model_names"]: 
+            if 'files_to_wait_for' in config["general"]:
                 while counter < count_max:
                     counter = counter + 1
-                    if os.path.isfile(config[model]["wait_for_file"]):
-                        six.print_("File found: ", config[model]["wait_for_file"])
+                    if os.path.isfile(file):
+                        six.print_("File found: ", file)
                         break
                     else:
-                        six.print_("Waiting for file: ", config[model]["wait_for_file"])
+                        six.print_("Waiting for file: ", file)
                         six.print_("Sleep for 10 seconds...")
                         time.sleep(10)
 
