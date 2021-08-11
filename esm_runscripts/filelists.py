@@ -467,6 +467,10 @@ def replace_year_placeholder(config):
                                     new_target_name = config[model][
                                         filetype + "_targets"
                                     ][file_category].replace("@YEAR@", str(year))
+                                    
+                                    print("all_years = ", all_years) 
+                                    print("file_category = ", file_category)
+                                    print("config[model] = ", config[model][filetype + "_sources"][file_category])
                                     new_source_name = config[model][
                                         filetype + "_sources"
                                     ][file_category].replace("@YEAR@", str(year))

@@ -209,9 +209,8 @@ def copy_files_to_thisrun(config):
     counter = 0
     count_max = 30
     if config["general"]["iterative_coupling"]:
-        for file in config['general'].get('files_to_wait_for'):
-        #for model in config["general"]["valid_model_names"]: 
-            if 'files_to_wait_for' in config["general"]:
+        if 'files_to_wait_for' in config["general"]:
+            for file in config['general'].get('files_to_wait_for'):
                 while counter < count_max:
                     counter = counter + 1
                     if os.path.isfile(file):
