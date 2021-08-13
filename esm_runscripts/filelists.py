@@ -12,6 +12,7 @@ import esm_parser
 
 import f90nml
 import esm_tools
+import yaml
 
 def rename_sources_to_targets(config):
     # Purpose of this routine is to make sure that filetype_sources and
@@ -130,9 +131,23 @@ def complete_targets(config):
             if filetype + "_sources" in config[model]:
                 for categ in config[model][filetype + "_sources"]:
                     if not categ in config[model][filetype + "_targets"]:
-                        config[model][filetype + "_targets"][categ] = os.path.basename(
-                            config[model][filetype + "_sources"][categ]
-                        )
+                        file_source = config[model][filetype + "_sources"][categ]
+
+                        # check if the file_source has the correct type. For
+                        # unresolved variables they may still be a 'dict'
+                        if not isinstance(file_source, (str, os.PathLike)):
+                            scenario = config[model].get('scenario', 'UNDEFINED')
+                            version = config[model].get('version', 'UNDEFINED')
+                            error_type = "Missing Scenario Configuration"
+                            error_text = (
+                                f"Scenario {scenario} for the model {model} (version: {version}) has not been implemented yet. \n" +
+                                f"The input file variable {categ} of {filetype}_sources can not be fully resolved:\n\n" +
+                                yaml.dump(file_source, indent=4))
+                            esm_parser.user_error(error_type, error_text)
+                        else:
+                            config[model][filetype + "_targets"][categ] = \
+                                os.path.basename(file_source)
+
     return config
 
 
