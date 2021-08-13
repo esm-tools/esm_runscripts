@@ -141,7 +141,7 @@ def complete_targets(config):
                             scenario = config[model].get('scenario', 'UNDEFINED')
                             version = config[model].get('version', 'UNDEFINED')
 
-                            error_type = "Missing Scenario Configuration"
+                            error_type = "Missing Configuration"
                             error_text = (
                                 # comment-out the line below to provide more information
                                 # f"Scenario {scenario} for the model {model} (version: {version}) has not been implemented yet. \n" +
