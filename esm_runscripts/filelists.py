@@ -136,11 +136,15 @@ def complete_targets(config):
                         # check if the file_source has the correct type. For
                         # unresolved variables they may still be a 'dict'
                         if not isinstance(file_source, (str, os.PathLike)):
+                            # model, scenario and version are omitted to make
+                            # error message less verbose
                             scenario = config[model].get('scenario', 'UNDEFINED')
                             version = config[model].get('version', 'UNDEFINED')
+
                             error_type = "Missing Scenario Configuration"
                             error_text = (
-                                f"Scenario {scenario} for the model {model} (version: {version}) has not been implemented yet. \n" +
+                                # comment-out the line below to provide more information
+                                # f"Scenario {scenario} for the model {model} (version: {version}) has not been implemented yet. \n" +
                                 f"The input file variable {categ} of {filetype}_sources can not be fully resolved:\n\n" +
                                 yaml.dump(file_source, indent=4))
                             esm_parser.user_error(error_type, error_text)
