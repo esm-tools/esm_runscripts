@@ -2,7 +2,7 @@
 
 __author__ = """Dirk Barbi"""
 __email__ = 'dirk.barbi@awi.de'
-__version__ = "5.1.27"
+__version__ = "5.1.28"
 
 from .sim_objects import *
 from .batch_system import *
