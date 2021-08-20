@@ -364,12 +364,11 @@ def find_valid_year(config, year):
         to_info = float(config[entry].get("to", max_val))
 
         if from_info <= year <= to_info:
-            return entry
-        # if the current model year is out of the valid bounds, report and exit
-        else:
-            error_type = "Year Error"
-            error_text = f"Sorry, no entry found for year {year} in config {config}"
-            esm_parser.user_error(error_type, error_text)
+            return entry 
+
+    error_type = "Year Error"
+    error_text = f"Sorry, no entry found for year {year} in config {config}"
+    esm_parser.user_error(error_type, error_text)
 
 def replace_year_placeholder(config):
     for filetype in config["general"]["all_model_filetypes"]:
