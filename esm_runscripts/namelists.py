@@ -262,48 +262,6 @@ class Namelist:
         return config
 
     @staticmethod
-    def echam_determine_streams_from_nml(config):
-        if "echam" in config["general"]["valid_model_names"]:
-            nml = config["echam"]["namelists"]["namelist.echam"]
-            mvstreams = nml["mvstreamctl"]
-            mvstreams_tags = [nml.get("filetag") for nml in mvstreams]
-            # NOTE(PG): There may still be warnings about missing files -- we
-            # still need to implement an "allowed missing files" feature, but
-            # this should now add all of the mvstreams that have a filetag to
-            # ECHAM's stream list.
-            if not config["echam"].get("override_streams_from_namelist", False):
-                config["echam"]["streams"] += mvstreams_tags
-            else:
-                # NOTE(PG): I honestly am not sure if this will work, maybe the
-                # restart will get messed up horribly. This just overrides
-                # whatever was there in the default. It might be dangerous.
-                config["echam"]["streams"] = mvstreams_tags
-            # As reference from the echam YAML:
-            # outdata_files:
-            #   "[[streams-->STREAM]]": STREAM
-            #   "[[streams-->STREAM]]_codes": STREAM_codes
-            #   "[[streamsnc-->STREAM]]_nc": STREAM_nc
-            #
-            # outdata_sources:
-            #       "[[streams-->STREAM]]": ${general.expid}_${start_date!syear}*.${start_date!sday}_STREAM
-            #       "[[streams-->STREAM]]_codes": ${general.expid}_${start_date!syear}*.${start_date!sday}_STREAM.codes
-            #       "[[streamsnc-->STREAM]]_nc": ${general.expid}_${start_date!syear!smonth}.${start_date!sday}_STREAM.nc
-            for stream in config['echam']['streams']:
-                config['echam']['outdata_files'][f'{stream}_codes'][stream] = f'{stream}_codes'
-                config['echam']['outdata_files'][f'{stream}_nc'][stream] = f'{stream}_nc'
-                config['echam']['outdata_sources'][f'{stream}'] = config['general']['expid']+"_*_"+stream
-                config['echam']['outdata_sources'][f'{stream}_codes'] = config['general']['expid']+"_*_"+stream+".codes"
-                config['echam']['outdata_sources'][f'{stream}_nc'] = config['general']['expid']+"_*_"+stream+".nc"
-            print("Hey bro, we need some debugging:")
-            print("We write the config as it is right now to the current working directory as >> stream_config.yaml <<")
-            import yaml
-            with open("stream_config.yaml", "w") as f:
-                yaml.dump(config, f)
-            print(config['echam']['outdata_files'])
-            print(config['echam']['outdata_sources'])
-        return config
-
-    @staticmethod
     def nmls_finalize(mconfig, verbose):
         """
         Writes namelists to disk after all modifications have finished.

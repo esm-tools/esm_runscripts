@@ -28,6 +28,88 @@ def mini_resolve_variable_date_file(date_file, config):
     return date_file
 
 
+def maybe_add_extra_echam_streams(config):
+    import f90nml
+    import os
+
+    if "echam" in config["general"]["valid_model_names"]:
+        mconfig = config["echam"]
+        if not mconfig.get("determine_echam_streams_from_namelist", False):
+            return config
+
+        template_namelist_dir = mconfig["namelist_dir"]
+
+        # Only solve my edge case for right now. Normally namelsist dir should
+        # be a full thing.
+        #
+        # This is horrible. Just horrible.
+        if "${project_base}" in template_namelist_dir:
+            template_namelist_dir = template_namelist_dir.replace("${project_base}", config["general"]["project_base"])
+
+        nml = f90nml.read(os.path.join(template_namelist_dir, "namelist.echam"))
+        mvstreams = nml.get("mvstreamctl")
+        # If only one mvstreamctl is there, it comes back as a namelist, but we
+        # want lists:
+        if not isinstance(mvstreams, list):
+            mvstreams = [mvstreams]
+        extra_streams = []
+        for mvstream in mvstreams:
+            if mvstream is not None:
+                filetag = mvstream.get("filetag")
+                if filetag:
+                    extra_streams.append(filetag)
+                else:
+                    target = mvstream.get("target", "*m")  # According to the handbook, the default is "*m" if not set
+                    if target.startswith("*"):
+                        ending = target[1:]
+                        source = mvstream.get("source")  # NOTE(PG): Are these ever lists??
+                        if isinstance(source, str):
+                            extra_streams.append(source+ending)
+                        elif isinstance(source, list):
+                            sources = source  # Pluralize the variable name to make it more obvious we have a list
+                            for source in sources:
+                                extra_streams.append(source+ending)
+                    else:
+                        extra_streams.append(target)
+        set_streams = nml.get("set_stream")
+        # If only one set_stream is there, it comes back as a namelist, but we
+        # want lists:
+        if not isinstance(set_streams, list):
+            set_streams = [set_streams]
+        for set_stream in set_streams:
+            if set_stream is not None:
+                if set_stream.get("lpost", 1): # 1 is the safer option. In the worst case, esm-tools complain about not being to move some files
+                    if set_stream.get("post_suf"):
+                        # User has defined their own suffix, we need to add that to the list:
+                        extra_streams.append(set_stream.get("post_suf"))
+                    else:
+                        # User did not define a own suffix, but the default (if I understand the handbook) is to just use the stream name:
+                        extra_streams.append(set_stream.get("stream"))
+                    # Apparently you can also rename the restart files uniquely
+                    if set_stream.get("rest_suf"):
+                        extra_streams.append(set_stream.get("rest_suf"))
+        set_stream_elements = nml.get("set_stream_element")
+        # If only one set_stream_elements is there, it comes back as a namelist, but we
+        # want lists:
+        if not isinstance(set_stream_elements, list):
+            set_stream_elements = [set_stream_elements]
+        for set_stream_element in set_stream_elements:
+            if set_stream_element is not None:
+                lpost = set_stream_element.get("lpost", 1)
+                lrerun = set_stream_element.get("lrerun", 1)
+                stream = set_stream_element['stream']  # Will ECHAM crash if there is no stream in one of these chapter???
+                if lpost or lrerun:
+                    extra_streams.append(stream)
+
+        # Remove duplicates:
+        extra_streams = list(set(extra_streams))
+        for stream in extra_streams:
+            if stream not in config['echam']['streams']:
+                print(f"NOTE:\t\tAdding the following stream detected in namelist.echam which was not declared in echam.yaml\n    \t\t{stream}")
+                config['echam']['streams'].append(stream)
+    return config
+
+
 def _read_date_file(config):
     import os
     import logging
