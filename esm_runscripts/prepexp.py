@@ -271,7 +271,7 @@ def initialize_experiment_logfile(config):
             f"{config['general']['experiment_dir']}/log" \
             f"/{config['general']['expid']}_esm_runscripts_" \
             f"{config['general']['run_datestamp']}.log"
-        
+
         logger.trace_sink.def_path(logfile_path)
 
     return config

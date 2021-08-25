@@ -276,7 +276,8 @@ def _write_finalized_config(config):
     EsmConfigDumper.add_representer(esm_runscripts.coupler.coupler_class,
         coupler_representer)
 
-    EsmConfigDumper.add_representer(esm_runscripts.oasis.oasis, oasis_representer)
+    if "oasis3mct" in config:
+        EsmConfigDumper.add_representer(esm_runscripts.oasis.oasis, oasis_representer)
 
     config_file_path = \
         f"{config['general']['thisrun_config_dir']}"\
