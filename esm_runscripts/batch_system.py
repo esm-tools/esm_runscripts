@@ -77,6 +77,7 @@ class batch_system:
         sad_filename = \
             f"{folder}/{expid}_{cluster}" \
             f"_{config['general']['run_datestamp']}.sad"
+        return sad_filename
 
 
     @staticmethod
