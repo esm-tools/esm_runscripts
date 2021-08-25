@@ -243,13 +243,10 @@ def _write_finalized_config(config):
     yaml.add_representer(Date, date_representer)
     yaml.add_representer(batch_system, batch_system_representer)
 
-    with open(
-        config["general"]["thisrun_config_dir"]
-        + "/"
-        + config["general"]["expid"]
-        + "_finished_config.yaml",
-        "w",
-    ) as config_file:
+    config_file_path = \
+        f"{config['general']['thisrun_config_dir']}"\
+        f"/{config['general']['expid']}_finished_config.yaml"
+    with open(config_file_path, "w") as config_file:
         # Avoid saving ``prev_run`` information in the config file
         config_final = copy.deepcopy(config) #PrevRunInfo
         del config_final["prev_run"]         #PrevRunInfo
@@ -265,15 +262,15 @@ def _show_simulation_info(config):
     six.print_()
     six.print_(80 * "=")
     six.print_("STARTING SIMULATION JOB!")
-    six.print_("Experiment ID = %s" % config["general"]["expid"])
-    six.print_("Setup = %s" % config["general"]["setup_name"])
+    six.print_(f"Experiment ID = {config['general']['expid']}")
+    six.print_(f"Setup = {config['general']['setup_name']}")
     if "coupled_setup" in config["general"]:
         six.print_("This setup consists of:")
         for model in config["general"]["valid_model_names"]:
-            six.print_("- %s" % model)
+            six.print_(f"- {model}")
     six.print_("Experiment is installed in:")
     six.print_(
-        "       %s" % config["general"]["base_dir"] + "/" + config["general"]["expid"]
+        f"       {config['general']['base_dir']}/{config['general']['expid']}"
     )
     six.print_(80 * "=")
     six.print_()

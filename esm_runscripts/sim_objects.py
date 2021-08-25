@@ -124,7 +124,7 @@ class SimulationSetup(object):
         folder** to the **current run folder**. A check for unknown files is
         performed (see ~self.check_for_unknown_files), files are
         moved from the  the **current run folder** to the **main experiment
-        folder.
+        folder**.
         """
         from . import tidy
         self.config = tidy.run_job(self.config)

@@ -208,14 +208,10 @@ def _write_date_file(config):  # self, date_file=None):
     monitor_file = logfiles.logfile_handle
 
     # if not date_file:
-    date_file = (
-        config["general"]["experiment_scripts_dir"]
-        + "/"
-        + config["general"]["expid"]
-        + "_"
-        + config["general"]["setup_name"]
-        + ".date"
-    )
+    date_file = \
+        f"{config['general']['experiment_scripts_dir']}"\
+        f"/{config['general']['expid']}_{config['general']['setup_name']}.date"
+
     with open(date_file, "w") as date_file:
         date_file.write(
             config["general"]["current_date"].output()

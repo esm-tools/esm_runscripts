@@ -74,16 +74,9 @@ class batch_system:
         expid = config["general"]["expid"]
         startdate = config["general"]["current_date"]
         enddate = config["general"]["end_date"]
-        return (
-            folder
-            + "/"
-            + expid
-            + "_"
-            + cluster
-            + "_"
-            + config["general"]["run_datestamp"]
-            + ".sad"
-        )
+        sad_filename = \
+            f"{folder}/{expid}_{cluster}" \
+            f"_{config['general']['run_datestamp']}.sad"
 
 
     @staticmethod

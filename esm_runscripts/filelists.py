@@ -489,22 +489,19 @@ def log_used_files(config):
         print("\n::: Logging used files", flush=True)
     filetypes = config["general"]["relevant_filetypes"]
     for model in config["general"]["valid_model_names"] + ["general"]:
-        with open(
-            config[model]["thisrun_config_dir"]
-            + "/"
-            + config["general"]["expid"]
-            + "_filelist_"
-            + config["general"]["run_datestamp"],
-            "w",
-        ) as flist:
+        # this file contains the files used in the experiment
+        flist_file = \
+            f"{config[model]['thisrun_config_dir']}"\
+            f"/{config['general']['expid']}_filelist_"\
+            f"{config['general']['run_datestamp']}"
+        
+        with open(flist_file, "w") as flist:
             flist.write(
-                "These files are used for \nexperiment %s\ncomponent %s\ndate %s"
-                % (
-                    config["general"]["expid"],
-                    model,
-                    config["general"]["run_datestamp"],
+                f"These files are used for \n" \
+                f"experiment {config['general']['expid']}\n" \
+                f"component {model}\n" \
+                f"date {config['general']['run_datestamp']}"
                 )
-            )
             flist.write("\n")
             flist.write(80 * "-")
             for filetype in filetypes:
