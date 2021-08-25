@@ -127,7 +127,7 @@ def get_total_config_from_user_config(user_config):
                 "without providing an 'account' variable in the 'general' section, whose " \
                 "value refers to the project where the computing resources are to be " \
                 "taken from. Please, add the following to your runscript:\n\n" \
-                "general:\n\taccout: <the_account_to_be_used>"
+                "general:\n\taccount: <the_account_to_be_used>"
             )
 
     return config
