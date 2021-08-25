@@ -118,6 +118,18 @@ def get_total_config_from_user_config(user_config):
     config["computer"]["jobtype"] = config["general"]["jobtype"]
     config["general"]["experiment_dir"] = config["general"]["base_dir"] + "/" + config["general"]["expid"]
 
+    # Check if the 'account' variable is needed and missing
+    if config["computer"].get("accounting", False):
+        if "account" not in config["general"]:
+            esm_parser.user_error(
+                "Missing account info",
+                f"You cannot run simulations in '{config['computer']['name']}' " \
+                "without providing an 'account' variable in the 'general' section, whose " \
+                "value refers to the project where the computing resources are to be " \
+                "taken from. Please, add the following to your runscript:\n\n" \
+                "general:\n\taccout: <the_account_to_be_used>"
+            )
+
     return config
 
 
