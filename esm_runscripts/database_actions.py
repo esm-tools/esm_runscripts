@@ -3,10 +3,11 @@ from datetime import datetime
 import sqlalchemy
 
 def database_entry(config):
-    if config["general"]["check"]:
-        database_entry_check(config)
-    elif config["general"]["jobtype"] == "compute":
-        database_entry_start(config)
+    if config.get("general", {}).get("use_database", True):
+        if config["general"]["check"]:
+            database_entry_check(config)
+        elif config["general"]["jobtype"] == "compute":
+            database_entry_start(config)
     return config
 
 def database_basic_entry(config):
