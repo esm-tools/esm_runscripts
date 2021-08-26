@@ -64,13 +64,19 @@ def save_command_line_config(config, command_line_config):
 
 def get_user_config_from_command_line(command_line_config):
     try:
-        user_config = esm_parser.initialize_from_yaml(command_line_config["scriptname"])
+        # use the full absolute path instead of CWD
+        user_config = esm_parser.initialize_from_yaml(
+            command_line_config["runscript_abspath"]
+        )
         if "additional_files" not in user_config["general"]:
             user_config["general"]["additional_files"] = []
     except esm_parser.EsmConfigFileError as error:
         raise error
     except:
-        user_config = esm_parser.initialize_from_shell_script(command_line_config["scriptname"])
+        # use the full absolute path instead of CWD
+        user_config = esm_parser.initialize_from_shell_script(
+            command_line_config["runscript_abspath"]
+        )
 
     # NOTE(PG): I really really don't like this. But I also don't want to
     # re-introduce black/white lists
@@ -112,6 +118,18 @@ def get_total_config_from_user_config(user_config):
     config["computer"]["jobtype"] = config["general"]["jobtype"]
     config["general"]["experiment_dir"] = config["general"]["base_dir"] + "/" + config["general"]["expid"]
 
+    # Check if the 'account' variable is needed and missing
+    if config["computer"].get("accounting", False):
+        if "account" not in config["general"]:
+            esm_parser.user_error(
+                "Missing account info",
+                f"You cannot run simulations in '{config['computer']['name']}' " \
+                "without providing an 'account' variable in the 'general' section, whose " \
+                "value refers to the project where the computing resources are to be " \
+                "taken from. Please, add the following to your runscript:\n\n" \
+                "general:\n\taccount: <the_account_to_be_used>"
+            )
+
     return config
 
 
@@ -134,134 +152,5 @@ def distribute_per_model_defaults(config):
         for model in config["general"]["valid_model_names"]:
             config[model] = esm_parser.new_deep_update(config[model], default_config["per_model_defaults"])
     return config
-
-
-
-class PrevRunInfo(dict):
-    """
-    A dictionary subclass to access information from the previous run. The object is
-    created in the ``SimulationSetup`` class in ``self.config["prev_run"]``. The idea
-    behind this class is that variables from the previous run can be called from the
-    yaml files with the same syntax as one would do for the current run.
-
-    The syntax is as follows:
-
-    .. code-block:: yaml
-
-       <your_var>: ${prev_run.<path>.<to>.<var>}
-
-    For example, let's assume we want to access the `time_step` from the previous run
-    of a `FESOM` simulation and store it in a variable called `prev_time_step`:
-
-    .. code-block:: yaml
-
-       prev_time_step: ${prev_run.fesom.time_step}
-
-    .. Note:: Only the single previous simulation loaded
-
-    .. Warning:: Use this feature only when there is no other way of accessing the
-       information needed. Note that, for example, dates of the previous run are
-       already available in the current run, under variables such as
-       ``last_start_date``, ``parent_start_date``, etc.
-    """
-
-
-    def __init__(self, config={}, prev_config=None):
-        """
-        Links the current ``config`` and ``prev_config`` to the object.
-        """
-        self._last_run_datestamp = config.get("general", {}).get("last_run_datestamp")
-        self._experiment_config_dir = config.get("general", {}).get("experiment_config_dir")
-        self._expid = config.get("general", {}).get("expid")
-        self._prev_config = prev_config
-        self.__setitem__("NONE_YET", {})
-
-
-    def __getitem__(self, key):
-        """
-        Defines the special behaviour for accessing a ``key`` of the object (i.e. when
-        the object is called such as ``<object>[key]``). If ``_prev_config`` is already
-        loaded returns the value of the ``key``. Otherwise, it tries to load
-        ``_prev_config`` and if not possible yet, returns a ``PrevRunInfo`` instance.
-        """
-        # If the previous config is not loaded yet, try to load it
-        if not self._prev_config:
-            self.prev_run_config()
-        # If the previous config was loaded return the key
-        if self._prev_config:
-            value = self._prev_config[key]
-        # If the previous config is not loaded yet, return an instance of
-        # ``PrevRunInfo``
-        else:
-            value = PrevRunInfo(prev_config=self._prev_config)
-
-        #self.__setitem__(key, value)
-        return value #super().__getitem__(key)
-
-
-    def get(self, *args, **kwargs):
-        """
-        Defines the special behaviour for the ``get`` method of the object (i.e. when
-        the object is called such as ``<object>.get(key, <value>)``). If
-        ``_prev_config`` is already loaded returns the value of the ``key``. Otherwise,
-        it tries to load it from ``_prev_config`` and if not possible yet, returns
-        ``None`` if no second argument is defined for the ``get``, or it returns the
-        second argument, just as a standard ``<dict>.get`` would do.
-        """
-        key = args[0]
-        # If the previous config is not loaded yet, try to load it
-        if not self._prev_config:
-            self.prev_run_config()
-        # If the previous config was loaded, use get
-        if self._prev_config:
-            value = self._prev_config.get(*args, **kwargs)
-        # If the previous config is not loaded yet, return get of an empty dict
-        else:
-           value = {}.get(*args, **kwargs)
-
-        return value
-
-
-    def prev_run_config(self):
-        """
-        If the ``last_run_datestamp`` exists at this poing in the current ``config``,
-        tries to load the previous config file into ``_prev_run_config``.
-        """
-        # If the config already includes the date stamp then load the previous config
-        # file and return the corresponding value to the key
-        if all([
-            self._last_run_datestamp,
-            self._experiment_config_dir,
-            self._expid
-        ]):
-            # Build name of the file
-            prev_run_config_file = (
-                self._experiment_config_dir +
-                self._expid +
-                "_finished_config.yaml_" +
-                self._last_run_datestamp
-            )
-            # If the file exists, load the file content
-            if os.path.isfile(prev_run_config_file):
-                with open(prev_run_config_file, "r") as prev_file:
-                    prev_config = yaml.load(prev_file, Loader=yaml.FullLoader)
-                self._prev_config = prev_config["dictitems"]
-                # In case a ``prev_run`` info exists inside the file, remove it to
-                # avoid config files from getting huge (prev_run nested inside
-                # prev_run...)
-                if "prev_run" in self._prev_config:
-                    del self._prev_config["prev_run"]
-                # Check that the data really comes from the previous run
-                this_run_number = self._config["general"]["run_number"]
-                prev_run_number = self._prev_config["general"]["run_number"]
-                if this_run_number - 1 != prev_run_number:
-                    esm_parser.user_error(
-                        "Incorrect file loaded as previous configuration:",
-                        (
-                            f"    File loaded: {prev_run_config_file}\n"
-                            + f"    This run number: {this_run_number}\n"
-                            + f"    Previous run number: {prev_run_number}\n"
-                        )
-                    )
 
 

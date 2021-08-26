@@ -11,6 +11,7 @@ from . import workflow
 from . import resubmit
 from . import helpers
 from . import logfiles
+from . import prev_run
 
 import esm_parser
 
@@ -27,8 +28,8 @@ class SimulationSetup(object):
         self.config = config_initialization.save_command_line_config(self.config, command_line_config)
 
         #self.config = workflow.assemble(self.config)
-            
-        self.config["prev_run"] = config_initialization.PrevRunInfo(self.config) 
+
+        self.config["prev_run"] = prev_run.PrevRunInfo(self.config)
         self.config = prepare.run_job(self.config)
 
 
@@ -124,7 +125,7 @@ class SimulationSetup(object):
         folder** to the **current run folder**. A check for unknown files is
         performed (see ~self.check_for_unknown_files), files are
         moved from the  the **current run folder** to the **main experiment
-        folder.
+        folder**.
         """
         from . import tidy
         self.config = tidy.run_job(self.config)

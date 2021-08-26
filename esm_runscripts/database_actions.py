@@ -3,10 +3,11 @@ from datetime import datetime
 import sqlalchemy
 
 def database_entry(config):
-    if config["general"]["check"]:
-        database_entry_check(config)
-    elif config["general"]["jobtype"] == "compute":
-        database_entry_start(config)
+    if config.get("general", {}).get("use_database", True):
+        if config["general"]["check"]:
+            database_entry_check(config)
+        elif config["general"]["jobtype"] == "compute":
+            database_entry_start(config)
     return config
 
 def database_basic_entry(config):
@@ -14,13 +15,14 @@ def database_basic_entry(config):
 
     if thisrun == []:
         thisrun = database.experiment(
-                expid = config["general"]["expid"],
-                setup_name = config["general"]["setup_name"],
-                run_timestamp = config["general"]["run_datestamp"],
-                timestamp = datetime.now(),
-                outcome = "None",
-                exp_folder = config["general"]["base_dir"] + "/" + config["general"]["expid"] + "/"
-                )
+            expid = config["general"]["expid"],
+            setup_name = config["general"]["setup_name"],
+            run_timestamp = config["general"]["run_datestamp"],
+            timestamp = datetime.now(),
+            outcome = "None",
+            exp_folder = \
+                f"{config['general']['base_dir']}/{config['general']['expid']}/"
+        )
         database.session.add(thisrun)
     else:
         thisrun = thisrun[-1]

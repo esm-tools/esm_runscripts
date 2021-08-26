@@ -12,6 +12,7 @@ import esm_parser
 
 import f90nml
 import esm_tools
+import yaml
 
 def rename_sources_to_targets(config):
     # Purpose of this routine is to make sure that filetype_sources and
@@ -130,9 +131,27 @@ def complete_targets(config):
             if filetype + "_sources" in config[model]:
                 for categ in config[model][filetype + "_sources"]:
                     if not categ in config[model][filetype + "_targets"]:
-                        config[model][filetype + "_targets"][categ] = os.path.basename(
-                            config[model][filetype + "_sources"][categ]
-                        )
+                        file_source = config[model][filetype + "_sources"][categ]
+
+                        # check if the file_source has the correct type. For
+                        # unresolved variables they may still be a 'dict'
+                        if not isinstance(file_source, (str, os.PathLike)):
+                            # model, scenario and version are omitted to make
+                            # error message less verbose
+                            scenario = config[model].get('scenario', 'UNDEFINED')
+                            version = config[model].get('version', 'UNDEFINED')
+
+                            error_type = "Missing Configuration"
+                            error_text = (
+                                # comment-out the line below to provide more information
+                                # f"Scenario {scenario} for the model {model} (version: {version}) has not been implemented yet. \n" +
+                                f"The input file variable {categ} of {filetype}_sources can not be fully resolved:\n\n" +
+                                yaml.dump(file_source, indent=4))
+                            esm_parser.user_error(error_type, error_text)
+                        else:
+                            config[model][filetype + "_targets"][categ] = \
+                                os.path.basename(file_source)
+
     return config
 
 
@@ -405,6 +424,21 @@ def assemble_intermediate_files_and_finalize_targets(config):
     return config
 
 
+def find_valid_year(config, year):
+    for entry in config:
+        min_val = -50000000000
+        max_val = 500000000000
+
+        from_info = float(config[entry].get("from", min_val))
+        to_info = float(config[entry].get("to", max_val))
+
+        if from_info <= year <= to_info:
+            return entry 
+
+    error_type = "Year Error"
+    error_text = f"Sorry, no entry found for year {year} in config {config}"
+    esm_parser.user_error(error_type, error_text)
+
 def replace_year_placeholder(config):
     for filetype in config["general"]["all_model_filetypes"]:
         for model in config["general"]["valid_model_names"] + ["general"]:
@@ -414,73 +448,214 @@ def replace_year_placeholder(config):
                         filetype + "_additional_information"
                     ]:
                         if file_category in config[model][filetype + "_targets"]:
+                        
+                            all_years = [config["general"]["current_date"].year]
+                            
                             if (
-                                "@YEAR@"
+                                "need_timestep_before"
+                                in config[model][
+                                    filetype + "_additional_information"
+                                ][file_category]
+                            ):
+                                all_years.append(
+                                    config["general"]["prev_date"].year
+                                )
+                            if (
+                                "need_timestep_after"
+                                in config[model][
+                                    filetype + "_additional_information"
+                                ][file_category]
+                            ):
+                                all_years.append(
+                                    config["general"]["next_date"].year
+                                )
+                            if (
+                                "need_year_before"
+                                in config[model][
+                                    filetype + "_additional_information"
+                                ][file_category]
+                            ):
+                                all_years.append(
+                                    config["general"]["current_date"].year - 1
+                                )
+                            if (
+                                "need_year_after"
+                                in config[model][
+                                    filetype + "_additional_information"
+                                ][file_category]
+                            ):
+                                all_years.append(
+                                    config["general"]["current_date"].year + 1
+                                )
+                                
+                                
+                            if "need_2years_before" in config[model][filetype + "_additional_information"][file_category]:
+                                all_years.append(config["general"]["current_date"].year - 2)
+
+                            if "need_2years_after" in config[model][filetype + "_additional_information" ][file_category]:
+                                all_years.append(config["general"]["current_date"].year + 2)
+                                
+
+                            all_years = list(
+                                dict.fromkeys(all_years)
+                            )  # removes duplicates
+                            
+                            # loop over all years (including year_before & after)
+                            # change replace the @YEAR@ variable with the 
+                            # corresponding year
+                            for year in all_years:
+                                new_category = file_category + "_year_" + str(year)
+                                
+                                # if the source contains 'from' or 'to' information
+                                # then they have a dict type
+                                if type(config[model][filetype + "_sources"][file_category]) == dict:
+                                
+                                    # process the 'from' and 'to' information in
+                                    # file sources and targets
+                                    config[model][filetype + "_sources"][new_category] = \
+                                        find_valid_year(
+                                            config[model][filetype + "_sources"][file_category],
+                                            year
+                                        )
+                                    
+                                    config[model][filetype + "_targets"][new_category] = \
+                                            config[model][filetype + "_targets"][file_category]
+
+                                    # replace @YEAR@ in the targets
+                                    if (
+                                        "@YEAR@"
+                                        in config[model][filetype + "_targets"][new_category]
+                                    ):
+                                        new_target_name = config[model][
+                                            filetype + "_targets"
+                                        ][new_category].replace("@YEAR@", str(year))
+                                    
+                                        config[model][filetype + "_targets"][
+                                            new_category
+                                        ] = new_target_name
+                                    
+                                    # replace @YEAR@ in the sources
+                                    if (
+                                        "@YEAR@"
+                                        in config[model][filetype + "_sources"][new_category]
+                                    ):    
+                                        new_source_name = config[model][
+                                            filetype + "_sources"
+                                        ][new_category].replace("@YEAR@", str(year))
+
+                                        config[model][filetype + "_sources"][
+                                            new_category
+                                        ] = new_source_name
+
+                                # value is not a dictionary. Ie. it does not 
+                                # have `from` or `to` attributes. This else 
+                                # block preserves these sections in the config.
+                                else:
+                                    # create `new_category` from `file_category` 
+                                    config[model][filetype + "_sources"][new_category] = \
+                                        config[model][filetype + "_sources"][file_category]
+                                        
+                                    config[model][filetype + "_targets"][new_category] = \
+                                        config[model][filetype + "_targets"][file_category]
+
+                                    # replace @YEAR@ in the targets
+                                    if (
+                                        "@YEAR@"
+                                        in config[model][filetype + "_targets"][new_category]
+                                    ):
+                                        new_target_name = config[model][
+                                            filetype + "_targets"
+                                        ][new_category].replace("@YEAR@", str(year))
+                                    
+                                        config[model][filetype + "_targets"][
+                                            new_category
+                                        ] = new_target_name
+
+                                    # replace @YEAR@ in the sources
+                                    if (
+                                        "@YEAR@"
+                                        in config[model][filetype + "_sources"][new_category]
+                                    ):    
+                                        new_source_name = config[model][
+                                            filetype + "_sources"
+                                        ][new_category].replace("@YEAR@", str(year))
+
+                                        config[model][filetype + "_sources"][
+                                            new_category
+                                        ] = new_source_name
+
+                                # end if 
+                            # end of the for year loop
+                            
+                            # deniz: new additions for @YEAR_1850@
+                            # these are the Kinne aerosol files for the background
+                            # aerosol concentration. They are needed for years
+                            # 1849, 1850, and 1851. All these 3 files are the same
+                            # and ECHAM needs them 
+                            if ("@YEAR_1850@" 
                                 in config[model][filetype + "_targets"][file_category]
                             ):
-                                all_years = [config["general"]["current_date"].year]
-
-                                if (
-                                    "need_timestep_before"
-                                    in config[model][
-                                        filetype + "_additional_information"
-                                    ][file_category]
-                                ):
-                                    all_years.append(
-                                        config["general"]["prev_date"].year
-                                    )
-                                if (
-                                    "need_timestep_after"
-                                    in config[model][
-                                        filetype + "_additional_information"
-                                    ][file_category]
-                                ):
-                                    all_years.append(
-                                        config["general"]["next_date"].year
-                                    )
-                                if (
-                                    "need_year_before"
-                                    in config[model][
-                                        filetype + "_additional_information"
-                                    ][file_category]
-                                ):
-                                    all_years.append(
-                                        config["general"]["current_date"].year - 1
-                                    )
-                                if (
-                                    "need_year_after"
-                                    in config[model][
-                                        filetype + "_additional_information"
-                                    ][file_category]
-                                ):
-                                    all_years.append(
-                                        config["general"]["current_date"].year + 1
-                                    )
-
-                                all_years = list(
-                                    dict.fromkeys(all_years)
-                                )  # removes duplicates
-
-                                for year in all_years:
-
+                                # only target name is changed since source file is for a fixed year (1850)
+                                for year in [1849, 1850, 1851]:
                                     new_category = file_category + "_year_" + str(year)
+                                    
+                                    # add the sources and targets to the config
+                                    config[model][filetype + "_sources"][new_category] = \
+                                        config[model][filetype + "_sources"][file_category]
+                                        
+                                    config[model][filetype + "_targets"][new_category] = \
+                                        config[model][filetype + "_targets"][file_category]
+                                    
+                                    # construct the file target and add this to the config
                                     new_target_name = config[model][
                                         filetype + "_targets"
-                                    ][file_category].replace("@YEAR@", str(year))
-                                    new_source_name = config[model][
-                                        filetype + "_sources"
-                                    ][file_category].replace("@YEAR@", str(year))
-
+                                    ][new_category].replace("@YEAR_1850@", str(year))
+                                    
                                     config[model][filetype + "_targets"][
                                         new_category
                                     ] = new_target_name
-                                    config[model][filetype + "_sources"][
-                                        new_category
-                                    ] = new_source_name
 
-                                del config[model][filetype + "_targets"][file_category]
-                                del config[model][filetype + "_sources"][file_category]
+                            del config[model][filetype + "_sources"][file_category]
+                            del config[model][filetype + "_targets"][file_category]
+                # end of if additonal information
 
+                year = config["general"]["current_date"].year
+                
+                for file_category in config[model][filetype + "_targets"]:
+                    
+                    if type(config[model][filetype + "_sources"][file_category]) == dict:
+                        config[model][filetype + "_sources"][file_category] = \
+                            find_valid_year(
+                                config[model][filetype + "_sources"][file_category],
+                                year
+                            )
+                    if (
+                        "@YEAR@"
+                        in config[model][filetype + "_targets"][file_category]
+                    ):
+                        new_target_name = config[model][
+                            filetype + "_targets"
+                        ][file_category].replace("@YEAR@", str(year))
+                        
+                        config[model][filetype + "_targets"][
+                            file_category
+                        ] = new_target_name
+
+                    if (
+                        "@YEAR@"
+                        in config[model][filetype + "_sources"][file_category]
+                    ):
+                        new_source_name = config[model][
+                            filetype + "_sources"
+                        ][file_category].replace("@YEAR@", str(year))
+                        
+                        config[model][filetype + "_sources"][
+                            file_category
+                        ] = new_source_name
+
+            # end of if filetype in target
+        # end of model loop
+    # end of filetype loop
     return config
 
 
@@ -489,22 +664,19 @@ def log_used_files(config):
         print("\n::: Logging used files", flush=True)
     filetypes = config["general"]["relevant_filetypes"]
     for model in config["general"]["valid_model_names"] + ["general"]:
-        with open(
-            config[model]["thisrun_config_dir"]
-            + "/"
-            + config["general"]["expid"]
-            + "_filelist_"
-            + config["general"]["run_datestamp"],
-            "w",
-        ) as flist:
+        # this file contains the files used in the experiment
+        flist_file = \
+            f"{config[model]['thisrun_config_dir']}"\
+            f"/{config['general']['expid']}_filelist_"\
+            f"{config['general']['run_datestamp']}"
+        
+        with open(flist_file, "w") as flist:
             flist.write(
-                "These files are used for \nexperiment %s\ncomponent %s\ndate %s"
-                % (
-                    config["general"]["expid"],
-                    model,
-                    config["general"]["run_datestamp"],
+                f"These files are used for \n" \
+                f"experiment {config['general']['expid']}\n" \
+                f"component {model}\n" \
+                f"date {config['general']['run_datestamp']}"
                 )
-            )
             flist.write("\n")
             flist.write(80 * "-")
             for filetype in filetypes:
@@ -708,8 +880,8 @@ def copy_files(config, filetypes, source, target):
 
 def report_missing_files(config):
     # this list is populated by the ``copy_files`` function in filelists.py
+    config = _check_fesom_missing_files(config)
     if "files_missing_when_preparing_run" in config["general"]:
-        config = _check_fesom_missing_files(config)
         if not config["general"]["files_missing_when_preparing_run"] == {}:
             print("MISSING FILES:", flush=True)
         for missing_file in config["general"]["files_missing_when_preparing_run"]:

@@ -3,6 +3,7 @@ import textwrap
 import sys
 import stat
 import shutil
+import copy
 
 import esm_environment
 import six
@@ -74,16 +75,10 @@ class batch_system:
         expid = config["general"]["expid"]
         startdate = config["general"]["current_date"]
         enddate = config["general"]["end_date"]
-        return (
-            folder
-            + "/"
-            + expid
-            + "_"
-            + cluster
-            + "_"
-            + config["general"]["run_datestamp"]
-            + ".sad"
-        )
+        sad_filename = \
+            f"{folder}/{expid}_{cluster}" \
+            f"_{config['general']['run_datestamp']}.sad"
+        return sad_filename
 
 
     @staticmethod
@@ -579,9 +574,16 @@ class batch_system:
     
 
     @staticmethod
-    def write_env(config, environment, sadfilename):
-        folder = config["general"]["thisrun_scripts_dir"]
-        this_batch_system = config["computer"]
+    def write_env(config, environment=[], sadfilename=""):
+        # Ensures that the config is not modified in this method
+        local_config = copy.deepcopy(config)
+        # Allows to run it from a recipe (i.e. before a preprocessing job)
+        if len(environment)==0 or len(sadfilename)==0:
+            sadfilename = batch_system.get_sad_filename(local_config)
+            environment = batch_system.get_environment(local_config)
+
+        folder = local_config["general"]["thisrun_scripts_dir"]
+        this_batch_system = local_config["computer"]
         sadfilename_short = sadfilename.split("/")[-1]
         envfilename = folder + "/env.sh"
 
@@ -594,6 +596,7 @@ class batch_system:
             for line in environment:
                 envfile.write(line + "\n")
 
+        return config
 
 def submits_another_job(config, cluster):
     clusterconf = config["general"]["workflow"]["subjob_clusters"][cluster]

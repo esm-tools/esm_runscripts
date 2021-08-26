@@ -1,6 +1,8 @@
 import os
 import shutil
 import subprocess
+import copy
+import pathlib
 
 import esm_rcfile
 import six
@@ -9,6 +11,7 @@ from esm_calendar import Date
 from colorama import Fore, Back, Style, init
 
 import esm_tools
+import esm_parser
 
 from .batch_system import batch_system
 from .filelists import copy_files, log_used_files
@@ -49,6 +52,8 @@ def copy_tools_to_thisrun(config):
     fromdir = os.path.realpath(gconfig["started_from"])
     # Directory where the runscript is copied to
     scriptsdir = os.path.realpath(gconfig["experiment_scripts_dir"])
+    # basedir + expid
+    expdir = os.path.realpath(gconfig['experiment_dir'])
 
     # Paths inside the experiment directory where esm_tools and namelists
     # are copied to. Those are not functional but a reference to what was
@@ -80,6 +85,29 @@ def copy_tools_to_thisrun(config):
             esm_rcfile.EsmToolsDir("NAMELIST_PATH"),
         )
         esm_tools.copy_namelist_folder(namelists_dir)
+
+    # check for recursive creation of the file tree. This prevents the risk of
+    # creating a run directory tree inside the `scriptsdir`
+    # example:
+    # fromdir:    /mnt/lustre02/work/project/username/basedir
+    # scriptsdir: /mnt/lustre02/work/project/username/basedir/expid/scripts
+    # it is assumed that if 5th parent of the scriptsdir is inside the fromdir
+    # then probably some sort of infinite recursion is entered. These lines
+    # protect such problems
+    scriptsdir_deep_parents = list(pathlib.Path(scriptsdir).parents)[5:]
+    deep_nesting_found = pathlib.Path(expdir) in scriptsdir_deep_parents
+    if deep_nesting_found: 
+        error_type = "runtime error"
+        error_text = (
+            f"deep recursion is detected in {__file__}:\n"
+            f"- scriptsdir:         {scriptsdir}\n"
+            f"- fromdir:            {fromdir}\n"
+            f"- experiment dir:     {expdir}"
+        )
+        # exit right away to prevent further recursion. There might still be
+        # running instances of esmr_runscripts and something like 
+        # `killall esm_runscripts` might be required
+        esm_parser.user_error(error_type, error_text)
 
     # If ``fromdir`` and ``scriptsdir`` are the same, this is already a computing
     # simulation which means we want to use the script in the experiment folder,
@@ -116,14 +144,33 @@ def copy_tools_to_thisrun(config):
                 fromdir, scriptsdir, tfile, gconfig, "additional file"
             )
 
-        restart_command = (
-            "cd "
-            + scriptsdir
-            + "; "
-            + "esm_runscripts "
-            + gconfig["original_command"].replace("-U", "")
-            + " --no-motd "
-        )
+        # remove the update option otherwise it will enter an infinite loop
+        original_command = gconfig["original_command"]
+        options_to_remove = [" -U ", " --update "]
+        for option in options_to_remove:
+            original_command = original_command.replace(option, " ")
+
+        # Before resubmitting the esm_runscripts, the path of the runscript
+        # needs to be modified. Remove the absolute/relative path
+        runscript_absdir, runscript = os.path.split(gconfig['runscript_abspath'])
+        original_command_list = original_command.split()
+        new_command_list = []
+        for command in original_command_list:
+            # current command will contain the full path, so replace it with
+            # the YAML file only since we are going to execute it from the 
+            # `scriptsdir` now
+            if runscript in command:
+                # gconfig['scriptname'] or `runscript` only contains the YAML file name
+                command = runscript 
+            new_command_list.append(command)
+
+        new_command = " ".join(new_command_list)
+        restart_command = f"cd {scriptsdir}; esm_runscripts {new_command}"
+
+        # prevent continuous addition of --no-motd
+        if not "--no-motd" in restart_command:
+            restart_command += " --no-motd "
+
         if config["general"]["verbose"]:
             print(restart_command)
         os.system(restart_command)
@@ -203,11 +250,10 @@ def initialize_experiment_logfile(config):
     if config["general"]["run_number"] == 1:
         if os.path.isfile(config["general"]["experiment_log_file"]):
             os.remove(config["general"]["experiment_log_file"])
-        write_to_log(
-            config,
-            ["# Beginning of Experiment " + config["general"]["expid"]],
-            message_sep="",
-        )
+
+        log_msg = f"# Beginning of Experiment {config['general']['expid']}"
+        write_to_log(config, [log_msg], message_sep="")
+
         write_to_log(
             config,
             [
@@ -221,14 +267,12 @@ def initialize_experiment_logfile(config):
 
     # Write trace-log file now that we know where to do that
     if "trace_sink" in dir(logger):
-        logger.trace_sink.def_path(
-            config["general"]["experiment_dir"] +
-            "/log/" +
-            config["general"]["expid"] +
-            "_esm_runscripts_" +
-            config["general"]["run_datestamp"] +
-            ".log"
-        )
+        logfile_path = \
+            f"{config['general']['experiment_dir']}/log" \
+            f"/{config['general']['expid']}_esm_runscripts_" \
+            f"{config['general']['run_datestamp']}.log"
+
+        logger.trace_sink.def_path(logfile_path)
 
     return config
 
@@ -263,6 +307,9 @@ def update_runscript(fromdir, scriptsdir, tfile, gconfig, file_type):
         ``esm_runscripts``, returns an error.
     """
 
+    # if `tfile` contains a full path of the runscript then remove the leading path
+    tfile = os.path.basename(tfile)
+    
     # If the target file in ``scriptsdir`` does not exist, then copy the file
     # to the target.
     if not os.path.isfile(scriptsdir + "/" + tfile):
@@ -341,16 +388,12 @@ def update_runscript(fromdir, scriptsdir, tfile, gconfig, file_type):
 
 def _copy_preliminary_files_from_experiment_to_thisrun(config):
     # I don't like this one bit. DB
-    filelist = [
-        (
-            "scripts",
-            config["general"]["expid"]
-            + "_"
-            + config["general"]["setup_name"]
-            + ".date",
-            "copy",
-        )
-    ]
+    filelist = [(
+        "scripts",
+        f"{config['general']['expid']}_{config['general']['setup_name']}.date",
+        "copy",
+    )]
+    
     for filetype, filename, copy_or_link in filelist:
         source = config["general"]["experiment_" + filetype + "_dir"]
         dest = config["general"]["thisrun_" + filetype + "_dir"]
