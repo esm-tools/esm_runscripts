@@ -23,6 +23,7 @@ class coupler_class:
             self.norestart = full_config["oasis3mct"].get("norestart", "F")
             self.coupler = oasis.oasis(self.nb_of_couplings, self.coupled_execs, self.runtime,
                                        nnorest=self.norestart, mct_version=full_config["oasis3mct"].get("mct_version", "2.8"),
+                                       debug_level=full_config["oasis3mct"].get("debug_level",1), 
                                        lucia=full_config["oasis3mct"].get("use_lucia", False))
         elif name == "yac":
             from . import yac
