@@ -488,7 +488,7 @@ def _add_all_folders(config):
         "config",
         "restart_in",
     ]
-    config["general"]["reusable_filetypes"] = ["bin", "src"]
+    config["general"]["reusable_filetypes"] = config["general"].get("reusable_filetypes", ["bin", "src"])
 
     config["general"]["thisrun_dir"] = (
         config["general"]["experiment_dir"]
