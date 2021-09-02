@@ -579,8 +579,8 @@ class batch_system:
         local_config = copy.deepcopy(config)
         # Allows to run it from a recipe (i.e. before a preprocessing job)
         if len(environment)==0 or len(sadfilename)==0:
-            sadfilename = batch_system.get_sad_filename(local_config)
-            environment = batch_system.get_environment(local_config)
+            sadfilename = batch_system.get_sad_filename(local_config, "prepcompute")
+            environment = batch_system.get_environment(local_config, "prepcompute_general")
 
         folder = local_config["general"]["thisrun_scripts_dir"]
         this_batch_system = local_config["computer"]

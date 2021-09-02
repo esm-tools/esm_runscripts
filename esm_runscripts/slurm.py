@@ -146,6 +146,8 @@ class Slurm:
         scriptfolder = config["general"]["thisrun_scripts_dir"] + "../work/"
         if config["computer"].get("heterogeneous_parallelization", False):
             for model in config["general"]["valid_model_names"]:
+                if "oasis3mct" == model:
+                    continue
                 command = "./" + config[model].get(
                     "execution_command",config[model]["executable"]
                 )
