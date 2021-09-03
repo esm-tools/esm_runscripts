@@ -359,7 +359,7 @@ def collect_all_workflow_information(config):
 def merge_if_possible(source, target):
     for entry in source:
         if entry in target:
-            if not source["entry"] == target["entry"]:
+            if not source[entry] == target[entry]:
                 print(f"Mismatch while trying to merge subjob_clusters {source} into {target}")
                 sys.exit(-1)
         else:

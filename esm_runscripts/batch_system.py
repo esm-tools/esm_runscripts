@@ -257,6 +257,8 @@ class batch_system:
                 sys.exit(-1)
             # user defined jobtype doing dataprocessing
             tasks = config["general"]["workflow"]["subjob_clusters"][cluster]["nproc"]
+            cores_per_node = config['computer']['partitions']['pp']['cores_per_node']
+            nodes = int(tasks / cores_per_node) + ((tasks % cores_per_node) > 0)
 
         config["general"]["resubmit_tasks"] = tasks
         print(f"resubmit tasks: {config['general']['resubmit_tasks']}")
