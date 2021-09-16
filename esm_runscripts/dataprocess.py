@@ -51,11 +51,17 @@ def subjob_tasks(config, subjob):
     if script:
         script = assemble_filename(script, scriptdir, config) 
         #task_list += add_scriptcall(script, cluster, config)
-        if call_function:
-            task_list += [". " + script]
-            task_list += [call_function + " > " + new_logfile + " 2>&1 &"]
+        if subjob_config["batch_or_shell"] == "batch":
+            task_list += [
+                f"time {config['computer']['launcher']} "\
+                f"{config['computer']['launcher_flags']} {script} 2>&1 &"
+            ]
         else:
-            task_list += [script + " > " + new_logfile + " 2>&1 &"]
+            if call_function:
+                task_list += [". " + script]
+                task_list += [call_function + " > " + new_logfile + " 2>&1 &"]
+            else:
+                task_list += [script + " > " + new_logfile + " 2>&1 &"]
 
     return task_list
 
