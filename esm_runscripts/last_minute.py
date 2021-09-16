@@ -42,6 +42,14 @@ def apply_last_minute_changes(config):
         settings = modify_config.get("run_only_modifications", {}).get("batch_system", {}).get("direct_settings")
         _modify_config_with_settings(config, settings)
 
+        for chapter in modify_config:
+            if chapter not in [
+                "build_and_run_modifications",
+                "build_only_modifications",
+                "run_only_modifications",
+            ]:
+                esm_parser.dict_merge(config, modify_config)
+
     return config
 
 
