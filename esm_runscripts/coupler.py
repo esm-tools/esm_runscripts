@@ -16,6 +16,8 @@ class coupler_class:
         if "coupling_target_fields" in full_config[self.name]:
             for restart_file in list(full_config[self.name]["coupling_target_fields"]):
                 self.nb_of_couplings += len(list(full_config[self.name]["coupling_target_fields"][restart_file]))
+        if full_config['fesom'].get("do_hosing"):
+                self.nb_of_couplings += 1
         if name == "oasis3mct":
             from . import oasis
 
@@ -23,7 +25,7 @@ class coupler_class:
             self.norestart = full_config["oasis3mct"].get("norestart", "F")
             self.coupler = oasis.oasis(self.nb_of_couplings, self.coupled_execs, self.runtime,
                                        nnorest=self.norestart, mct_version=full_config["oasis3mct"].get("mct_version", "2.8"),
-                                       debug_level=full_config["oasis3mct"].get("debug_level",1), 
+                                       debug_level=full_config["oasis3mct"].get("debug_level",1),
                                        lucia=full_config["oasis3mct"].get("use_lucia", False))
         elif name == "yac":
             from . import yac
@@ -269,7 +271,7 @@ class coupler_class:
                             if "coupling_methods" in full_config[self.name]:
                                 if interpolation in full_config[self.name]["coupling_methods"]:
                                     transf_info = full_config[self.name]["coupling_methods"][interpolation]
-                            
+
                             self.coupler.add_coupling(lefts, lgrid_info, rights, rgrid_info, direction_info, transf_info, restart_file, full_config[self.name]["coupling_time_step"], full_config[self.name]["lresume"], export_mode=export_mode)
 
             if "coupling_input_fields" in full_config[self.name]:
