@@ -14,7 +14,7 @@ def init_first_user_config(command_line_config, user_config):
     # maybe switch to another runscript, if iterative coupling
     if user_config["general"].get("iterative_coupling", False):
         user_config = chunky_parts.setup_correct_chunk_config(user_config)
-        next_model = user_config["general"]["original_config"]["general"]["model_queue"][1]
+        next_model = user_config["general"]["original_config"]["general"]["model_queue"][-1]
         scriptname = user_config["general"]["original_config"][next_model]["runscript"]
         #command_line_config["scriptname"] = os.path.join(user_config["general"]["started_from"], scriptname)
         new_command_line_config = copy.deepcopy(command_line_config)
