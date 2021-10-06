@@ -187,6 +187,8 @@ def modify_namelists(config):
         config[model] = Namelist.nmls_remove(config[model])
         if model == "echam":
             config = Namelist.apply_echam_disturbance(config)
+        if model == "fesom":
+            config = Namelist.apply_iceberg_calving(config)
         config[model] = Namelist.nmls_modify(config[model])
         config[model] = Namelist.nmls_finalize(
             config[model], config["general"]["verbose"]
@@ -208,7 +210,7 @@ def copy_files_to_thisrun(config):
 
     counter = 0
     count_max = 30
-    if config["general"]["iterative_coupling"]:
+    if config["general"]["iterative_coupling"] and config["general"]["chunk_number"] > 1:
         if 'files_to_wait_for' in config["general"]:
             for file in config['general'].get('files_to_wait_for'):
                 while counter < count_max:
