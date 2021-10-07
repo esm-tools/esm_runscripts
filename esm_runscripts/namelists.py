@@ -332,7 +332,7 @@ class Namelist:
                         ][0]
                         print("ib_num_old = ", ib_num_old)
                    
-                    ib_num_new = sum(1 for line in open(config["fesom"]["iceberg_dir"] + "/LON.dat"))
+                    ib_num_new = sum(1 for line in open(config["fesom"].get("iceberg_dir") + "/LON.dat"))
                 icebergs["ib_num"] = ib_num_old + ib_num_new
                 nml["icebergs"] = icebergs
         return config
