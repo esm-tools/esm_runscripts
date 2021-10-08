@@ -138,7 +138,7 @@ class batch_system:
             "overcommit_flag"
         ]
         #??? Do we need the exclusive flag?
-        if config["general"]["jobtype"] in ["compute", "tidy"]:
+        if config["general"]["jobtype"] in ["prepcompute", "tidy"]:
             conditional_flags.append("exclusive_flag")
         for flag in conditional_flags:
             if flag in this_batch_system:
