@@ -1,5 +1,6 @@
 import os
 import copy
+import sys
 
 import esm_parser
 import esm_rcfile
@@ -24,6 +25,8 @@ def init_first_user_config(command_line_config, user_config):
         #command_line_config["scriptname"] = os.path.join(user_config["general"]["started_from"], scriptname)
         new_command_line_config = copy.deepcopy(command_line_config)
         new_command_line_config["scriptname"] = scriptname
+        new_command_line_config["runscript_abspath"] = os.path.join(os.getcwd(), scriptname)
+
         model_config = get_user_config_from_command_line(new_command_line_config)
         user_config = esm_parser.new_deep_update(user_config, model_config)
 
@@ -109,6 +112,7 @@ def get_total_config_from_user_config(user_config):
         version = str(user_config["general"]["version"])
     else:
         setup_name = user_config["general"]["setup_name"]
+        
         if "version" in user_config[setup_name.replace("_standalone","")]:
             version = str(user_config[setup_name.replace("_standalone","")]["version"])
         else:
