@@ -156,7 +156,7 @@ class Namelist:
         for remove in namelist_removes:
             namelist, change_chapter, key = remove
             logging.debug("Removing from %s: %s, %s", namelist, change_chapter, key)
-            if key in mconfig["namelists"][namelist][change_chapter]:
+            if key in mconfig["namelists"][namelist].get(change_chapter, {}):
                 del mconfig["namelists"][namelist][change_chapter][key]
         return mconfig
 
