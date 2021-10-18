@@ -211,7 +211,7 @@ def copy_files_to_thisrun(config):
 
     counter = 0
     count_max = 30
-    if config["general"]["iterative_coupling"] and config["general"]["chunk_number"] > 1:
+    if config["general"].get("iterative_coupling") and config["general"]["chunk_number"] > 1:
         if 'files_to_wait_for' in config["general"]:
             for file in config['general'].get('files_to_wait_for'):
                 while counter < count_max:
