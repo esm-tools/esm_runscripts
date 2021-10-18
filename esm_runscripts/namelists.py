@@ -114,6 +114,7 @@ class Namelist:
         mconfig : dict
             The modified configuration.
         """
+        
         namelist_changes = mconfig.get("namelist_changes", {})
         namelist_removes = []
         for namelist in list(namelist_changes):
@@ -420,7 +421,36 @@ class Namelist:
         for model in config["general"]["valid_model_names"]:
             config[model] = nmls_output(config[model], config["general"]["verbose"])
         return config
+    
+    @staticmethod
+    def apply_iceberg_calving(config):
+        """
+        Calculates new number of icebergs when icesheet coupling is turned on
 
+        Relevant configuration entries:
+        """
+        if "fesom" in config["general"]["valid_model_names"] and config["fesom"].get("use_icebergs"):
+            # Get the fesom config namelist:
+            nml = config["fesom"]["namelists"]["namelist.config"]
+            # Get the current icebergs chapter or make a new empty one:
+            icebergs = nml.get("icebergs", f90nml.namelist.Namelist())
+            # Determine if icesheet coupling is enabled:
+            if icebergs.get("use_icesheet_coupling"):
+                if os.path.isfile(
+                    config["general"]["couple_dir"] + "/num_non_melted_icb_file"
+                ):
+                    with open(
+                        config["general"]["couple_dir"] + "/num_non_melted_icb_file"
+                    ) as f:
+                        ib_num_old = [
+                            int(line.strip()) for line in f.readlines() if line.strip()
+                        ][0]
+                        print("ib_num_old = ", ib_num_old)
+                   
+                    ib_num_new = sum(1 for line in open(config["fesom"].get("iceberg_dir") + "/LON.dat"))
+                icebergs["ib_num"] = ib_num_old + ib_num_new
+                nml["icebergs"] = icebergs
+        return config
 
 class namelist(Namelist):
     """Legacy class name. Please use Namelist instead!"""
