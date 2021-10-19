@@ -98,6 +98,10 @@ def set_chunk_calendar(config):
     next_date = config["general"]["next_date"]
 
     number_of_chunks_done = this_chunk_number // number_of_models
+   
+    # LA: get right number_of_chunks_done for last year in chunk
+    if config["general"]["model_queue"][0] == "model1" and config["general"]["last_run_in_chunk"]:
+        number_of_chunks_done = number_of_chunks_done - 1
     
     passed_time = ( 
             number_of_chunks_done * chunk_delta_date[0],
