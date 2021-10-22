@@ -983,10 +983,11 @@ def complete_all_file_movements(config):
                         for movement in ['init_to_exp', 'exp_to_run', 'run_to_work', 'work_to_run']:
                             config = complete_one_file_movement(config, model, filetype, movement, movement_type)
                         del mconfig["file_movements"][filetype]["all_directions"]
-    # Complete movements with general
-    for model in config["general"]["valid_model_names"]:
+
+    for model in config["general"]["valid_model_names"] + ["general"]:
         mconfig = config[model]
         if "file_movements" in mconfig:
+            # Complete movements with general
             esm_parser.new_deep_update(
                 mconfig["file_movements"], config["general"].get("file_movements", {})
             )
