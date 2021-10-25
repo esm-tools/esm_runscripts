@@ -197,7 +197,13 @@ class batch_system:
             for model in config["general"]["valid_model_names"]:
                 omp_num_threads = int(config[model].get("omp_num_threads", 1))
 
-                if "nproca" in config[model] and "nprocb" in config[model]:
+                if "nproc" in config[model]:
+                    print(f"nproc: {config[model]['nproc']}")
+                    config[model]["tasks"] = config[model]["nproc"]
+
+                    #cores_per_node = config['computer']['cores_per_node']
+
+                elif "nproca" in config[model] and "nprocb" in config[model]:
                     config[model]["tasks"] = \
                         config[model]["nproca"] * config[model]["nprocb"]
                     #end_proc = start_proc + int(config[model]["nproca"])*int(config[model]["nprocb"]) - 1
@@ -212,11 +218,6 @@ class batch_system:
                         config[model]["tasks"] += \
                             config[model]["nprocar"] * config[model]["nprocbr"]
 
-                elif "nproc" in config[model]:
-                    print(f"nproc: {config[model]['nproc']}")
-                    config[model]["tasks"] = config[model]["nproc"]
-
-                    #cores_per_node = config['computer']['cores_per_node']
                 else:
                         continue
 
