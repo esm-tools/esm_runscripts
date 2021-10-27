@@ -78,6 +78,10 @@ def get_user_config_from_command_line(command_line_config):
         )
         if "additional_files" not in user_config["general"]:
             user_config["general"]["additional_files"] = []
+    # If sys.exit is triggered through esm_parser.user_error (i.e. from
+    # ``check_for_empty_components`` in ``yaml_to_dict.py``) catch the sys.exit.
+    except SystemExit as sysexit:
+        sys.exit(sysexit)
     except esm_parser.EsmConfigFileError as error:
         raise error
     except:
