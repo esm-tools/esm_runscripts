@@ -249,13 +249,13 @@ class Namelist:
             if config["echam"].get("use_transient_forcing", False):
                 import pandas as pd
                 try:
-                    forcing_table = pd.open_csv(config["echam"]["transient_forcing_table"])
-                    co2, n2o, ch4, cecc, cobl, clonp = forcing_table.loc[config['general']['current_date'].year]
+                    forcing_table = pd.read_csv(config["echam"]["transient_forcing_table"], sep=";", header=None, index_col=0)
+                    co2, n2o, ch4, cecc, cobld, clonp = forcing_table.loc[config['general']['current_date'].year]
                     radctl['co2vmr'] = co2
                     radctl['n2ovmr'] = n2o
                     radctl['ch4vmr'] = ch4
                     radctl['cecc'] = cecc
-                    radctl['cobl'] = cobl
+                    radctl['cobld'] = cobld
                     radctl['clonp'] = clonp
                     print("-------------------------------------------------------------")
                     print("")
@@ -267,7 +267,7 @@ class Namelist:
                     print(f"             N2O:  {radctl['n2ovmr']}")
                     print(f"             CH4:  {radctl['ch4vmr']}")
                     print(f"             CECC: {radctl['cecc']}")
-                    print(f"             COBL: {radctl['cobl']}")
+                    print(f"             COBLD: {radctl['cobld']}")
                     print(f"             CLONP:{radctl['clonp']}")
                 except Exception as e:
                     # Haha something went wrong. Let's be polite about it though
