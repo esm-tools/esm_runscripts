@@ -223,8 +223,8 @@ class Namelist:
 
         The forcing table should look like this::
 
-            # Year, CO2, CH4, N2O, Eccentricity, Obliquity, Perihelion
-            1850;  0.000187;  3.779100e-07;  2.064600e-07;  0.018994;  22.944859;  294.23880
+            # Year; CO2; CH4; N2O; Eccentricity; Obliquity; Perihelion
+            1850; 0.000187; 3.779100e-07; 2.064600e-07; 0.018994; 22.944859; 294.23880
 
         The esm-tools will first check if the current year exists, extract the
         relevant values for you, and put everything into the radctl section of
@@ -248,7 +248,7 @@ class Namelist:
             if config["echam"].get("use_transient_forcing", False):
                 import pandas as pd
                 try:
-                    forcing_table = pd.open_csv(config["echam"]["transient_forcing_table"])
+                    forcing_table = pd.open_csv(config["echam"]["transient_forcing_table"], sep=";", index_col=0)
                     co2, n2o, ch4, cecc, cobl, clonp = forcing_table.loc[config['general']['current_date'].year]
                     radctl['co2vmr'] = co2
                     radctl['n2ovmr'] = n2o
