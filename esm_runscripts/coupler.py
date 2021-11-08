@@ -23,6 +23,7 @@ class coupler_class:
             self.norestart = full_config["oasis3mct"].get("norestart", "F")
             self.coupler = oasis.oasis(self.nb_of_couplings, self.coupled_execs, self.runtime,
                                        nnorest=self.norestart, mct_version=full_config["oasis3mct"].get("mct_version", "2.8"),
+                                       debug_level=full_config["oasis3mct"].get("debug_level",1), 
                                        lucia=full_config["oasis3mct"].get("use_lucia", False))
         elif name == "yac":
             from . import yac
@@ -255,20 +256,20 @@ class coupler_class:
                                 if not found_left or not found_right:
                                     sys.exit(0)
 
+                            export_mode = full_config[self.name].get("export_mode", "DEFAULT")
+
+                            # Use export_mode from coupling_directions if set. Required for NEMO-AGRIF
                             direction_info = None
                             if "coupling_directions" in full_config[self.name]:
                                 if right_grid + "->" + left_grid in full_config[self.name]["coupling_directions"]:
                                     direction_info = full_config[self.name]["coupling_directions"][right_grid + "->" + left_grid]
+                                    export_mode = direction_info.get("export_mode",export_mode)
+
                             transf_info = None
                             if "coupling_methods" in full_config[self.name]:
                                 if interpolation in full_config[self.name]["coupling_methods"]:
                                     transf_info = full_config[self.name]["coupling_methods"][interpolation]
-
-                            if "export_mode" in full_config[self.name]:
-                                export_mode = full_config[self.name]["export_mode"]
-                            else:
-                                export_mode = "DEFAULT"
-                            # print("DEBUG: EXPORT_MODE: ",export_mode)
+                            
                             self.coupler.add_coupling(lefts, lgrid_info, rights, rgrid_info, direction_info, transf_info, restart_file, full_config[self.name]["coupling_time_step"], full_config[self.name]["lresume"], export_mode=export_mode)
 
             if "coupling_input_fields" in full_config[self.name]:

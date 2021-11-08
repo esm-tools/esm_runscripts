@@ -112,6 +112,13 @@ def parse_shargs():
         default=False,
         action="store_true",
     )
+    
+    parser.add_argument(
+        "--no-motd",
+        help = "supress the printing of MOTD",
+        default = False,
+        action = "store_true" 
+    )
 
     return parser.parse_args()
 
@@ -131,12 +138,11 @@ def main():
     inspect = None
     use_venv = None
     modify_config_file = None
+    no_motd = False
 
     parsed_args = vars(ARGS)
 
-    original_command = ""
-    for argument in sys.argv[1:]:
-        original_command = original_command + argument + " "
+    original_command = " ".join(sys.argv[1:])
 
     if "check" in parsed_args:
         check = parsed_args["check"]
@@ -164,6 +170,8 @@ def main():
         use_venv = not parsed_args["open_run"]
     if "modify" in parsed_args:
         modify_config_file = parsed_args["modify"]
+    if "no_motd" in parsed_args:
+        no_motd = parsed_args["no_motd"]
 
     command_line_config = {}
     command_line_config["check"] = check
@@ -172,16 +180,29 @@ def main():
     command_line_config["expid"] = expid
     command_line_config["launcher_pid"] = pid
     command_line_config["jobtype"] = jobtype
-    command_line_config["scriptname"] = ARGS.runscript
     command_line_config["last_jobtype"] = ARGS.last_jobtype
     command_line_config["verbose"] = verbose
     command_line_config["inspect"] = inspect
     command_line_config["use_venv"] = use_venv
+    command_line_config["no_motd"] = no_motd
     if modify_config_file:
         command_line_config["modify_config_file"] = modify_config_file
 
+    # runscript_from_cmdline = filter(lambda x: x.endswith(".yaml"), sys.argv)
+    # runscript_from_cmdline = list(runscript_from_cmdline)[0]
+    # runscript_full_path = os.path.realpath(runscript_from_cmdline)
+    runscript_full_path = os.path.realpath(ARGS.runscript)
+    runscript_dir, runscript = os.path.split(runscript_full_path)
+    runscript_dir += '/'
+    
+    # this might contain the relative path but it will be taken care of later
     command_line_config["original_command"] = original_command.strip()
-    command_line_config["started_from"] = os.getcwd()
+    command_line_config["started_from"] = runscript_dir
+
+    # only the yaml file, without the path
+    command_line_config["scriptname"] = runscript  
+    # full path including the yaml file: runscript_dir + runscript
+    command_line_config["runscript_abspath"] = runscript_full_path
 
     # Define a sink object to store the logs. Path of the logs can be later specified
     # by using <sink_obj>.def_path(<path>)
@@ -193,10 +214,12 @@ def main():
 
     logger.add(sys.stdout, level="INFO", format="{message}")
     if verbose:
-        logger.debug("Started from: ", command_line_config["started_from"])
-        logger.debug("starting : ", jobtype)
-
+        logger.debug(f"Started from: {command_line_config['started_from']}")
+        logger.debug(f"starting (jobtype): {jobtype}")
+        logger.debug(command_line_config)
+    
     Setup = SimulationSetup(command_line_config)
-    if not Setup.config['general']['submitted']:
+    # if not Setup.config['general']['submitted']:
+    if not Setup.config['general']['submitted'] and not no_motd:
         check_all_esm_packages()
     Setup()

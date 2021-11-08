@@ -25,6 +25,7 @@ requirements = ["esm_parser @ git+https://github.com/esm-tools/esm_parser.git",
                 "tqdm",
                 "sqlalchemy",
                 "questionary",
+                "pandas",
                ]
 
 setup_requirements = [ ]
@@ -62,7 +63,7 @@ setup(
     setup_requires=setup_requirements,
     test_suite='tests',
     tests_require=test_requirements,
-    url='https://github.com/dbarbi/esm_runscripts',
-    version="5.0.17",
+    url='https://github.com/esm-tools/esm_runscripts',
+    version="5.1.35",
     zip_safe=False,
 )

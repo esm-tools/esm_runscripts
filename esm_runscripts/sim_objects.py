@@ -3,16 +3,16 @@ Documentation goes here
 """
 import pdb
 import os
+import yaml
 
 from loguru import logger
 
 import esm_tools
 import esm_parser
-
-
 import esm_rcfile
 
-from . import batch_system, compute, helpers, prepare, tidy
+
+from . import batch_system, compute, helpers, prepare, tidy, prev_run
 
 
 class SimulationSetup(object):
@@ -33,12 +33,17 @@ class SimulationSetup(object):
         self.config["general"]["command_line_config"] = self.command_line_config
         if "verbose" not in self.config["general"]:
             self.config["general"]["verbose"] = False
+
+        if self.command_line_config.get("no_motd", False):
+            self.config["general"]["no_motd"] = True
+            
         # read the prepare recipe
         self.config["general"]["reset_calendar_to_last"] = False
         if self.config["general"].get("inspect"):
             self.config["general"]["jobtype"] = "inspect"
             self.config["general"]["reset_calendar_to_last"] = True
 
+        self.config["prev_run"] = prev_run.PrevRunInfo(self.config)
         self.config = prepare.run_job(self.config)
 
 
@@ -108,13 +113,19 @@ class SimulationSetup(object):
 
     def get_user_config_from_command_line(self, command_line_config):
         try:
-            user_config = esm_parser.initialize_from_yaml(command_line_config["scriptname"])
+            # use the full absolute path instead of CWD
+            user_config = esm_parser.initialize_from_yaml(
+                command_line_config["runscript_abspath"]
+            )
             if "additional_files" not in user_config["general"]:
                 user_config["general"]["additional_files"] = []
         except esm_parser.EsmConfigFileError as error:
             raise error
         except:
-            user_config = esm_parser.initialize_from_shell_script(command_line_config["scriptname"])
+            # use the full absolute path instead of CWD
+            user_config = esm_parser.initialize_from_shell_script(
+                command_line_config["runscript_abspath"]
+            )
 
         # NOTE(PG): I really really don't like this. But I also don't want to
         # re-introduce black/white lists
@@ -152,8 +163,21 @@ class SimulationSetup(object):
         self.config = self.add_esm_runscripts_defaults_to_config(self.config)
 
         self.config["computer"]["jobtype"] = self.config["general"]["jobtype"]
-        self.config["general"]["experiment_dir"] = self.config["general"]["base_dir"] + "/" + self.config["general"]["expid"]
+        self.config["general"]["experiment_dir"] = \
+            f"{self.config['general']['base_dir']}"\
+            f"/{self.config['general']['expid']}/"
 
+        # Check if the 'account' variable is needed and missing
+        if self.config["computer"].get("accounting", False):
+            if "account" not in self.config["general"]:
+                esm_parser.user_error(
+                    "Missing account info",
+                    f"You cannot run simulations in '{self.config['computer']['name']}' " \
+                    "without providing an 'account' variable in the 'general' section, whose " \
+                    "value refers to the project where the computing resources are to be " \
+                    "taken from. Please, add the following to your runscript:\n\n" \
+                    "general:\n\taccount: <the_account_to_be_used>"
+                )
 
 
     def distribute_per_model_defaults(self, config):
@@ -207,32 +231,25 @@ class SimulationSetup(object):
             This method is also responsible for calling the next compute job as
             well as the post processing job!
         """
-
-
         monitor_file_path = (
             self.config["general"]["experiment_scripts_dir"] +
             "/monitoring_file_" +
             self.config["general"]["run_datestamp"] +
             ".out"
         )
-        monitor_file_in_run = self.config["general"]["thisrun_scripts_dir"] + "/monitoring_file.out"
-        exp_log_path = (
-            self.config["general"]["experiment_scripts_dir"] +
-            self.config["general"]["expid"] +
-            "_compute_" +
-            self.config["general"]["run_datestamp"] +
-            "_" +
-            str(self.config["general"]["jobid"]) +
-            ".log"
-        )
-        log_in_run = (
-            self.config["general"]["thisrun_scripts_dir"] +
-            self.config["general"]["expid"] +
-            "_compute_" +
-            str(self.config["general"]["jobid"]) +
-            ".log"
-        )
-
+        monitor_file_in_run = \
+            f"{self.config['general']['thisrun_scripts_dir']}/monitoring_file.out"
+            
+        exp_log_path = \
+            f"{self.config['general']['experiment_scripts_dir']}"\
+            f"/{self.config['general']['expid']}_compute_"\
+            f"{self.config['general']['run_datestamp']}"\
+            f"_{self.config['general']['jobid']}.log"
+        
+        log_in_run = \
+            f"{self.config['general']['thisrun_scripts_dir']}"\
+            f"/{self.config['general']['expid']}_compute_"\
+            f"{self.config['general']['jobid']}.log"
 
         with open(
             monitor_file_path,
@@ -242,9 +259,11 @@ class SimulationSetup(object):
 
             self.config["general"]["monitor_file"] = monitor_file
             if os.path.isfile(monitor_file_path):
-                os.symlink(monitor_file_path, monitor_file_in_run)
+                # os.symlink(monitor_file_path, monitor_file_in_run)
+                helpers.symlink(monitor_file_path, monitor_file_in_run, overwrite=True)
             if os.path.isfile(exp_log_path):
-                os.symlink(exp_log_path, log_in_run)
+                # os.symlink(exp_log_path, log_in_run)
+                helpers.symlink(exp_log_path, log_in_run, overwrite=True)
             self.config = tidy.run_job(self.config)
 
         helpers.end_it_all(self.config)
@@ -257,19 +276,15 @@ class SimulationSetup(object):
         """
         Calls post processing routines for this run.
         """
-        with open(
-            self.config["general"]["thisrun_scripts_dir"] +
-            "/" +
-            self.config["general"]["expid"] +
-            "_post_" +
-            self.config["general"]["run_datestamp"] +
-            "_" +
-            str(self.config['general']['jobid']) +
-            ".log",
-            "w",
-            buffering=1,
-        ) as post_file:
+        post_file_path = \
+            f"{self.config['general']['thisrun_scripts_dir']}"\
+            f"/{self.config['general']['expid']}"\
+            f"_post_{self.config['general']['run_datestamp']}"\
+            f"_{self.config['general']['jobid']}.log"
+            
+        with open(post_file_path, "w", buffering=1) as post_file:
 
+            # deniz: be careful here. `post_file` is a file object not a path
             self.config["general"]["post_file"] = post_file
             self.config = postprocess.run_job(self.config)
 
@@ -278,3 +293,4 @@ class SimulationSetup(object):
             #self.config["general"]["post_task_list"] = post_task_list
             batch_system.write_simple_runscript(self.config)
             self.config = batch_system.submit(self.config)
+
