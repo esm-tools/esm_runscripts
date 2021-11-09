@@ -158,6 +158,11 @@ class Namelist:
             logging.debug("Removing from %s: %s, %s", namelist, change_chapter, key)
             if key in mconfig["namelists"][namelist][change_chapter]:
                 del mconfig["namelists"][namelist][change_chapter][key]
+            elif "%" in key:
+                namvar, prop = key.split("%")
+                del mconfig["namelists"][namelist][change_chapter][namvar][prop]
+            else:
+                logging.debug("Unable to remove %s: %s, %s", namelist, change_chapter, key)
         return mconfig
 
     @staticmethod
