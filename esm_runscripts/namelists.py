@@ -249,7 +249,7 @@ class Namelist:
             if config["echam"].get("use_transient_forcing", False):
                 import pandas as pd
                 try:
-                    forcing_table = pd.open_csv(config["echam"]["transient_forcing_table"])
+                    forcing_table = pd.read_csv(config["echam"]["transient_forcing_table"], sep=";", index_col=0)
                     co2, n2o, ch4, cecc, cobl, clonp = forcing_table.loc[config['general']['current_date'].year]
                     radctl['co2vmr'] = co2
                     radctl['n2ovmr'] = n2o
