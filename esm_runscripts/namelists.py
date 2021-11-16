@@ -429,19 +429,19 @@ class Namelist:
 
         Relevant configuration entries:
         """
-        if "fesom" in config["general"]["valid_model_names"] and config["fesom"].get("use_icebergs"):
+        if "fesom" in config["general"]["valid_model_names"] and config["fesom"].get("use_icebergs", False):
             # Get the fesom config namelist:
             nml = config["fesom"]["namelists"]["namelist.config"]
             # Get the current icebergs chapter or make a new empty one:
             icebergs = nml.get("icebergs", f90nml.namelist.Namelist())
             # Determine if icesheet coupling is enabled:
-            if config["fesom"].get("use_icesheet_coupling"):
+            if config["fesom"].get("use_icesheet_coupling", False):
                 icebergs["use_icesheet_coupling"] = True
                 if os.path.isfile(
-                    config["general"]["couple_dir"] + "/num_non_melted_icb_file"
+                    config["general"]["experiment_couple_dir"] + "/num_non_melted_icb_file"
                 ):
                     with open(
-                        config["general"]["couple_dir"] + "/num_non_melted_icb_file"
+                        config["general"]["experiment_couple_dir"] + "/num_non_melted_icb_file"
                     ) as f:
                         ib_num_old = [
                             int(line.strip()) for line in f.readlines() if line.strip()
@@ -449,7 +449,8 @@ class Namelist:
                 elif config["general"]["chunk_number"] == 1:
                     ib_num_old = 0
                 else:
-                    print("Something went wrong!")
+                    print("Something went wrong! Continue without old icebergs.")
+                    ib_num_old = 0
 
                 print(" * iceberg_dir = ", config["fesom"].get("iceberg_dir"))
                 ib_num_new = sum(1 for line in open(config["fesom"].get("iceberg_dir") + "/LON.dat"))
