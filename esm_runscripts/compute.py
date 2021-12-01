@@ -418,7 +418,8 @@ def update_runscript(fromdir, scriptsdir, tfile, gconfig, file_type):
     """
 
     # if `tfile` contains a full path of the runscript then remove the leading path
-    tfile = os.path.basename(tfile)
+    if not file_type == "additional file":
+        tfile = os.path.basename(tfile)
     
     # If the target file in ``scriptsdir`` does not exist, then copy the file
     # to the target.
@@ -426,6 +427,7 @@ def update_runscript(fromdir, scriptsdir, tfile, gconfig, file_type):
         oldscript = fromdir + "/" + tfile
         print(oldscript)
         shutil.copy2(oldscript, scriptsdir)
+
     # If the target path exists compare the two scripts
     else:
         import difflib
@@ -651,6 +653,13 @@ def _copy_preliminary_files_from_experiment_to_thisrun(config):
     shutil.copy2("./" + this_script, config["general"]["thisrun_scripts_dir"])
 
     for additional_file in config["general"]["additional_files"]:
+        # if the file is found in the current directory, then copy it. If it has
+        # a prefix, eg. 
+        # further_reading:
+        #     output/fesom_output.yaml
+        # then trim the prefix directory, because probably it is already here
+        if not os.path.isfile(additional_file):
+            additional_file = os.path.basename(additional_file)
         shutil.copy2(additional_file, config["general"]["thisrun_scripts_dir"])
     return config
 
