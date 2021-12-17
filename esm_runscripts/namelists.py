@@ -446,7 +446,7 @@ class Namelist:
                         ib_num_old = [
                             int(line.strip()) for line in f.readlines() if line.strip()
                         ][0]
-                elif config["general"]["chunk_number"] == 1:
+                elif config["general"].get("chunk_number", 0) == 1:
                     ib_num_old = 0
                 else:
                     print("Something went wrong! Continue without old icebergs.")
