@@ -159,6 +159,11 @@ class Namelist:
             logging.debug("Removing from %s: %s, %s", namelist, change_chapter, key)
             if key in mconfig["namelists"][namelist].get(change_chapter, {}):
                 del mconfig["namelists"][namelist][change_chapter][key]
+            elif "%" in key:
+                namvar, prop = key.split("%")
+                del mconfig["namelists"][namelist][change_chapter][namvar][prop]
+            else:
+                logging.debug("Unable to remove %s: %s, %s", namelist, change_chapter, key)
         return mconfig
 
     @staticmethod
@@ -269,7 +274,7 @@ class Namelist:
                     print(f"             CECC: {radctl['cecc']}")
                     print(f"             COBLD: {radctl['cobld']}")
                     print(f"             CLONP:{radctl['clonp']}")
-                except Exception as e:
+                except Exception as e:  # Specify this error
                     # Haha something went wrong. Let's be polite about it though
                     print("There was a problem with reading in the forcing from the transient forcing table")
                     print()

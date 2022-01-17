@@ -153,19 +153,19 @@ class oasis:
                 detail_line = mapname + " " + maploc + " " + mapstrat
                 trafo_details.append(detail_line.strip())
 
-            elif trans.lower() in ["distwgt", "bicubic", "bilinear", "gauswgt", "conserv"]:
+            elif trans.lower() in ["distwgt", "bicubic", "bilinear", "gauswgt", "conserv", "loccunif"]:
                 trafo_line += " SCRIPR"
                 srcgridtype = str(rgrid["oasis_grid_type"]).upper()
                 search_bin = transform.get("search_bin", None)
                 if not search_bin:
-                    print ("search_bin (LATITUDE or LATLON) needs to be defined for transformations DISTWGT, GAUSWGT, BILINEAR, BICUBIC", flush=True)
+                    print ("search_bin (LATITUDE or LATLON) needs to be defined for transformations DISTWGT, GAUSWGT, BILINEAR, BICUBIC, LOCCUNIF", flush=True)
                     sys.exit(2)
                 bins = transform.get("nb_of_search_bins", "1")
                 detail_line = trans.upper() + " " + srcgridtype.upper() + " SCALAR " + search_bin.upper() + " " + str(bins)
-                if trans.lower() in ["distwgt", "gauswgt"]:
+                if trans.lower() in ["distwgt", "gauswgt", "loccunif"]:
                     nb_of_neighbours = transform.get("nb_of_neighbours", None)
                     if not nb_of_neighbours:
-                        print ("nb_of_neighbours needs to be defined for transformations DISTWGT and GAUSWGT", flush=True)
+                        print ("nb_of_neighbours needs to be defined for transformations DISTWGT, GAUSWGT and LOCCUNIF", flush=True)
                         sys.exit(2)
                     detail_line += " " + str(nb_of_neighbours)
                 if trans.lower() == "gauswgt":

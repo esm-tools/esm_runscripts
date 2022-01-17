@@ -78,6 +78,10 @@ def get_user_config_from_command_line(command_line_config):
         )
         if "additional_files" not in user_config["general"]:
             user_config["general"]["additional_files"] = []
+    # If sys.exit is triggered through esm_parser.user_error (i.e. from
+    # ``check_for_empty_components`` in ``yaml_to_dict.py``) catch the sys.exit.
+    except SystemExit as sysexit:
+        sys.exit(sysexit)
     except esm_parser.EsmConfigFileError as error:
         raise error
     except:
@@ -156,10 +160,17 @@ def distribute_per_model_defaults(config):
     default_config = config["general"]["defaults.yaml"]
     if "general" in default_config:
         config["general"] = esm_parser.new_deep_update(config["general"], default_config["general"])
-        
+
     if "per_model_defaults" in default_config:
+        per_model_defaults = copy.deepcopy(default_config["per_model_defaults"])
+        # Remove ``file_movements`` from per_model_defaults as this is resolved in
+        # ``filelists.py`` and otherwise, it is not possible to understand there what
+        # comes from the defaults, from general or from the model config itself.
+        if "file_movements" in per_model_defaults:
+            del per_model_defaults["file_movements"]
+        # Set defaults per model
         for model in config["general"]["valid_model_names"]:
-            config[model] = esm_parser.new_deep_update(config[model], default_config["per_model_defaults"])
+            config[model] = esm_parser.new_deep_update(config[model], per_model_defaults)
     return config
 
 
